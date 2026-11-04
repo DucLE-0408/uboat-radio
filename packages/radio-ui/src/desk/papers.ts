@@ -208,13 +208,15 @@ const MAX_BYTES = 32_768, MAX_PAPERS = 400;
 const ID_RE = /^(?:mission|(?:in|out):\d{1,6}:\d{1,3})$/;
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
-const WORD_RE = /^[A-Z0-9?]{0,12}$/;
-const MAX_WORDS = 120;
+const WORD_RE = /^[A-Z0-9?]*$/;
+/** Same bound as the copy editor (Store COPY_MAX): a decode can never hold more characters than the copy it came from. */
+const COPY_CHARS = 400;
 function parseDecoded(x: unknown): Decoded | null {
   if (typeof x !== "object" || x === null || Array.isArray(x)) return null;
-  const o = x as Record<string, unknown>, w = o["words"], b = o["bad"], d = int(o["damaged"], 0, MAX_WORDS);
-  if (!Array.isArray(w) || !Array.isArray(b) || w.length > MAX_WORDS || b.length !== w.length || d === null) return null;
+  const o = x as Record<string, unknown>, w = o["words"], b = o["bad"], d = int(o["damaged"], 0, COPY_CHARS);
+  if (!Array.isArray(w) || !Array.isArray(b) || w.length > COPY_CHARS || b.length !== w.length || d === null) return null;
   if (!w.every((s) => typeof s === "string" && WORD_RE.test(s)) || !b.every((v) => typeof v === "boolean")) return null;
+  if ((w as string[]).reduce((n, s) => n + s.length, 0) > COPY_CHARS) return null; // a missed group space gives one long word: allowed
   return { words: w as string[], bad: b as boolean[], damaged: d };
 }
 
@@ -240,9 +242,9 @@ export function parseLayout(raw: string | null, seed: number): StoredLayout {
     const rawStamps = r["stamps"] === undefined ? [] : r["stamps"];
     const stamps = Array.isArray(rawStamps) && rawStamps.length <= STAMP_SLOTS && rawStamps.every((c) => c === "blue" || c === "red") ? (rawStamps as StampColor[]) : null;
     const signed = r["signed"] === undefined ? false : typeof r["signed"] === "boolean" ? r["signed"] : null;
-    const decoded = r["decoded"] === undefined ? null : parseDecoded(r["decoded"]);
+    // decoded text is a cache of what the sheet showed: if it is malformed or on a non-Output, only the text is dropped
+    const decoded = r["decoded"] === undefined || typeof id !== "string" || !id.startsWith("out:") ? null : parseDecoded(r["decoded"]);
     if (place === null || (r["clip"] !== undefined && r["clip"] !== null && clip === null) || stamps === null || signed === null) continue;
-    if (r["decoded"] !== undefined && (decoded === null || !id.startsWith("out:"))) continue;
     if (id === "mission" && (stamps.length > 0 || signed || clip !== null || place !== "desk")) continue;
     seen.add(id);
     out.push({ id, x, y, z, face, place, clip, stamps, signed, decoded });
