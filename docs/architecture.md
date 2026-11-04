@@ -100,3 +100,28 @@ Verified on Linux: `cargo check`, `tauri build --no-bundle` (3.4 MB release bina
 ## Main menu (`packages/radio-ui/src/menu`)
 
 `main.ts` decides how a watch starts: `?seed=N` (tests, shared links) resumes a matching save or starts that seed; `?play=new|continue` skip the menu (play again); otherwise `mountMenu()` returns the player's choice (`continue`, or `new` with an optional seed). Pure logic lives in `menu/model.ts` (items, arrow navigation that skips a disabled Continue, u32 seed parsing, a description of the save limited to seed and elapsed time) and `menu/settings.ts` (field-wise validated settings under `uboat-radio.settings.v1`, 4 KB cap, never part of the save). The settings feed `AudioEngine.setMix` (master gain plus separate Morse and hydrophone buses) and a `reduce-motion` class plus `flags.reduceMotion` for the JS decor. The in-game Menu button calls `Controller.openMenu()` (save, then reload at the bare path). Art (`tools/art/menu.ts`) is original TEMPORARY placeholder work. Found and fixed on the way: `parseSave` rejected every seed above 1,000,000 although seeds are u32, so real saves could not be restored.
+
+## Paperwork desk (`packages/radio-ui/src/desk`)
+
+The default UI since desk-ui Stage 5 (D7). It is presentation only: it reads the P5 store, reuses the P5 boat cutaway, drawers and emergency panel, and sends every decision through `ctx.actions`. `packages/sim-core` is untouched (D1); `git diff main -- packages/sim-core` is empty for the whole feature.
+
+| Module | Role |
+|---|---|
+| `index.ts` | `mountDesk()`: frame, stations (printer, Echo stamper, machine preview, ship panel), event wiring, restore |
+| `papers.ts` | `PaperModel`: sheets (Mission, Input/Output per message and attempt, Daily Orders, Manual), position/z/face/place/clip/stamps/signed/decode; `desk.v1` (de)serialization |
+| `sheets.ts` | sheet rendering, group grid, flip button |
+| `printer.ts` | token-by-token Input printing from received copy |
+| `echo.ts` | `EchoPress`: at most one `resolve` per message; the TRUE/FALSE ECHO mark is rebuilt from `rx.resolved` (the sim log), never from `desk.v1` |
+| `rules.ts` | G1 hand-over rules (Input = Echo + signature, no ordinary stamp; Output = one red stamp; trash refuses mission papers); violations are listed, not penalised before G3 |
+| `docs.ts` | Daily Orders (5 pages) and Manual (7 pages), en/vi |
+| `dialogue.ts` | crew portraits' lines per event, en/vi, chosen with the cosmetic RNG (never reveals whether a decision was right, D4) |
+
+**Storage.** `uboat-radio.desk.v1`: `{v:1, seed, papers:[...]}`, 32 KB / 400-paper cap, field-wise validated (ids by allowlist regex, bounded ints, decode strings allowlisted `[A-Z0-9?]`); an invalid or seed-mismatched blob is dropped. It holds layout only. Save/load of the watch stays seed + event log; reload rebuilds the desk silently and does not replay old dialogue.
+
+**Actions used.** `resolve`, `repeat`, `setMode`, `steerSpeed`, `toggleSilence`, `report`, `openAuthTable`, `openDrawer`. No new sim command was added.
+
+**i18n and fonts.** Strings in `src/i18n/{en,vi}.ts` (`?lang=` allowlisted, otherwise Settings). Silkscreen has no Vietnamese glyphs, so `:lang(vi)` switches labels to VT323 one step larger.
+
+**Running.** `cd packages/radio-ui && npm run dev` (or `npm run serve`). The desk is the default; `?ui=p5` and `?ui=classic` still win, and Settings stores `desk | p5 | classic` (a previously saved `p5` is kept). Useful test URL: `?seed=12&speed=60&lang=vi`.
+
+**Rollback.** Revert the default in `defaultSettings().ui` (`menu/settings.ts`) to `"p5"`, or ship with `?ui=p5`; `desk.v1` is a separate key and can be deleted without affecting the save.

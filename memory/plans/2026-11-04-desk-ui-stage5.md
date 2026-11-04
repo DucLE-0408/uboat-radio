@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 id: plan-2026-11-04-desk-ui-stage5
-task: memory/tasks/active/2026-11-04-desk-ui-stage5.md
-status: approved
+task: memory/tasks/completed/2026-11-04-desk-ui-stage5.md
+status: completed
 owner: claude-desktop-session
 base_commit: 29ecbdf
 ---
