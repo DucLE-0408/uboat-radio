@@ -34,6 +34,12 @@ Notes:
 - The saved watch (seed + commands) and unfinished transcription live in the browser's local storage for that origin; clearing site data erases them.
 - A native `.exe`/`.msi` installer (Electron or Tauri) is not part of this package.
 
+## Main menu and URL parameters
+
+The game opens on a menu (Continue, New game, Settings, Help). Continue needs a valid save; New game takes an optional seed (0..4294967295) and replaces the save. Settings (volumes, sound, reduce motion, interface) live under `uboat-radio.settings.v1`. In the game, the **Menu** button saves and returns to the menu.
+
+`?seed=N` skips the menu (resumes a matching save, otherwise starts that seed), `?play=new` and `?play=continue` skip it too, `?ui=classic` forces the classic panels, `?speed=1..60` compresses time for tests, `?diag=1` shows diagnostics.
+
 ## Desktop installer and hosting
 
 A Windows `.exe` is built from this bundle by `packages/desktop` (Tauri; see its README). The web build is hosted via the root `vercel.json`.

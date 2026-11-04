@@ -15,13 +15,18 @@ import { rebuildStore, Store } from "./store";
 import { CopyPersistence, loadCopies } from "./sim/transcripts";
 import { Diag, mountDiagOverlay } from "./diag";
 import { registerServiceWorker } from "./pwa";
+import { mountMenu, type MenuChoice } from "./menu/menu";
+import { defaultSettings, loadSettings, saveSettings, type Settings } from "./menu/settings";
+import { HELP } from "./input/keymap";
+import { clearCopies } from "./sim/transcripts";
 
 const app = document.getElementById("app");
 if (!app) throw new Error("#app missing");
 
 // ---- boundary parsing of the URL (untrusted input) ----
 const params = new URLSearchParams(location.search);
-const seedParam = /^\d{1,10}$/.test(params.get("seed") ?? "") ? Number(params.get("seed")) : null;
+const seedRaw = params.get("seed") ?? "";
+const seedParam = /^\d{1,10}$/.test(seedRaw) && Number(seedRaw) <= 4_294_967_295 ? Number(seedRaw) : null; // u32, same bound as a save file
 const speedParam = Number(params.get("speed"));
 const initialSpeed = Number.isFinite(speedParam) && speedParam >= 1 && speedParam <= 60 ? speedParam : 1; // >1x also used for test playthroughs
 
@@ -40,21 +45,61 @@ const onStorageError = (): void => {
   store.notify("Browser storage is unavailable — this watch will not survive a reload.");
 };
 
-const restored = Session.restore(storage, seedParam, onStorageError);
-const session = restored ?? Session.fresh(seedParam ?? randomSeed(), storage, onStorageError);
+// ---- audio, player settings (their own storage key, never part of the save) ----
+const audio = new AudioEngine();
+audio.onError = (code) => diag.err("audio", code);
+const flags: Ctx["flags"] = { showMorse: !audio.supported, simSpeed: initialSpeed };
+let settings: Settings = loadSettings(storage, defaultSettings(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true));
+const applySettings = (s: Settings): void => {
+  settings = s;
+  audio.setMix({ master: s.master, morse: s.morse, hydro: s.hydro, sound: s.sound });
+  document.documentElement.classList.toggle("reduce-motion", s.reduceMotion);
+  flags.reduceMotion = s.reduceMotion;
+};
+applySettings(settings);
+let settingsWarned = false;
+const persistSettings = (s: Settings): void => {
+  applySettings(s);
+  if (!saveSettings(storage, s) && !settingsWarned) { settingsWarned = true; diag.err("save", "SETTINGS_SAVE_FAILED"); }
+};
+
+// ---- how the watch starts ----
+// ?seed=N (tests, shared links): resume a matching save or start that seed. ?play=new / ?play=continue skip the menu ("play again").
+// Otherwise the main menu decides.
+const play = params.get("play");
+const startNew = (seed: number | null): Session => {
+  Session.clear(storage); clearCopies(storage);
+  return Session.fresh(seed ?? randomSeed(), storage, onStorageError);
+};
+let restored: Session | null = null;
+let session: Session;
+if (seedParam !== null) {
+  restored = Session.restore(storage, seedParam, onStorageError);
+  session = restored ?? Session.fresh(seedParam, storage, onStorageError);
+} else if (play === "new") {
+  session = startNew(null);
+} else if (play === "continue") {
+  restored = Session.restore(storage, null, onStorageError);
+  session = restored ?? startNew(null);
+} else {
+  const choice: MenuChoice = await mountMenu(app, { storage, settings, onSettings: persistSettings, unlockAudio: () => audio.unlock(), keys: HELP });
+  if (choice.kind === "continue") {
+    restored = Session.restore(storage, null, onStorageError);
+    session = restored ?? startNew(null); // the save vanished or became invalid between the menu and now
+  } else {
+    session = startNew(choice.seed);
+  }
+}
 if (restored) {
   // Silent rebuild (R8.4): UI state only; no audio is queued and no stale alarm survives. The controller subscribes AFTER this.
   rebuildStore(store, restored.watch.bus.getLog(), restored.watch.commandLog(), restored.watch.tSec);
   store.importCopies(loadCopies(storage, restored.seed)); // unfinished transcription lives in its own key (R3.3)
 }
 
-const audio = new AudioEngine();
-audio.onError = (code) => diag.err("audio", code);
 const morse = new MorsePlayer(audio);
 const hydro = new Hydrophone(audio);
 const loop = new FixedStepLoop();
 loop.setSpeed(initialSpeed);
-const flags: Ctx["flags"] = { showMorse: !audio.supported, simSpeed: initialSpeed };
 
 const cosmeticSeed = randomSeed();
 const controller = new Controller(session, store, audio, morse, hydro, loop, {
@@ -68,7 +113,7 @@ const copies = new CopyPersistence(storage, session.seed, () => store.exportCopi
 store.on(["copy"], () => copies.schedule());
 if (params.get("diag") === "1") mountDiagOverlay(diag);
 
-const ui = params.get("ui");
+const ui = params.get("ui") ?? settings.ui; // ?ui=classic still wins; otherwise the player's setting
 const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : mountScene(ctx, app); // P5 is the default; ?ui=classic keeps the P4 panels
 
 controller.syncTelemetry();

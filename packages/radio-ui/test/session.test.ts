@@ -95,4 +95,9 @@ describe("Session save/load = seed + commandLog", () => {
     expect(parseSave(JSON.stringify({ v: 2, seed: 1, untilTick: 5, commands: many }))).toBeNull();
     expect(parseSave("x".repeat(2_000_001))).toBeNull();
   });
+
+  it("accepts every u32 seed (random seeds are drawn from Uint32) and rejects out-of-range ones", () => {
+    for (const seed of [0, 1_000_001, 3_000_000_000, 4_294_967_295]) expect(parseSave(JSON.stringify({ v: 2, seed, untilTick: 5, commands: [] })), String(seed)).not.toBeNull();
+    for (const seed of [-1, 4_294_967_296, 1.5, "7"]) expect(parseSave(JSON.stringify({ v: 2, seed, untilTick: 5, commands: [] })), String(seed)).toBeNull();
+  });
 });

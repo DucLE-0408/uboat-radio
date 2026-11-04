@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 id: task-2026-11-04-landing-site
-status: in-progress
+status: completed
 owner: claude
 goal_confirmed_at: 2026-11-04T07:10:00.0000000Z
 started_at: 2026-11-04T07:10:00.0000000Z
-updated_at: 2026-11-04T07:10:00.0000000Z
+updated_at: 2026-11-04T07:45:00.0000000Z
 base_commit: c3a741c912833f8b5c2aaa32b5f283cedfa1d7fe
 owned_paths:
   - packages/site
-  - memory/tasks/active/2026-11-04-landing-site.md
+  - memory/tasks/completed/2026-11-04-landing-site.md
 plan: null
 handoff: null
 ---
@@ -33,6 +33,8 @@ Visitor -> Vercel static host -> / (landing: HTML+CSS+game assets) or /play/ (ra
 
 - packages/site/public (index.html, style.css), packages/site/build.mjs (Node built-ins) assembles dist/: landing at root, radio-ui dist under play/, sprites, fonts and icon copied from radio-ui.
 - vercel.json: build = radio-ui build + site assembly, output packages/site/dist, trailingSlash true (so /play/ keeps relative asset URLs), sw.js no-cache under /play/, immutable only for hashed /play/assets/, 1 h cache for unhashed /assets/.
+
+- Closed after merge: PR 13 merged as 183d6ac. Hosted preview checked on the Vercel deployment of the branch: / and /play/sw.js responses carry the expected CSP/nosniff/DENY/HSTS headers and no-cache for sw.js; /play and /play/ return the same cached entry (so /play redirects to /play/, inferred from the cache HIT because the fetch tool follows redirects). Still not verified: PWA install from /play/ on the hosted URL, a real-browser session on the hosted URL (Vercel Authentication is ON), the Releases link target until the pre-release exists.
 
 ## Verification
 
@@ -59,4 +61,4 @@ Visitor -> Vercel static host -> / (landing: HTML+CSS+game assets) or /play/ (ra
 - Observability impact: none added (no analytics by design).
 - Residual risk: placeholder art; fonts without Vietnamese glyphs; release link dead until a release exists.
 - Rollback: revert this PR (vercel.json returns to serving radio-ui at /).
-- Next safe action: push, open PR, deploy preview and verify headers; after PR 12 merges, create the pre-release the user authorised.
+- Next safe action: pre-release (task-2026-11-04-desktop-prerelease), then verify the Releases link and PWA install on the hosted URL.

@@ -271,3 +271,7 @@ svg.dial .blip.escort { fill: #b13a56; stroke: #0c0a18; } svg.dial .blip.slow { 
 
 html:has(body.p5), body.p5 { height: auto; min-height: 100%; }
 body.p5 { overflow-x: hidden; }
+
+/* Player setting "Reduce motion" (menu): no CSS animation or transition inside the scene; JS decor checks flags.reduceMotion */
+.reduce-motion .scene, .reduce-motion .scene *, .reduce-motion .scene *::before, .reduce-motion .scene *::after { animation: none !important; transition: none !important; }
+.menubtn { white-space: nowrap; z-index: 1; } /* above the transparent inbox section that overlaps the banner corner; drawers (6), emergency (5) and summary (9) stay above it */
