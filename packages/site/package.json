@@ -1,0 +1,10 @@
+{
+  "name": "@uboat/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static landing page and download hub; the game itself is served from /play/",
+  "scripts": {
+    "build": "npm run build --prefix ../radio-ui && node build.mjs"
+  }
+}

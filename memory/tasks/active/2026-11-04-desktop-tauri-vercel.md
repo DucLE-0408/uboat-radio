@@ -39,7 +39,7 @@ Player -> Tauri window (WebView2) -> radio-ui static bundle (custom protocol, no
 - Added packages/desktop (Tauri 2.12.5 / tauri-build 2.7.4 / CLI 2.12.4, exact pins, lockfiles), per-user NSIS target, embedded WebView2 bootstrapper, CSP limited to self, no plugins/capabilities; icons generated from the PWA icon (placeholders).
 - radio-ui: `--mode tauri` build omits the service worker plugin and registration. Found and fixed an existing bug from PR 11: a duplicate registerServiceWorker call sat inside the frame() loop and ran every animation frame; removed.
 - Workflow desktop-windows.yml (windows-latest, lockfile installs, typecheck+tests, tauri build --locked, SHA-256, artifact 14 days). Actions pinned by SHA.
-- vercel.json at repo root (build radio-ui, output dist, security headers, no-cache sw.js). Vercel deployment itself is not done yet: it needs the branch pushed (git-connected preview) and the user's go-ahead.
+- vercel.json at repo root (build radio-ui, output dist, security headers, no-cache sw.js). Vercel: project uboat-radio created in the user's team after the user granted the GitHub App access; deployment dpl_ARNpEYziFdox4Deph3fZ42iMbQAw (commit c3a741c, Node 22.x) READY, but with target production because the project was not git-linked at creation; Vercel Authentication stays ON. Headers on / and /sw.js were checked against the live response.
 
 ## Verification
 
@@ -55,9 +55,9 @@ Player -> Tauri window (WebView2) -> radio-ui static bundle (custom protocol, no
 - Command/check: `python3 -I scripts/validate_repo.py`
 - Result: `passed`
 - Evidence/reason: governance validation passed with the active task.
-- Command/check: Windows NSIS build and launch; Vercel preview; Trivy fs scan of the new lockfiles
-- Result: `not verified`
-- Evidence/reason: needs CI on windows-latest, a pushed branch and user approval for the Vercel deploy; no docker/PowerShell in the sandbox.
+- Command/check: Windows NSIS build (CI) ; launch of the installed exe on Windows; Vercel deployment content and headers; Trivy on the new lockfiles
+- Result: `passed` for the CI build (installer job green, 3.1 MB artifact), Trivy (filesystem-and-sbom green) and the Vercel / and /sw.js response headers; `not verified` for launching the exe on real Windows and for PWA install from the Vercel URL
+- Evidence/reason: Actions run 41778531551; Vercel deployment READY with CSP, nosniff, X-Frame-Options, Referrer-Policy, COOP, Permissions-Policy, HSTS and no-cache sw.js observed.
 
 ## Runtime and codebase-health verification
 

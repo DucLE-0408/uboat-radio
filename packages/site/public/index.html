@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>U-Boat Radio Operator</title>
+    <meta name="description" content="Trò chơi phòng radio tàu ngầm U-boat thời Thế chiến II: chép mã Morse, giải mã Enigma, xác thực, quyết định. Chơi trên web, cài như app hoặc tải cho Windows." />
+    <meta name="theme-color" content="#14122b" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Bỏ qua điều hướng</a>
+    <header class="top">
+      <a class="brand" href="./" aria-label="U-Boat Radio Operator — trang chủ"><img src="./assets/icon-192.png" width="32" height="32" alt="" />U-BOAT RADIO OPERATOR</a>
+      <nav aria-label="Chính">
+        <a href="./play/">Chơi</a>
+        <a href="#tai">Tải &amp; cài</a>
+        <a href="#cach-choi">Cách chơi</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="h-hero">
+        <div class="scene" role="img" aria-label="Tàu ngầm nổi trên mặt biển lúc hoàng hôn, nhìn cắt ngang">
+          <div class="sea"></div><div class="boat"></div><div class="water"></div><div class="frame"></div>
+        </div>
+        <h1 id="h-hero">Nghe Morse. Giải Enigma. Xác thực. Quyết định.</h1>
+        <p class="lead">Bạn là điện báo viên trên một chiếc U-boat. Mỗi bức điện đến qua nhiễu sóng: chép, giải mã, kiểm tra xem nó có thật không, rồi báo lại cho thuyền trưởng. Một quyết định sai có thể làm lộ cả con tàu.</p>
+        <p class="cta">
+          <a class="btn primary" href="./play/">CHƠI NGAY</a>
+          <a class="btn" href="#tai">TẢI CHO WINDOWS</a>
+        </p>
+        <p class="note">Chạy ngay trên trình duyệt, không cần tài khoản. Bản đang phát triển (v0.0.0.0).</p>
+      </section>
+
+      <section class="cards" id="cach-choi" aria-labelledby="h-how">
+        <h2 id="h-how">Cách chơi</h2>
+        <div class="grid">
+          <article class="card"><h3>1 · Chép</h3><p>Nghe tín hiệu Morse và gõ lại. Nhiễu làm mất chữ, bạn có thể yêu cầu lặp lại.</p></article>
+          <article class="card"><h3>2 · Giải mã</h3><p>Dùng bảng khóa trong ngày để giải mã Enigma M4 và đọc điện văn.</p></article>
+          <article class="card"><h3>3 · Xác thực</h3><p>Thách đố và kiểm tra mã xác thực. Điện giả luôn có một dấu hiệu bạn kiểm chứng được.</p></article>
+          <article class="card"><h3>4 · Quyết định</h3><p>Chấp nhận hay bác bỏ. Phát sóng nhiều thì bị dò hướng, nên im lặng cũng là một nước đi.</p></article>
+        </div>
+      </section>
+
+      <section class="cards" aria-labelledby="h-why">
+        <h2 id="h-why">Vì sao dùng thoải mái</h2>
+        <div class="grid">
+          <article class="card"><h3>Offline</h3><p>Cài như app là chơi được khi không có mạng.</p></article>
+          <article class="card"><h3>Không theo dõi</h3><p>Không cookie, không analytics, không tài nguyên bên ngoài. Bản lưu nằm trong máy bạn.</p></article>
+          <article class="card"><h3>Xác định</h3><p>Cùng một seed cho cùng một ca trực. Bản lưu chỉ là seed và các lệnh bạn đã gõ.</p></article>
+        </div>
+      </section>
+
+      <section class="dl" id="tai" aria-labelledby="h-dl">
+        <h2 id="h-dl">Tải &amp; cài</h2>
+        <div class="grid two">
+          <article class="card">
+            <h3>Web / PWA</h3>
+            <ol>
+              <li>Mở <a href="./play/">trang chơi</a> bằng Chrome hoặc Edge.</li>
+              <li>Bấm biểu tượng <strong>Cài đặt</strong> trên thanh địa chỉ.</li>
+              <li>Game thành app riêng và chạy offline.</li>
+            </ol>
+            <p class="small">Trên Android: menu ⋮ → <em>Cài đặt ứng dụng</em>.</p>
+            <p><a class="btn" href="./play/">MỞ TRANG CHƠI</a></p>
+          </article>
+          <article class="card">
+            <h3>Windows (.exe)</h3>
+            <p>Bộ cài một người dùng, không cần quyền quản trị, chạy offline. Bản này <strong>chưa ký</strong>: Windows SmartScreen sẽ hiện “Unknown publisher”.</p>
+            <ol>
+              <li>Tải <code>.exe</code> và <code>SHA256SUMS.txt</code> từ trang phát hành.</li>
+              <li>Kiểm tra: <code>Get-FileHash .\*.exe -Algorithm SHA256</code></li>
+              <li>Chạy, chọn <em>More info</em> → <em>Run anyway</em>.</li>
+            </ol>
+            <p><a class="btn" href="https://github.com/DucLE-0408/uboat-radio/releases" rel="noopener noreferrer">TRANG PHÁT HÀNH</a></p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>Mã nguồn: <a href="https://github.com/DucLE-0408/uboat-radio" rel="noopener noreferrer">github.com/DucLE-0408/uboat-radio</a> · Trò chơi hư cấu, lấy cảm hứng từ lịch sử; hình ảnh hiện là bản tạm.</p>
+    </footer>
+  </body>
+</html>
