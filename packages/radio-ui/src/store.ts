@@ -1,5 +1,5 @@
 // UI state derived ONLY from SimEvents plus the player's own input and the public observation helpers.
-// Vietnamese: không trường nào ở đây đến từ truthOf; hazard/Intel không bao giờ được lưu hay hiển thị.
+// Vietnamese: không trường nào ở đây đến từ ground truth của sim; hazard/Intel không bao giờ được lưu hay hiển thị.
 import type { Fist, LoggedCommand, SimEvent, Tell } from "@uboat/sim-core";
 
 export type Topic = "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
