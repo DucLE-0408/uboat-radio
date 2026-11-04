@@ -131,3 +131,14 @@ The default UI since desk-ui Stage 5 (D7). It is presentation only: it reads the
 ## Window fill (`scene/px.ts`)
 
 The fixed 640x360 frame (desk UI and P5 room) is scaled by `computeScale()`: the exact fit to the window, fractional and rounded down to 0.01 (it used to be an integer, which left a maximised 1920x960 window half empty). `fillWindow()` marks `#app` and `html` with `.fill-window` for the desktop layout, which centres the frame in a viewport-sized box with `overflow: hidden` and paints the margin with the scene slate. Sprites stay `image-rendering: pixelated`; at fractional scales some pixels are one device pixel wider than others. A window whose aspect is not 16:9 keeps a margin on the short axis (1920x960: 88% of the area). The menu panel keeps an integer scale, capped at 8.
+
+### G3: paperwork consequences, paper tells, plugboard (`packages/sim-core/src/paper.ts`, desk)
+
+The spec is `docs/specs/desk-ui-g3/` (approved 2026-11-04). Unlike G1/G2 it changes sim-core.
+
+- **Citations.** The desk reports what the player did with a sheet as `paperwork` facts (stamp / bin / hand-over), `dispose` (archive or burn after a hand-over) and `timer` (the optional deadline). `judge`/`judgeDispose` turn facts into faults (`wrongStamp`, `wrongBin`, `badHandover`, `timeout`, `orderBreach`); `Watch.cite` keeps an idempotent ledger per (message, fault) and emits `CITATION` and `CONSEQUENCE`. Tiers from `balance.json` `paper`: 1-2 warning (Intel mark, one Orders item lost), 3 located (HF/DF fix at 0.8, escort and depth charge on a bounded schedule), 4 severe (0.9, sooner, one more item lost), 5 executed (`WATCH_END "executed"`). The desk subtracts 10 Ration per citation.
+- **Deadline.** 120 s of sim time from the first `MSG_RX`, only after the `timer` command; the desk indicator reads the same value.
+- **Paper tells.** `MSG_RX.paper` carries the printed seal, a signature variant and an enciphered sender id; truth stays in `Truth.paperTells`. A forged stamp that looks genuine is never a tell; paper tells fall with Allied Intel; the classic generator still guarantees one tell (D8).
+- **Plugboard.** `decipherCopy`/`Watch.decipher` accept the plugboard the player wired (`validPlugboard`); the desk machine, the sender id and Output all use it. The day plugboard is printed on the Orders; omitting the argument keeps P5/classic unchanged.
+- **Save.** Still v2: the new commands are additive in the command log; `parseCommand` validates them; citations and lost items are rebuilt from the event log.
+- **Limit.** The client reports the facts, so a modified client can under-report (accepted, spec R7.4).

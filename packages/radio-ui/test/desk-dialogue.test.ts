@@ -42,3 +42,20 @@ describe("reference documents", () => {
     expect(new Set(n).size).toBe(3);
   });
 });
+
+import { ordersPages as op2, SIGNATURES } from "../src/desk/docs";
+describe("G3 Orders pages", () => {
+  it("print specimens, approved senders, the standing order and the items, striking revoked ones; en and vi agree", () => {
+    const paper = { signatures: [{ callsign: "KDK", variant: 2 }], approved: ["ABCD", "WXYZ"], order: "burnInput" as const,
+      items: [{ kind: "safeCoords" as const, n: 1, xKm: 120, yKm: -45, lost: false }, { kind: "resupply" as const, n: 1, xKm: -10, yKm: 7, lost: true }] };
+    const base = op2("en", [], [0, 1, 2]);
+    for (const lang of ["en", "vi"] as const) {
+      const full = op2(lang, [], [0, 1, 2], undefined, paper);
+      expect(full.pages.length).toBe(base.pages.length + 3);
+      const text = full.pages.map((p) => p.body).join("\n");
+      expect(text).toContain(SIGNATURES[2] as string); expect(text).toContain("ABCD  WXYZ"); expect(text).toContain("X +120  Y -45 km");
+      expect(text.match(/Y \+7 km {2}\[/)).not.toBeNull();
+    }
+    expect(SIGNATURES).toHaveLength(6); expect(new Set(SIGNATURES).size).toBe(6);
+  });
+});

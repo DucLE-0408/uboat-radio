@@ -1,5 +1,5 @@
 // Shared wiring types so panels depend on an interface, not on the controller implementation.
-import type { Watch } from "@uboat/sim-core";
+import type { PaperAction, Watch } from "@uboat/sim-core";
 import type { AudioEngine } from "./audio/engine";
 import type { MorsePlayer } from "./audio/morse";
 import type { Diag } from "./diag";
@@ -15,6 +15,10 @@ export interface Actions {
   challenge(): void;
   check(): void;
   resolve(decision: "accept" | "reject"): void;
+  /** G3: report what the player did with a sheet / dispose of a handed-over sheet / switch the per-message deadline. The sim judges. */
+  paperwork(rxId: number | null, action: PaperAction): void;
+  dispose(rxId: number, sheet: "input" | "output", how: "archive" | "burn"): void;
+  setTimer(on: boolean): void;
   report(seconds: number): void;
   toggleSilence(): void;
   setMode(m: BoatOrder): void;
@@ -51,7 +55,7 @@ export interface Ctx {
   readonly cosmeticSeed: number;
   readonly flags: { showMorse: boolean; simSpeed: number; reduceMotion?: boolean; timer?: boolean };
   /** Optional presentation hooks (desk G2). `typingGate` false = the keyboard is dead (machine off); `decodeSetting` = the 4 letters the player dialled in. */
-  readonly hooks?: { typingGate: (() => boolean) | null; decodeSetting: (() => string | null) | null; denied: (() => void) | null };
+  readonly hooks?: { typingGate: (() => boolean) | null; decodeSetting: (() => string | null) | null; decodePlugs?: (() => readonly string[] | null) | null; denied: (() => void) | null };
 }
 
 export interface Panel { readonly el: HTMLElement; frame?(): void }

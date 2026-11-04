@@ -48,6 +48,13 @@ export function awardSteps(s: RationState, rxId: number, done: Readonly<Record<M
   return { score: Math.max(-SCORE_LIM, Math.min(SCORE_LIM, s.score + d)), scored: s.scored, bonus: { ...s.bonus, [id]: mask } };
 }
 
+/** G3 (R8): each citation costs rations; the citation count itself belongs to the sim. */
+export const CITATION_PENALTY = 10;
+export function penalize(s: RationState, citations: number): RationState {
+  if (citations <= 0) return s;
+  return { score: Math.max(-SCORE_LIM, s.score - CITATION_PENALTY * citations), scored: s.scored, bonus: s.bonus };
+}
+
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
 /** Validates a stored ration (untrusted). Anything malformed yields the empty state; single bad entries are dropped. */

@@ -1,6 +1,7 @@
 // Paper layout model for the desk (R2). Pure: no DOM, no sim. Vietnamese: chỉ là trạng thái trình bày (vị trí, mặt, thứ tự);
 // nội dung giấy luôn dẫn xuất từ store, quyết định luôn đi qua Actions.
 
+import { validPlugboard } from "@uboat/sim-core";
 import { isPositions, MACHINE_DEFAULT, type MachineState } from "./machine";
 import { parseRation, RATION_EMPTY, type RationState } from "./ration";
 
@@ -234,7 +235,10 @@ export function parseExtra(raw: string | null, seed: number): DeskExtra {
   const m = o["mach"];
   if (typeof m === "object" && m !== null && !Array.isArray(m)) {
     const r = m as Record<string, unknown>;
-    if (typeof r["power"] === "boolean" && typeof r["cover"] === "boolean" && isPositions(r["pos"])) mach = { power: r["power"] && !r["cover"], cover: r["cover"], pos: r["pos"] };
+    if (typeof r["power"] === "boolean" && typeof r["cover"] === "boolean" && isPositions(r["pos"])) {
+      const pl = r["plugs"], plugs = Array.isArray(pl) && pl.every((x) => typeof x === "string") && validPlugboard(pl as string[]) ? (pl as string[]) : [];
+      mach = { power: r["power"] && !r["cover"], cover: r["cover"], pos: r["pos"], plugs };
+    }
   }
   return { mach, ration: parseRation(o["ration"]) };
 }

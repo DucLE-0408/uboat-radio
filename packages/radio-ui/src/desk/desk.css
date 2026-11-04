@@ -109,3 +109,19 @@
 .deskui .dcell .mg { color: #2f7d4f; }
 .deskui .dcell .mr { color: #b23a44; }
 .deskui .dtimer.late .typ { color: #e06a72; }
+
+/* ---- G3: plugboard panel, records panel, seal / signature on the Input */
+.deskui .dplug { z-index: 6; background: #1f2423; border: calc(1px * var(--px)) solid #4a5251; box-sizing: border-box; padding: calc(4px * var(--px)); color: #e6d8d4; }
+.deskui .dplugt { font-family: var(--f-label); font-size: calc(7px * var(--px)); color: #d9b878; text-transform: uppercase; margin-bottom: calc(3px * var(--px)); }
+.deskui:lang(vi) .dplugt { font-size: calc(9px * var(--px)); text-transform: none; }
+.deskui .dplugg { display: grid; grid-template-columns: repeat(13, 1fr); gap: calc(2px * var(--px)); }
+.deskui .dplugk { margin: 0; padding: 0; height: calc(14px * var(--px)); border: calc(1px * var(--px)) solid #4a5251; background: #14181a; color: #c9bfc4; font-size: calc(9px * var(--px)); cursor: pointer; }
+.deskui .dplugk.paired { color: #c6f2d6; border-color: #6fbf8a; }
+.deskui .dplugk.pend { color: #f0b85a; border-color: #f0b85a; }
+.deskui .dplugk:focus-visible { outline: calc(1px * var(--px)) solid #c6f2d6; }
+.deskui .dplugi { margin-top: calc(4px * var(--px)); font-size: calc(9px * var(--px)); color: #c9bfc4; word-break: break-word; }
+.deskui .dplugc { position: absolute; right: calc(4px * var(--px)); bottom: calc(4px * var(--px)); width: auto; height: auto; padding: calc(2px * var(--px)) calc(4px * var(--px)); border: calc(1px * var(--px)) solid #4a5251; color: #d9b878; }
+.deskui .drec { z-index: 6; background: #1f2423; border: calc(1px * var(--px)) solid #4a5251; box-sizing: border-box; padding: calc(4px * var(--px)); }
+.deskui .drecb { display: flex; flex-direction: column; gap: calc(3px * var(--px)); margin-top: calc(18px * var(--px)); }
+.deskui .drecbtn, .deskui .drecskip { position: static; text-align: left; padding: calc(2px * var(--px)) calc(3px * var(--px)); border: calc(1px * var(--px)) solid #4a5251; color: #e6d8d4; }
+.deskui .drecbtn:disabled { color: #69636f; }

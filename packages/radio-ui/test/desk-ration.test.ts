@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awardSteps, COMPLETE_BONUS, copyMarks, MISSION_STEPS, parseRation, RATION_EMPTY, scoreCopy, STEP_BONUS, type MissionStep } from "../src/desk/ration";
+import { penalize, CITATION_PENALTY, awardSteps, COMPLETE_BONUS, copyMarks, MISSION_STEPS, parseRation, RATION_EMPTY, scoreCopy, STEP_BONUS, type MissionStep } from "../src/desk/ration";
 
 const all = (v: boolean): Record<MissionStep, boolean> => Object.fromEntries(MISSION_STEPS.map((k) => [k, v])) as Record<MissionStep, boolean>;
 
@@ -41,5 +41,13 @@ describe("ration scoring", () => {
     expect(parseRation({ score: 1.5 })).toBe(RATION_EMPTY);
     const r = parseRation({ score: 7, scored: { "1:0": 5, "bad": 3, "2:0": 9999 }, bonus: { "1": 3, "x": 1, "2": 999 } });
     expect(r).toEqual({ score: 7, scored: { "1:0": 5 }, bonus: { "1": 3 } });
+  });
+});
+
+describe("citation penalty", () => {
+  it("costs rations per citation and may go negative", () => {
+    expect(penalize(RATION_EMPTY, 0)).toBe(RATION_EMPTY);
+    expect(penalize({ score: 25, scored: {}, bonus: {} }, 2).score).toBe(25 - 2 * CITATION_PENALTY);
+    expect(penalize(RATION_EMPTY, 1).score).toBe(-CITATION_PENALTY);
   });
 });
