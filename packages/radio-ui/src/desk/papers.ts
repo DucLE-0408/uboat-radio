@@ -1,16 +1,18 @@
 // Paper layout model for the desk (R2). Pure: no DOM, no sim. Vietnamese: chỉ là trạng thái trình bày (vị trí, mặt, thứ tự);
 // nội dung giấy luôn dẫn xuất từ store, quyết định luôn đi qua Actions.
 
-export type PaperKind = "input" | "output" | "mission";
+export type PaperKind = "input" | "output" | "mission" | "orders" | "manual";
+/** Desk furniture: no rxId, never stamped, signed, clipped, handed over or binned. */
+export const isReference = (k: PaperKind): boolean => k === "mission" || k === "orders" || k === "manual";
 export type Face = "front" | "back";
 export type StampColor = "blue" | "red";
-/** "desk": lying on the desk; "handed": given to the crew at the door (no longer drawn). */
-export type Place = "desk" | "handed";
+/** "desk": lying on the desk; "handed": given to the crew at the door; "drawer": a reference sheet put away. Neither of the last two is drawn. */
+export type Place = "desk" | "handed" | "drawer";
 /** Regular stamp boxes on the back of a sheet (the Echo box is separate and comes from the sim's MSG_RESOLVED). */
 export const STAMP_SLOTS = 2;
 
 export interface Paper {
-  readonly id: string;          // "in:<rxId>:<attempt>", "out:<rxId>:<attempt>", "mission"
+  readonly id: string;          // "in:<rxId>:<attempt>", "out:<rxId>:<attempt>", "mission", "orders", "manual"
   readonly kind: PaperKind;
   readonly rxId: number | null;
   readonly attempt: number | null;
@@ -39,18 +41,18 @@ export interface Rect { readonly x: number; readonly y: number; readonly w: numb
 /** Free area of the desk top where papers may lie (logical px). */
 export const DESK_AREA: Rect = { x: 144, y: 104, w: 280, h: 248 };
 export const SIZE: Readonly<Record<PaperKind, { readonly w: number; readonly h: number }>> = {
-  input: { w: 112, h: 148 }, output: { w: 112, h: 148 }, mission: { w: 128, h: 104 },
+  input: { w: 112, h: 148 }, output: { w: 112, h: 148 }, mission: { w: 128, h: 104 }, orders: { w: 128, h: 150 }, manual: { w: 128, h: 150 },
 };
 /** Spawn points: new sheets cascade from here so a stack never hides a sheet completely (R2.5). */
 const SPAWN: Readonly<Record<PaperKind, { readonly x: number; readonly y: number }>> = {
-  input: { x: 262, y: 150 }, output: { x: 168, y: 176 }, mission: { x: 150, y: 112 },
+  input: { x: 262, y: 150 }, output: { x: 168, y: 176 }, mission: { x: 150, y: 112 }, orders: { x: 262, y: 108 }, manual: { x: 278, y: 116 },
 };
 const CASCADE = 8, CASCADE_STEPS = 6, COLUMN = 20, SPAWN_TRIES = 60;
 /** A sheet may hang over the desk edge but always keeps this much on the desk, so it can be grabbed again. */
 const KEEP = 24;
 
 export const paperId = (kind: PaperKind, rxId: number | null, attempt: number | null): string =>
-  kind === "mission" ? "mission" : `${kind === "input" ? "in" : "out"}:${rxId}:${attempt}`;
+  isReference(kind) ? kind : `${kind === "input" ? "in" : "out"}:${rxId}:${attempt}`;
 
 export class PaperModel {
   private readonly byId = new Map<string, Paper>();
@@ -117,7 +119,7 @@ export class PaperModel {
   stamp(id: string, color: StampColor): MarkResult {
     const p = this.byId.get(id);
     if (!p || p.place !== "desk") return "none";
-    if (p.kind === "mission") return "notAllowed";
+    if (isReference(p.kind)) return "notAllowed";
     if (p.face !== "back") return "front";
     if (p.stamps.length >= STAMP_SLOTS) return "full";
     p.stamps.push(color);
@@ -126,7 +128,7 @@ export class PaperModel {
   sign(id: string): MarkResult {
     const p = this.byId.get(id);
     if (!p || p.place !== "desk") return "none";
-    if (p.kind === "mission") return "notAllowed";
+    if (isReference(p.kind)) return "notAllowed";
     if (p.face !== "back") return "front";
     if (p.signed) return "already";
     p.signed = true;
@@ -136,7 +138,7 @@ export class PaperModel {
   clipTo(id: string, onto: string): MarkResult {
     const a = this.byId.get(id), b = this.byId.get(onto);
     if (!a || !b || a === b || a.place !== "desk" || b.place !== "desk") return "none";
-    if (a.kind === "mission" || b.kind === "mission") return "notAllowed";
+    if (isReference(a.kind) || isReference(b.kind)) return "notAllowed";
     if (a.clip !== null && a.clip === b.clip) return "already";
     if (a.rxId !== b.rxId || this.group(id).some((q) => q.rxId !== b.rxId) || this.group(onto).some((q) => q.rxId !== a.rxId)) return "otherMessage"; // one message per bundle
     const moving = this.group(id);                       // a's own bundle (or just a) joins b's
@@ -159,7 +161,15 @@ export class PaperModel {
     return "ok";
   }
   /** The crew takes the sheets: they leave the desk. */
-  handOver(ids: readonly string[]): void { for (const id of ids) { const p = this.byId.get(id); if (p) p.place = "handed"; } }
+  handOver(ids: readonly string[]): void { for (const id of ids) { const p = this.byId.get(id); if (p && !isReference(p.kind)) p.place = "handed"; } }
+  /** Takes a reference sheet out of the drawer (on top) or puts it back. Returns the new place. */
+  toggleDrawer(id: string): Place | null {
+    const p = this.byId.get(id);
+    if (!p || !isReference(p.kind) || p.kind === "mission") return null;
+    p.place = p.place === "desk" ? "drawer" : "desk";
+    if (p.place === "desk") p.z = ++this.top;
+    return p.place;
+  }
   private clips = 0;
 
   private bounds(p: Paper): { minX: number; maxX: number; minY: number; maxY: number } {
@@ -205,7 +215,7 @@ export type StoredLayout = readonly StoredPaper[];
 
 export const DESK_KEY = "uboat-radio.desk.v1";
 const MAX_BYTES = 32_768, MAX_PAPERS = 400;
-const ID_RE = /^(?:mission|(?:in|out):\d{1,6}:\d{1,3})$/;
+const ID_RE = /^(?:mission|orders|manual|(?:in|out):\d{1,6}:\d{1,3})$/;
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
 const WORD_RE = /^[A-Z0-9?]{0,12}$/;
@@ -235,7 +245,7 @@ export function parseLayout(raw: string | null, seed: number): StoredLayout {
     const face = r["face"] === "front" || r["face"] === "back" ? r["face"] : null;
     if (typeof id !== "string" || !ID_RE.test(id) || seen.has(id) || x === null || y === null || z === null || face === null) continue;
     // Stage 3 fields: absent in older layouts (defaults); present but malformed => the entry is dropped
-    const place = r["place"] === undefined ? "desk" : r["place"] === "desk" || r["place"] === "handed" ? r["place"] : null;
+    const place = r["place"] === undefined ? "desk" : r["place"] === "desk" || r["place"] === "handed" || r["place"] === "drawer" ? r["place"] : null;
     const clip = r["clip"] === undefined || r["clip"] === null ? null : int(r["clip"], 1, 1_000_000);
     const rawStamps = r["stamps"] === undefined ? [] : r["stamps"];
     const stamps = Array.isArray(rawStamps) && rawStamps.length <= STAMP_SLOTS && rawStamps.every((c) => c === "blue" || c === "red") ? (rawStamps as StampColor[]) : null;
@@ -243,7 +253,10 @@ export function parseLayout(raw: string | null, seed: number): StoredLayout {
     const decoded = r["decoded"] === undefined ? null : parseDecoded(r["decoded"]);
     if (place === null || (r["clip"] !== undefined && r["clip"] !== null && clip === null) || stamps === null || signed === null) continue;
     if (r["decoded"] !== undefined && (decoded === null || !id.startsWith("out:"))) continue;
-    if (id === "mission" && (stamps.length > 0 || signed || clip !== null || place !== "desk")) continue;
+    const ref = id === "mission" || id === "orders" || id === "manual";
+    if (ref && (stamps.length > 0 || signed || clip !== null || place === "handed")) continue;   // reference sheets carry no marks
+    if (!ref && place === "drawer") continue;                                                   // message sheets never go in the drawer
+    if (id === "mission" && place !== "desk") continue;
     seen.add(id);
     out.push({ id, x, y, z, face, place, clip, stamps, signed, decoded });
   }

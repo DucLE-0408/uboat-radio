@@ -2,6 +2,7 @@
 // Teletyper, Echo stamper, collapsed cipher machine, two-sided Input sheet and the Mission clip sheet.
 // Layout follows docs/specs/desk-ui/design.md section 2 (logical 640x360). Same palette as the P5 art pass (tone.ts).
 import { artRng, Img, type RGBA } from "./pix.ts";
+import { crewMember, PH, PW } from "./portrait.ts";
 import { T } from "./tone.ts";
 import type { Sprite } from "./sprites.ts";
 
@@ -18,7 +19,7 @@ export const DESK = {
   machine: { x: 428, y: 304, w: 204, h: 48 },
   paper: { w: 112, h: 148 },
   mission: { w: 128, h: 104 },
-  drawer: { x: 146, y: 196, w: 104, h: 96 },
+  drawer: { x: 146, y: 196, w: 104, h: 120 },
   bin: { x: 148, y: 318, w: 28, h: 32 },
 } as const;
 
@@ -103,7 +104,6 @@ function controls(): Sprite {
   // dive lever slot (left): vertical track with a handle at SURFACE
   i.rect(10, 20, 10, 62, c(T.k, 0)); i.vline(14, 22, 58, c(T.k, 3));
   for (let y = 24; y < 80; y += 14) i.hline(21, y, 4, c(T.m, 5));
-  i.rect(8, 24, 14, 6, c(T.red, 2)); i.hline(8, 24, 14, c(T.red, 3)); i.hline(8, 29, 14, c(T.red, 0));
   // speed telegraph (centre): brass dial with sectors and a pointer
   const cx = 60, cy = 46;
   i.ellipse(cx, cy, 24, 24, c(T.brass, 0)); i.ellipse(cx, cy, 22, 22, c(T.brass, 3)); i.ellipse(cx, cy, 19, 19, c(T.pa, 5));
@@ -261,11 +261,15 @@ function drawerTray(): Sprite {
   i.rect(0, 0, W, H, c(T.wl, 0)); i.frame(0, 0, W, H, c(T.wl, 3)); i.hline(1, 1, W - 2, c(T.wl, 4));
   i.rect(3, 3, W - 6, H - 6, c(T.wl, 1));
   // four compartments in a 2x2 grid, each with a felt floor
-  for (const [x, y] of [[4, 4], [W / 2 + 1, 4], [4, H / 2 + 1], [W / 2 + 1, H / 2 + 1]] as const) {
-    i.rect(x, y, W / 2 - 5, H / 2 - 5, c(T.m, 1)); i.hline(x, y, W / 2 - 5, c(T.m, 0)); i.vline(x, y, H / 2 - 5, c(T.m, 0));
+  const top = 96; // four compartments above, a shelf below for the Daily Orders folder and the Manual
+  i.rect(3, 3, W - 6, top - 6, c(T.wl, 1));
+  for (const [x, y] of [[4, 4], [W / 2 + 1, 4], [4, top / 2 + 1], [W / 2 + 1, top / 2 + 1]] as const) {
+    i.rect(x, y, W / 2 - 5, top / 2 - 5, c(T.m, 1)); i.hline(x, y, W / 2 - 5, c(T.m, 0)); i.vline(x, y, top / 2 - 5, c(T.m, 0));
   }
-  i.rect(W / 2 - 1, 3, 2, H - 6, c(T.wl, 3)); i.rect(3, H / 2 - 1, W - 6, 2, c(T.wl, 3));
-  return { id: "desk-drawer", img: i, note: "desk: open drawer tray with four compartments (stamps, pen, clips)" };
+  i.rect(W / 2 - 1, 3, 2, top - 6, c(T.wl, 3)); i.rect(3, top / 2 - 1, W - 6, 2, c(T.wl, 3));
+  i.rect(3, top - 2, W - 6, 2, c(T.wl, 4));
+  i.rect(4, top + 1, W - 8, H - top - 5, c(T.wl, 2)); i.hline(4, top + 1, W - 8, c(T.wl, 0));
+  return { id: "desk-drawer", img: i, note: "desk: open drawer tray, four tool compartments and a shelf for Daily Orders and the Manual" };
 }
 
 function tools(): Sprite {
@@ -326,6 +330,46 @@ function marks(): Sprite[] {
   ];
 }
 
+// ---------------------------------------------------------------- Stage 4: crew at the door, reference documents
+/** Exact-colour swap: each colour of `from[k]` becomes `to[k]` (ramps of equal length). */
+function recolor(i: Img, pairs: readonly (readonly [readonly RGBA[], readonly RGBA[]])[]): void {
+  const map = new Map<string, RGBA>();
+  for (const [from, to] of pairs) from.forEach((f, k) => map.set(f.join(","), c(to, k)));
+  for (let y = 0; y < i.h; y++) for (let x = 0; x < i.w; x++) { const o = i.get(x, y); if (o[3] === 0) continue; const n = map.get(o.join(",")); if (n) i.set(x, y, n); }
+}
+const hexRamp = (...h: string[]): RGBA[] => h.map((v) => [parseInt(v.slice(1, 3), 16), parseInt(v.slice(3, 5), 16), parseInt(v.slice(5, 7), 16), 255] as RGBA);
+/** Crew order in the sheet; must match CREW in src/desk/dialogue.ts. */
+export const CREW_LOOKS = ["captain", "officer", "engineer", "sonar", "messenger"] as const;
+function crew(): Sprite {
+  const sheet = new Img(PW * CREW_LOOKS.length, PH);
+  const skinDark = T.skin.map((_, k) => c(T.skin, k - 1));
+  const looks: Record<(typeof CREW_LOOKS)[number], (readonly [readonly RGBA[], readonly RGBA[]])[]> = {
+    captain: [[T.cap, hexRamp("#3a3a3e", "#8f8f94", "#b9b9bd", "#d9d9dc", "#ececee")], [T.uni, hexRamp("#12141c", "#191c28", "#222636", "#2d3246", "#3a4058", "#4a516c")], [T.hair, hexRamp("#3a3836", "#5c5955", "#7e7a75")]],
+    officer: [[T.uni, hexRamp("#141722", "#1c2030", "#262b3e", "#313750", "#3e4562", "#4f5778")], [T.hair, hexRamp("#24160e", "#3a2616", "#54381f")]],
+    engineer: [[T.uni, hexRamp("#1e140e", "#2c1d14", "#3c281b", "#4e3523", "#62442d", "#79573a")], [T.cap, hexRamp("#0e0e10", "#161618", "#202024", "#2c2c32", "#3a3a42")], [T.skin, skinDark]],
+    sonar: [[T.hair, hexRamp("#5e4a26", "#8a6e3a", "#b39352")]],
+    messenger: [[T.uni, hexRamp("#1c1c1e", "#28282b", "#353539", "#44444a", "#56565d", "#6b6b73")], [T.hair, hexRamp("#3e1a10", "#5e2a18", "#7e3c22")]],
+  };
+  CREW_LOOKS.forEach((id, k) => { const one = crewMember(); recolor(one, looks[id]); sheet.blit(one, k * PW, 0); });
+  return { id: "desk-crew", img: sheet, frames: { w: PW, h: PH, count: CREW_LOOKS.length }, note: `crew at the door (original faces, neutral uniforms): ${CREW_LOOKS.join(", ")}` };
+}
+
+function paperDoc(): Sprite {
+  const W = 128, H = 150, i = new Img(W * 2, H);
+  // 0 Daily Orders: typed sheet with a heavy header bar and a "classified" border line
+  sheet(i, 0, W, H);
+  i.rect(2, 3, W - 4, 14, c(T.k, 4)); i.hline(2, 17, W - 4, c(T.k, 2));
+  i.frame(4, 20, W - 8, H - 26, c(T.pa, 3));
+  // 1 Manual: spiral-bound notebook page with a ruled margin
+  const ox = W;
+  sheet(i, ox, W, H);
+  i.rect(ox + 2, 3, W - 4, 14, c(T.e, 3)); i.hline(ox + 2, 17, W - 4, c(T.e, 1));
+  i.vline(ox + 14, 20, H - 26, c(T.red, 3));
+  for (let y = 24; y < H - 8; y += 8) i.hline(ox + 16, y, W - 22, c(T.pa, 4));
+  for (let y = 8; y < H - 6; y += 10) { i.ellipse(ox + 5, y, 2, 2, c(T.k, 6)); i.set(ox + 5, y, c(T.k, 2)); }
+  return { id: "paper-doc", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Daily Orders sheet, Manual page (spiral bound)" };
+}
+
 export function deskSprites(): Sprite[] {
-  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission(), drawerTray(), tools(), bin(), ...marks()];
+  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission(), drawerTray(), tools(), bin(), ...marks(), crew(), paperDoc()];
 }

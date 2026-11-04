@@ -279,6 +279,17 @@ function desk(i: Img): void {
   for (const x of [2, 127]) i.stamp(x, 139, [".a.", "abc", ".c."], { a: m[5] as RGBA, b: m[3] as RGBA, c: m[0] as RGBA });
 }
 
+/** A crew member at the radio-room door (desk UI): the operator's build without headphones and desk lip (recoloured per person). */
+export function crewMember(): Img {
+  const i = new Img(PW, PH);
+  background(i, false);
+  torso(i, 0);
+  neck(i, 0, 0);
+  face(i, { dx: 0, dy: 0, pose: "idle" });
+  cap(i, 0, 0);
+  return i;
+}
+
 export function operator(pose: Pose): Img {
   const i = new Img(PW, PH);
   const dx = pose === "hurt" ? -2 : pose === "listening" ? 1 : 0;

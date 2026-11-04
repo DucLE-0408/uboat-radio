@@ -12,9 +12,15 @@ import { makeDecor } from "../scene/decor";
 import { computeScale, paint, place, setFrame } from "../scene/px";
 import { Reveal } from "../scene/reveal";
 import { createScope, type SceneCtx } from "../scene/scope";
+import { mountDrawers } from "../scene/drawers";
+import { mountEmergency } from "../scene/emergency";
 import { mountMachine } from "../scene/machine";
 import { mountSummary } from "../scene/summary";
 import { mountToast } from "../scene/toast";
+import { derive } from "@uboat/sim-core";
+import { getLang } from "../i18n";
+import { CREW, crewName, crewRole, pickScene, triggersBetween, YOU, type Observed, type Scene, type Trigger } from "./dialogue";
+import { MANUAL, ordersPages, pickNews, type DocPage } from "./docs";
 import { EchoPress, type EchoDecision } from "./echo";
 import { DESK_KEY, PaperModel, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
 import { canTrash, checkHandOver } from "./rules";
@@ -35,9 +41,11 @@ const G = {
 const MIN_W = 1280, MIN_H = 720;
 const GRID_MIN = 20; // 4 x 5 cells fill the group area; more groups scroll
 const SAVE_DELAY_MS = 400;
-const DRAWER = { x: 146, y: 196, w: 104, h: 96 }, BIN = { x: 148, y: 318, w: 28, h: 32 };
+const DRAWER = { x: 146, y: 196, w: 104, h: 120 }, BIN = { x: 148, y: 318, w: 28, h: 32 };
 /** The P5 machine is drawn at x 424; shifted by this much it slides over the right part of the desk (R4.1, design s2). */
 const MACHINE_SHIFT = -208;
+const REPORT_SEC = 10; // same report length as the P5 instruments panel
+const MODES = [["surface", 20], ["periscope", 42], ["dive", 64]] as const;
 type Tool = StampColor | "pen" | "clip";
 const inRect = (x: number, y: number, r: { x: number; y: number; w: number; h: number }): boolean => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 
@@ -79,15 +87,39 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
 
   // ---- door (crew arrive in Stage 4)
   const door = h("section", { class: "sc ddoor", attrs: { "aria-label": t("desk.door") } }); place(door, G.door.x, G.door.y, G.door.w, G.door.h); paint(door, "desk-door");
-  door.append(label("plate", t("desk.door"), 44, 1, 44, 6), label("dim center", t("desk.door.empty"), 16, 96, 100, 10));
+  const crewEl = h("div", { class: "sc dcrew", attrs: { role: "img" } }); place(crewEl, 14, 8, 104, 100); paint(crewEl, "desk-crew"); crewEl.hidden = true;
+  const doorEmpty = label("dim center", t("desk.door.empty"), 16, 96, 100, 10);
+  door.append(crewEl, label("plate", t("desk.door"), 44, 1, 44, 6), doorEmpty);
   scene.append(door);
 
-  // ---- boat controls (wired in Stage 4; values shown read-only)
+  // ---- boat controls (R9.2): lever = ordered mode, speed − / +, silence, report; the arrow keys still steer as in P5
   const ctl = h("section", { class: "sc dctl", attrs: { "aria-label": t("desk.controls") } }); place(ctl, G.controls.x, G.controls.y, G.controls.w, G.controls.h); paint(ctl, "desk-controls");
-  const txClock = label("tx typ", "", 12, 89, 108, 9);
+  const txClock = label("tx typ", "", 12, 89, 100, 9);
+  const antenna = h("span", { class: "sc dant", attrs: { role: "img" } }); place(antenna, 112, 91, 6, 6);
+  const leverHandle = box("dleverh", 8, 24, 14, 6);
+  const levers = MODES.map(([m, y]) => {
+    const b = h("button", { class: "dlever", attrs: { type: "button", "aria-label": t(`desk.ctl.mode.${m}`), title: t(`desk.ctl.mode.${m}`) } }); place(b, 4, y, 24, 18);
+    b.addEventListener("click", () => actions.setMode(m));
+    return b;
+  });
+  const slower = h("button", { class: "dkey dstep", attrs: { type: "button", "aria-label": t("desk.ctl.slower"), title: t("desk.ctl.slower") }, text: "−" }); place(slower, 36, 72, 16, 12);
+  const faster = h("button", { class: "dkey dstep", attrs: { type: "button", "aria-label": t("desk.ctl.faster"), title: t("desk.ctl.faster") }, text: "+" }); place(faster, 68, 72, 16, 12);
+  slower.addEventListener("click", () => actions.steerSpeed(-1)); faster.addEventListener("click", () => actions.steerSpeed(1));
+  const spdTxt = label("ink typ center", "", 42, 54, 36, 8);
+  const silBtn = h("button", { class: "dpad dsil", attrs: { type: "button" } }); place(silBtn, 96, 20, 26, 22);
+  silBtn.addEventListener("click", () => actions.toggleSilence());
+  const repBtn = h("button", { class: "dpad", attrs: { type: "button", "aria-label": t("desk.ctl.reportHint"), title: t("desk.ctl.reportHint") } }); place(repBtn, 96, 50, 26, 22);
+  repBtn.addEventListener("click", () => actions.report(REPORT_SEC));
   ctl.append(label("strip", t("desk.controls"), 4, 3, 124, 8), label("dim center", t("desk.ctl.dive"), 2, 14, 30, 6), label("dim center", t("desk.ctl.speed"), 36, 14, 48, 6),
-    label("dim center", t("desk.ctl.silence"), 88, 43, 42, 6), label("dim center", t("desk.ctl.report"), 88, 73, 42, 6), txClock);
+    label("dim center", t("desk.ctl.silence"), 88, 43, 42, 6), label("dim center", t("desk.ctl.report"), 88, 73, 42, 6), leverHandle, ...levers, slower, faster, spdTxt, silBtn, repBtn, txClock, antenna);
   scene.append(ctl);
+  // drawers of the P5 room (auth table, sonar, log) open from the top panel; the emergency panel is the P5 one
+  const drawerKeys: readonly (readonly ["auth" | "sonar" | "log", number])[] = [["auth", 440], ["sonar", 500], ["log", 560]];
+  for (const [id, x] of drawerKeys) {
+    const b = h("button", { class: "dkey dtop", attrs: { type: "button", title: t(`desk.dr.${id}Hint`), "aria-label": t(`desk.dr.${id}Hint`) }, text: t(`desk.dr.${id}`) }); place(b, x, 84, 56, 12);
+    b.addEventListener("click", () => { if (id === "auth") actions.openAuthTable(); else actions.openDrawer(id); });
+    scene.append(b);
+  }
 
   // ---- Teletyper: signal lamp, print state, Repeat (R3)
   const tty = h("section", { class: "sc dtty", attrs: { "aria-label": t("desk.teletyper") } }); place(tty, G.tty.x, G.tty.y, G.tty.w, G.tty.h); paint(tty, "desk-tty");
@@ -130,7 +162,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const rationV = h("span", { class: "typ", text: "0" }); // the counter is wired in G2 (R10)
   ration.append(h("span", { class: "dlbl", text: t("desk.score") }), rationV);
   scene.append(ration);
-  scene.append(label("note typ", t("desk.preview"), G.top.x + 10, G.top.y + G.top.h - 26, G.top.w - 20, 18));
+  scene.append(label("note typ", t("desk.preview"), G.top.x + 36, G.top.y + G.top.h - 26, G.top.w - 46, 18)); // clear of the bin
 
   // ---------------------------------------------------------------- papers (R2)
   const layer = h("div", { class: "sc dlayer" }); place(layer, 0, 0, 640, 360);
@@ -373,6 +405,12 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     if (tool === null) delete scene.dataset["tool"]; else scene.dataset["tool"] = tool;
     host.announce(tool === null ? t("desk.tool.none") : t("desk.tool.armed", { name: t(`desk.tool.${tool}`) }));
   };
+  for (const [kind, x] of [["orders", 4], ["manual", 53]] as const) {
+    const b = h("button", { class: "dtool dshelf", attrs: { type: "button", "aria-label": t(`desk.doc.${kind}`) } }); place(b, x, 98, 47, 18);
+    b.append(label("dim center", t(`desk.doc.${kind}`), 1, 4, 45, 10));
+    b.addEventListener("click", () => toggleDoc(kind));
+    tray.append(b);
+  }
   drawerBtn.addEventListener("click", () => { tray.hidden = !tray.hidden; drawerBtn.setAttribute("aria-expanded", String(!tray.hidden)); if (tray.hidden) armTool(null); });
   const bin = h("button", { class: "dbin", attrs: { type: "button", "aria-label": t("desk.bin"), title: t("desk.bin") } }); place(bin, BIN.x, BIN.y, BIN.w, BIN.h); paint(bin, "desk-bin");
   bin.addEventListener("click", () => { const p = selected ? model.get(selected) : undefined; if (p) trash(p, null); else store.notify(t("desk.sel.none")); });
@@ -413,6 +451,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     if (!res.ok) { store.notify(t(`desk.give.${res.reason}`)); putBack(p, from); return; }
     model.handOver(bundle.map((q) => q.id));
     if (selected !== null && bundle.some((q) => q.id === selected)) selected = null;
+    say("handover");
     store.notify(res.problems.length === 0 ? t("desk.give.ok", { rx: res.rxId }) : t("desk.give.okWith", { rx: res.rxId, list: res.problems.map((k) => t(`desk.rule.${k}`)).join("; ") }));
     host.changed(); syncPapers();
   };
@@ -436,7 +475,107 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     syncPapers(); stations(performance.now());
   };
 
+  // ---------------------------------------------------------------- Daily Orders and Manual (R5.1, R5.3)
+  const newsIdx = pickNews(((r) => () => r.next())(derive(ctx.cosmeticSeed, "desk-news")));
+  const docPages = (kind: "orders" | "manual"): { head: string; pages: readonly DocPage[] } => {
+    if (kind === "manual") return MANUAL[getLang()];
+    const w = watch.worldCtx();
+    return ordersPages(getLang(), w.callsigns.map((cs) => ({ callsign: cs, wpm: w.knownFists[cs] ? Math.round((w.knownFists[cs] as { wpm: number }).wpm) : null })), newsIdx);
+  };
+  const doc = (p: Paper): Live => {
+    const kind = p.kind as "orders" | "manual";
+    const view = mountSheet(host, p, null, t(`desk.doc.${kind}`), `ddoc d-${kind}`);
+    paint(view.el, "paper-doc", kind === "manual" ? 1 : 0);
+    const { head, pages } = docPages(kind);
+    let page = 0;
+    const mx = kind === "manual" ? 18 : 8; // the Manual page has a ruled margin and spiral holes
+    const title = label("ink", "", mx, 22, 120 - mx, 8), body = h("div", { class: "dbody typ" }); place(body, mx, 32, 120 - mx, 100);
+    const num = label("ink typ center", "", 44, 136, 40, 9);
+    const prev = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.doc.prev"), title: t("desk.doc.prev") }, text: "◀" }); place(prev, 8, 135, 14, 11);
+    const next = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.doc.next"), title: t("desk.doc.next") }, text: "▶" }); place(next, 106, 135, 14, 11);
+    const close = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.doc.close"), title: t("desk.doc.close") }, text: "✕" }); place(close, 110, 4, 14, 11);
+    const show = (): void => { const pg = pages[page] as DocPage; setText(title, pg.title); setText(body, pg.body); setText(num, `${page + 1}/${pages.length}`); prev.disabled = page === 0; next.disabled = page === pages.length - 1; };
+    prev.addEventListener("click", () => { host.select(p); page = Math.max(0, page - 1); show(); });
+    next.addEventListener("click", () => { host.select(p); page = Math.min(pages.length - 1, page + 1); show(); });
+    close.addEventListener("click", () => toggleDoc(kind));
+    view.front.append(label("strip", head, 4, 6, 104, 9), title, body, num, prev, next, close);
+    show();
+    return { view, refresh: () => { view.el.hidden = p.place !== "desk"; setClass(view.el, "sel", selected === p.id); } };
+  };
+  for (const kind of ["orders", "manual"] as const) {
+    const restored = model.hasPending(kind);
+    const p = model.ensure(kind);
+    model.applyPending(p);
+    if (!restored) p.place = "drawer"; // a new watch starts with both in the drawer
+    add(p, doc);
+  }
+  function toggleDoc(kind: "orders" | "manual"): void {
+    const place2 = model.toggleDrawer(kind);
+    if (place2 === "desk") { const p = model.get(kind) as Paper; host.select(p); host.announce(t("desk.doc.out", { name: t(`desk.doc.${kind}`) })); }
+    host.changed(); syncPapers();
+  }
+
+  // ---------------------------------------------------------------- crew at the door and the Transcript (R8)
+  const talk = derive(ctx.cosmeticSeed, "desk-dialogue");
+  const trans = h("section", { class: "sc dtrans", attrs: { role: "dialog", "aria-label": t("desk.tr.label"), "aria-live": "polite" } }); place(trans, 176, 150, 216, 80); trans.hidden = true;
+  const trWho = label("strip", "", 8, 6, 200, 9), trText = h("div", { class: "dtext typ" }); place(trText, 10, 20, 196, 44);
+  const trHint = label("dim", t("desk.tr.hint"), 8, 68, 200, 8);
+  trans.append(trWho, trText, trHint);
+  scene.append(trans);
+  const queue: Scene[] = [];
+  let cur: { scene: Scene; idx: number } | null = null, leaveTimer: ReturnType<typeof setTimeout> | null = null, spaceTimer: ReturnType<typeof setTimeout> | null = null;
+  const showCrew = (id: (typeof CREW)[number] | null): void => {
+    crewEl.hidden = id === null; doorEmpty.hidden = id !== null;
+    if (id !== null) { const k = CREW.indexOf(id); crewEl.style.backgroundPosition = `calc(var(--px) * ${-(k * 132 + 14)}px) calc(var(--px) * -10px)`; crewEl.setAttribute("aria-label", `${crewName(id)}, ${crewRole(getLang(), id)}`); }
+  };
+  const renderLine = (): void => {
+    if (!cur) return;
+    const line = cur.scene.lines[cur.idx];
+    if (!line) return;
+    const who = line.who === "you" ? YOU[getLang()] : `${crewName(cur.scene.crew)} · ${crewRole(getLang(), cur.scene.crew)}`;
+    setText(trWho, who); setText(trText, line.text); setClass(trans, "you", line.who === "you");
+  };
+  const nextScene = (): void => {
+    const sc = queue.shift();
+    if (!sc) { cur = null; trans.hidden = true; if (leaveTimer) clearTimeout(leaveTimer); leaveTimer = setTimeout(() => showCrew(null), 3000); return; }
+    if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+    cur = { scene: sc, idx: 0 }; trans.hidden = false; showCrew(sc.crew); renderLine();
+  };
+  const advance = (all: boolean): void => {
+    if (!cur) return;
+    cur.idx = all ? cur.scene.lines.length : cur.idx + 1;
+    if (cur.idx >= cur.scene.lines.length) nextScene(); else renderLine();
+  };
+  const say = (tr: Trigger): void => { queue.push(pickScene(getLang(), tr, talk.next())); if (!cur) nextScene(); };
+  trans.addEventListener("click", () => advance(false));
+  // While a line is shown, any key goes to the Transcript (R8.1): Space tapped = next, Space held = skip the scene.
+  const onTalkKey = (ev: KeyboardEvent): void => {
+    if (!cur || ev.ctrlKey || ev.metaKey || ev.altKey || ev.key === "Shift" || ev.key === "Tab") return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (ev.repeat) return;
+    if (ev.code === "Space") { if (spaceTimer === null) spaceTimer = setTimeout(() => { spaceTimer = null; advance(true); }, 600); return; }
+    advance(false);
+  };
+  const onTalkUp = (ev: KeyboardEvent): void => { if (ev.code === "Space" && spaceTimer !== null) { clearTimeout(spaceTimer); spaceTimer = null; if (cur) { ev.preventDefault(); advance(false); } } };
+  window.addEventListener("keydown", onTalkKey, true); window.addEventListener("keyup", onTalkUp, true);
+  const observe = (): Observed => {
+    const s = store.state;
+    let authResults = 0, authPasses = 0;
+    for (const rx of s.rx.values()) { const r = rx.challenge?.result ?? null; if (r !== null) { authResults++; if (r === "ok") authPasses++; } }
+    return { rxCount: s.order.length, decisions: s.decisions.map((d) => d.decision), authResults, authPasses, locatedAt: s.tx.locatedAtSec, depthChargeAt: s.tx.depthChargeAtSec, emergency: s.emergency.reason };
+  };
+  let seen = observe(); // a restored watch starts from here: nothing that already happened is said again
+  const watchTalk = (): void => {
+    if (store.state.replaying) return;
+    const now = observe();
+    for (const tr of triggersBetween(seen, now)) say(tr);
+    seen = now;
+  };
+  if (store.state.tSec < 3 && store.state.order.length === 0 && store.state.decisions.length === 0) say("start");
+
   const toast = mountToast(ctx, scene);
+  mountDrawers(ctx, scene);
+  mountEmergency(ctx, scene, scene);
   mountSummary(ctx, scene);
 
   let blink = false, nextBlink = 0, lastDecode = store.state.decodeSeq;
@@ -461,10 +600,19 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       reveal.start(an ? an.words.reduce((n, w) => n + w.plain.length, 0) : 0, now, ctx.flags.reduceMotion === true);
     }
     wins.forEach((w, k) => setText(w, at?.indicator[k] ?? ""));
-    setText(txClock, `${t("desk.ctl.tx")} ${formatClock(s.tx.totalSec)}`);
+    setText(txClock, `${t("desk.ctl.tx")} ${formatClock(s.tx.totalSec)} · ${t("desk.ctl.hdg", { n: String(Math.round(s.boat.headingDeg)).padStart(3, "0") })}`);
+    const mi = MODES.findIndex(([m]) => m === s.boat.mode);
+    place(leverHandle, 8, (MODES[Math.max(0, mi)] as readonly [string, number])[1] + 5, 14, 6);
+    levers.forEach((b, k) => b.setAttribute("aria-pressed", String(k === mi)));
+    setText(spdTxt, t("desk.ctl.kn", { n: s.boat.speedKn.toFixed(1) }));
+    setClass(silBtn, "on", s.boat.silence);
+    silBtn.setAttribute("aria-label", t(s.boat.silence ? "desk.ctl.silenceOn" : "desk.ctl.silenceOff")); silBtn.title = silBtn.getAttribute("aria-label") ?? "";
+    setClass(antenna, "on", s.boat.antennaUp);
+    antenna.setAttribute("aria-label", t(s.boat.antennaUp ? "desk.ctl.antennaUp" : "desk.ctl.antennaDown"));
     setClass(scene, "silent", s.boat.silence);
   };
   scope.on(["rx", "copy", "analysis", "clock", "boat", "tx", "ui"], () => { syncPapers(); stations(performance.now()); });
+  scope.on(["rx", "challenge", "ended", "alert", "ui", "clock"], watchTalk);
   syncPapers(); stations(performance.now());
   const onHide = (): void => { if (saveTimer !== null) { clearTimeout(saveTimer); saveNow(); } };
   window.addEventListener("pagehide", onHide);
@@ -479,6 +627,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     },
     dispose: () => {
       window.removeEventListener("resize", fit); window.removeEventListener("pagehide", onHide); window.removeEventListener("keydown", onEsc, true);
+      window.removeEventListener("keydown", onTalkKey, true); window.removeEventListener("keyup", onTalkUp, true);
+      if (leaveTimer) clearTimeout(leaveTimer); if (spaceTimer) clearTimeout(spaceTimer);
       machine.dispose();
       onHide();
       ctx.morse.stop(); scope.dispose();

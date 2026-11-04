@@ -1,6 +1,6 @@
 // G1 Stamping Rules, trash rule and the hand-over check (R6.4–R6.6). Pure. The same rules are printed in the Manual (Stage 4).
 // G1 has no penalties: a rule break is reported when the bundle is handed over; citations come with the G3 sim-core spec.
-import type { Paper, PaperKind } from "./papers";
+import { isReference, type Paper, type PaperKind } from "./papers";
 
 /** Fixed G1 rules. Input: Echo stamp and signature on the back, no regular stamp. Output: one red stamp on the back. */
 export const RULES = { outputStamp: "red", inputSigned: true } as const;
@@ -22,7 +22,7 @@ export type HandOverCheck = { readonly ok: true; readonly rxId: number; readonly
  * Echo stamp (otherwise the order would leave the desk undecided). Other rule breaks are listed, not blocked.
  */
 export function checkHandOver(bundle: readonly Paper[], echoStamped: (rxId: number) => boolean): HandOverCheck {
-  if (bundle.some((p) => p.kind === "mission")) return { ok: false, reason: "mission" };
+  if (bundle.some((p) => isReference(p.kind))) return { ok: false, reason: "mission" }; // Mission, Orders and Manual stay at the desk
   const ids = new Set(bundle.map((p) => p.rxId));
   if (ids.size !== 1) return { ok: false, reason: "mixed" };
   const rxId = bundle[0]?.rxId ?? null;
@@ -46,6 +46,6 @@ export function checkHandOver(bundle: readonly Paper[], echoStamped: (rxId: numb
 /** Papers the crew handed to the radio room are records and may not be thrown away (only private notes may, G4). */
 export function canTrash(kind: PaperKind): boolean {
   switch (kind) {
-    case "input": case "output": case "mission": return false;
+    case "input": case "output": case "mission": case "orders": case "manual": return false;
   }
 }

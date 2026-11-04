@@ -75,3 +75,24 @@
 .deskui .dlbl.tick { color: #2f7a4c; font-family: var(--f-type); font-size: calc(9px * var(--px)); }
 .deskui .dlbl.small.done { color: #7d505b; text-decoration: line-through; }
 .deskui .dpaper.dmis.complete { outline: calc(1px * var(--px)) solid #3f8f62; }
+/* ---- Stage 4: boat controls, top-panel drawer keys, reference documents, crew and Transcript */
+.deskui .dlever, .deskui .dpad { position: absolute; margin: 0; padding: 0; border: 0; cursor: pointer; background: transparent; }
+.deskui .dlever:hover, .deskui .dpad:hover { background: rgba(240, 184, 90, .14); }
+.deskui .dlever:focus-visible, .deskui .dpad:focus-visible { outline: calc(1px * var(--px)) solid #c6f2d6; outline-offset: calc(1px * var(--px)); }
+.deskui .dleverh { background: #b23a44; box-shadow: inset 0 calc(1px * var(--px)) 0 #e8707a, inset 0 calc(-1px * var(--px)) 0 #3d0f15; pointer-events: none; transition: top .2s steps(3); }
+.deskui .dpad.dsil.on { box-shadow: inset 0 0 0 calc(1px * var(--px)) #f0b85a; background: rgba(240, 184, 90, .22); }
+.deskui .dant { border-radius: 50%; background: #27252e; box-shadow: inset 0 0 0 calc(1px * var(--px)) #0e0d12; }
+.deskui .dant.on { background: #f0b85a; }
+.deskui .dstep { font-family: var(--f-type); font-size: calc(10px * var(--px)); background: #2a1920; border: calc(1px * var(--px)) solid #563845; }
+.deskui .dtop { z-index: 2; color: #e6d8d4; background: #1e1c24; border: calc(1px * var(--px)) solid #514c59; }
+.deskui .dcrew { background-repeat: no-repeat; }
+.deskui .dtrans .dtext, .deskui .ddoc .dbody { position: absolute; margin: 0; }
+.deskui .ddoc .dbody { color: var(--d-ink); font-size: calc(8px * var(--px)); line-height: 1.15; white-space: pre-line; overflow: hidden; }
+.deskui:lang(vi) .ddoc .dbody { font-size: calc(8px * var(--px)); }
+.deskui .dshelf { border-color: #47362e; }
+.deskui .dtrans { z-index: 7; background: #e8cacc; border: calc(1px * var(--px)) solid #563845; box-shadow: 0 0 0 calc(1px * var(--px)) #0e0d12, calc(3px * var(--px)) calc(4px * var(--px)) 0 rgba(14, 13, 18, .5); cursor: pointer; }
+.deskui .dtrans .dtext { color: var(--d-ink); font-size: calc(10px * var(--px)); line-height: 1.2; white-space: normal; }
+.deskui .dtrans .dlbl.strip { background: #874b58; padding-left: calc(3px * var(--px)); }
+.deskui .dtrans.you .dlbl.strip { background: #2a302f; }
+.deskui .dtrans.you .dtext { color: #245a3d; }
+.deskui .dtrans .dlbl.dim { color: #7d505b; }

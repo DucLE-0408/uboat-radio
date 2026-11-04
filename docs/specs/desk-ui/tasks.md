@@ -41,9 +41,13 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
   - Evidence: `evidence/stage3-*.png`.
 
 ### Stage 4 — Người, thoại, tàu, tài liệu
-- [ ] **T4.1** Chân dung người ra vào + Transcript + bảng thoại `en`/`vi` theo sự kiện. (R8)
-- [ ] **T4.2** Bảng điều khiển tàu; ngăn kéo sonar/auth; khẩn cấp. (R9.2–R9.3)
-- [ ] **T4.3** Daily Orders tĩnh và Manual (văn bản mới, hai ngôn ngữ). (R5.1, R5.3)
+- [x] **T4.1** Chân dung người ra vào + Transcript + bảng thoại `en`/`vi` theo sự kiện. (R8)
+  - 5 thủy thủ (Brandt · Thuyền trưởng, Keller · Sĩ quan phó, Vogt · Máy trưởng, Lorenz · Lính thủy âm, Hahn · Liên lạc viên): `crewMember()` mới trong `tools/art/portrait.ts` (pixel của operator không đổi) và đổi màu theo người. Người chơi là "Bạn · Điện báo viên" (không tên riêng). `src/desk/dialogue.ts`: thoại en/vi cho mở ca, tín hiệu đầu, giao giấy, chấp nhận/từ chối, auth đúng/sai, HF/DF, bom chìm, báo động; chọn bằng RNG thẩm mỹ. Không nói đúng/sai của quyết định (D4). Phím bất kỳ: câu tiếp; giữ Space: bỏ qua cảnh; phím không lọt vào bản chép. Khôi phục không phát lại thoại cũ.
+- [x] **T4.2** Bảng điều khiển tàu; ngăn kéo sonar/auth; khẩn cấp. (R9.2–R9.3)
+  - Cần gạt 3 nấc (`setMode`), − / + tốc độ (`steerSpeed`), im lặng (`toggleSilence`), báo cáo 10 s (`report`), đọc tốc độ/hướng/giờ phát, đèn ăng-ten; phím mũi tên vẫn lái như P5. Nút Auth/Sonar/Nhật ký ở bảng trên mở ngăn kéo của P5; bảng khẩn cấp dùng của P5 (cả hai không sửa).
+- [x] **T4.3** Daily Orders tĩnh và Manual (văn bản mới, hai ngôn ngữ). (R5.1, R5.3)
+  - `src/desk/docs.ts`. Daily Orders 5 trang: nhiệm vụ xác minh, luật đóng dấu, đài đã biết (từ `worldCtx()`: callsign + fist), tin tức (3 tin chọn bằng RNG thẩm mỹ), hết lệnh. Manual 7 trang có mục lục. Lấy ra/cất vào từ kệ dưới của ngăn kéo; lật trang ◀ ▶; vị trí và chỗ cất lưu trong `desk.v1`. Không đóng dấu, ký, ghim, giao hay vứt được.
+  - Evidence: `evidence/stage4-*.png`.
 
 ### Stage 5 — Kiểm chứng G1
 - [ ] **T5.1** `tsc`, vitest cả hai gói, invariants, `git diff packages/sim-core` rỗng, `check-repo`.
