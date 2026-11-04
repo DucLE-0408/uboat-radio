@@ -2,7 +2,7 @@
 export const en = {
   "lang.name": "English",
   "settings.language": "Language",
-  "settings.ui.desk": "Paperwork desk (preview)",
+  "settings.ui.desk": "Paperwork desk",
   "desk.aria": "Radio desk",
   "desk.title": "Radio desk",
   "desk.preview": "Desk preview: the real machine, day key and rations come with G2.",

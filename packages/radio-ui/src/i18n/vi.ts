@@ -4,7 +4,7 @@ import type { MsgKey } from "./en";
 export const vi: Readonly<Record<MsgKey, string>> = {
   "lang.name": "Tiếng Việt",
   "settings.language": "Ngôn ngữ",
-  "settings.ui.desk": "Bàn giấy tờ (xem trước)",
+  "settings.ui.desk": "Bàn giấy tờ",
   "desk.aria": "Bàn điện đài",
   "desk.title": "Bàn điện đài",
   "desk.preview": "Bản xem trước: máy thật, khóa ngày và khẩu phần có ở G2.",

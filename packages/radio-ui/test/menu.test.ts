@@ -63,7 +63,7 @@ describe("settings", () => {
   const d = defaultSettings(false);
   it("defaults follow the OS reduced-motion preference", () => {
     expect(defaultSettings(true).reduceMotion).toBe(true);
-    expect(d).toMatchObject({ master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: false, ui: "p5", lang: "en" });
+    expect(d).toMatchObject({ master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: false, ui: "desk", lang: "en" });
   });
   it("round-trips and validates field by field", () => {
     const st = mem();
@@ -71,6 +71,7 @@ describe("settings", () => {
     expect(loadSettings(st, d)).toMatchObject({ master: 0.4, ui: "classic", sound: false });
     expect(parseSettings(JSON.stringify({ master: 7, morse: -3, hydro: "x", sound: 1, reduceMotion: null, ui: "evil", lang: "fr", extra: 1 }), d)).toEqual({ ...d, master: 1, morse: 0 });
     expect(parseSettings(JSON.stringify({ ui: "desk", lang: "vi" }), d)).toEqual({ ...d, ui: "desk", lang: "vi" });
+    expect(parseSettings(JSON.stringify({ ui: "p5" }), d).ui).toBe("p5"); // a player who chose the radio room keeps it after the default moved to the desk
   });
   it("falls back to defaults on junk, oversized or unreadable input", () => {
     for (const raw of [null, "", "{", "[]", "null", "1", "x".repeat(5000)]) expect(parseSettings(raw, d), String(raw).slice(0, 8)).toEqual(d);

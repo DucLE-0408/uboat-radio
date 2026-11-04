@@ -117,7 +117,7 @@ store.on(["copy"], () => copies.schedule());
 if (params.get("diag") === "1") mountDiagOverlay(diag);
 
 const ui = params.get("ui") ?? settings.ui; // ?ui=classic still wins; otherwise the player's setting
-const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : ui === "desk" ? mountDesk(ctx, app) : mountScene(ctx, app); // P5 is the default; ?ui=desk is the paperwork desk preview; ?ui=classic keeps the P4 panels
+const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : ui === "desk" ? mountDesk(ctx, app) : mountScene(ctx, app); // the paperwork desk is the default (Settings: desk / p5); ?ui=p5 or ?ui=classic still win
 
 controller.syncTelemetry();
 store.on(["ui", "alert", "ended", "clock"], () => document.body.classList.toggle("emergency", store.state.emergency.reason !== null && store.state.ended === null));

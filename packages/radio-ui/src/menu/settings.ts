@@ -16,7 +16,7 @@ export const SETTINGS_KEY = "uboat-radio.settings.v1";
 const MAX_BYTES = 4096;
 
 export function defaultSettings(prefersReducedMotion: boolean): Settings {
-  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "p5", lang: "en" };
+  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "desk", lang: "en" }; // Desk UI is the default since desk-ui Stage 5 (D7); P5 stays a Settings choice
 }
 
 const level = (x: unknown, d: number): number => (typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, Math.round(x * 20) / 20)) : d);
