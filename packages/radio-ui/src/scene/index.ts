@@ -11,7 +11,7 @@ import { mountEmergency } from "./emergency";
 import { mountGauges } from "./frame";
 import { mountMachine } from "./machine";
 import { mountPortrait } from "./portrait";
-import { computeScale, layoutMode, paint, type LayoutMode } from "./px";
+import { computeScale, fillWindow, layoutMode, paint, type LayoutMode } from "./px";
 import { mountReceiver } from "./receiver";
 import { Reveal } from "./reveal";
 import { createScope, type SceneCtx } from "./scope";
@@ -37,6 +37,7 @@ export function mountScene(base: Ctx, app: HTMLElement): { frame(): void; dispos
     const next = layoutMode(window.innerWidth, window.innerHeight);
     const px = next === "desktop" ? computeScale(window.innerWidth, window.innerHeight) : 2;
     document.documentElement.style.setProperty("--px", String(px));
+    fillWindow(app, next === "desktop");
     if (next === mode) return false;
     mode = next;
     scene.classList.remove("l-desktop", "l-tablet", "l-mobile", "desk", "flow");
@@ -106,7 +107,7 @@ export function mountScene(base: Ctx, app: HTMLElement): { frame(): void; dispos
     machine.dispose();
     ctx.morse.stop();   // no tone left scheduled once the scene is gone
     scope.dispose();    // every store subscription registered through the scope
-    app.classList.remove("p5"); document.body.classList.remove("p5");
+    fillWindow(app, false); app.classList.remove("p5"); document.body.classList.remove("p5");
     scene.remove(); help.remove();
   };
   return {

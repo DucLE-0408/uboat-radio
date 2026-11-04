@@ -35,9 +35,9 @@ const STEPS: readonly [string, string][] = [
 const ICON_FRAME: Record<MenuId, number> = { continue: 0, new: 1, settings: 2, help: 3 };
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 
-/** Integer scale for the 128x180 panel: nearest-neighbour art stays crisp. */
+/** Integer scale for the 128x180 panel (the menu is not a fixed frame, so crisp integer steps are fine); 2..8 so it stays large on 4K. */
 export function menuScale(vw: number, vh: number): number {
-  return Math.min(4, Math.max(2, Math.floor(Math.min(vw / 150, vh / 200))));
+  return Math.min(8, Math.max(2, Math.floor(Math.min(vw / 150, vh / 190))));
 }
 
 export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice> {
