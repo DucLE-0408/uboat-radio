@@ -12,7 +12,7 @@ export interface SheetHost {
   changed(): void;
   /** Short live announcement for keyboard users. */
   announce(text: string): void;
-  /** The sheet was clicked or focused: it becomes the selected sheet (and its message the active one). */
+  /** The sheet was clicked or activated with Enter/Space (not merely focused): it becomes the selected sheet (and its message the active one). */
   select(paper: Paper): void;
   /** A tool is armed (stamp, pen, clip): apply it to this sheet. Returns true when the click was used by the tool. */
   activate(paper: Paper): boolean;
@@ -101,12 +101,14 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
     if (c === "Enter" || c === "NumpadEnter" || c === "Space") {
       if (ev.repeat) { ev.preventDefault(); ev.stopPropagation(); return; } // holding the key must not drop what it just picked up
       if (held) drop(false);
-      else if (host.activate(paper)) { /* an armed tool was applied */ }
       else {
-        held = { x: paper.x, y: paper.y };
-        host.model.raiseGroup(paper.id); host.changed();
-        setClass(el, "held", true); el.setAttribute("aria-pressed", "true");
-        host.announce(t("desk.sheet.picked", { name: title }));
+        host.select(paper);                       // Enter/Space is the explicit choice of this sheet
+        if (!host.activate(paper)) {              // no armed tool: pick the sheet up
+          held = { x: paper.x, y: paper.y };
+          host.model.raiseGroup(paper.id); host.changed();
+          setClass(el, "held", true); el.setAttribute("aria-pressed", "true");
+          host.announce(t("desk.sheet.picked", { name: title }));
+        }
       }
     } else if (held && c === "Escape") drop(true);
     else if (held && (c === "ArrowLeft" || c === "ArrowRight" || c === "ArrowUp" || c === "ArrowDown")) {
@@ -117,7 +119,7 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
     ev.preventDefault(); ev.stopPropagation();
   });
   el.addEventListener("blur", () => drop(false));
-  el.addEventListener("focus", () => host.select(paper));
+  // Focus alone never selects: Tab passes over other sheets on the way to the stamper and must not steal the chosen Input.
 
   return { el, front, back, sync };
 }
