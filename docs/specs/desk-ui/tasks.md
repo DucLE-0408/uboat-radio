@@ -21,9 +21,13 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
 - **Cổng duyệt:** người dùng xem lát cắt trước khi nhân rộng.
 
 ### Stage 2 — Giấy và Teletyper
-- [ ] **T2.1** Mô hình giấy + test: lật, kéo thả, đường thay thế bàn phím, xếp chồng, `desk.v1` có validate. (R2)
-- [ ] **T2.2** Teletyper: đèn, in dần `watch.copy(tokens)` theo nhịp Morse, nút xin lặp, silent rebuild. (R3)
-- [ ] **T2.3** Tờ Output: bản rõ theo nhóm, đánh dấu nhóm hỏng. (R4.2)
+- [x] **T2.1** Mô hình giấy + test: lật, kéo thả, đường thay thế bàn phím, xếp chồng, `desk.v1` có validate. (R2)
+  - `src/desk/papers.ts` + `sheets.ts`. Chuột: kéo (giấy luôn chừa 24 px trên bàn để nhặt lại). Bàn phím: Tab tới tờ, Enter/Space nhấc, mũi tên đi 4 px (Shift 16), Enter đặt, Esc trả về; phím chữ vẫn gõ copy. Tờ mới xếp so le 8 px và nằm trên cùng. `uboat-radio.desk.v1` lưu vị trí/mặt/thứ tự theo seed, validate từng mục. Trạng thái kẹp/giao/hủy để Stage 3.
+- [x] **T2.2** Teletyper: đèn, in dần `watch.copy(tokens)` theo nhịp Morse, nút xin lặp, silent rebuild. (R3)
+  - `src/desk/printer.ts`: mỗi chữ in khi phần token của nó kết thúc, trên tổng thời lượng `planMorse(...).endSec` của attempt (cùng kế hoạch với âm thanh, không phụ thuộc âm thanh có bật hay không). Đèn nháy khi đang in. Repeat gọi `actions.repeat()`; mỗi attempt một tờ Input riêng, tờ cũ giữ nguyên. Tờ đã có lúc mount (khôi phục) in sẵn đủ.
+- [x] **T2.3** Tờ Output: bản rõ theo nhóm, đánh dấu nhóm hỏng. (R4.2)
+  - Tờ Output xuất hiện khi bắt đầu gõ copy: trước khi giải hiện copy đang gõ, sau Enter hiện bản rõ theo nhóm, nhóm hỏng viền đỏ nét đứt, dòng "Nhóm hỏng: n". Mặt sau có ô dấu đỏ. Gõ vẫn qua keymap P5 (máy mã ở T3.1).
+  - Evidence: `evidence/stage2-*.png`.
 
 ### Stage 3 — Máy, đóng dấu, giao
 - [ ] **T3.1** Máy Enigma G1: gõ phím ghi copy, lampboard, kéo ra/vào. (R4.1)

@@ -199,29 +199,47 @@ function machineTab(): Sprite {
 }
 
 // ---------------------------------------------------------------- papers
+/** Plain sheet with a dog-ear, drawn at x offset `ox` (two-sided sprites put the back at ox = W). */
+function sheet(i: Img, ox: number, W: number, H: number): void {
+  i.rect(ox + 1, 1, W - 2, H - 2, c(T.pa, 5));
+  i.vline(ox, 2, H - 4, c(T.pa, 2)); i.vline(ox + W - 1, 2, H - 4, c(T.pa, 1)); i.hline(ox + 2, 0, W - 4, c(T.pa, 3)); i.hline(ox + 2, H - 1, W - 4, c(T.pa, 1));
+  for (let k = 0; k < 6; k++) { i.hline(ox + W - 7 + k, H - 7 + k, 6 - k, c(T.pa, 3)); }
+  i.line(ox + W - 7, H - 2, ox + W - 2, H - 7, c(T.pa, 1));
+}
+
 function paperInput(): Sprite {
   const { w: W, h: H } = DESK.paper, i = new Img(W * 2, H);
-  const sheet = (ox: number): void => {
-    i.rect(ox + 1, 1, W - 2, H - 2, c(T.pa, 5));
-    i.vline(ox, 2, H - 4, c(T.pa, 2)); i.vline(ox + W - 1, 2, H - 4, c(T.pa, 1)); i.hline(ox + 2, 0, W - 4, c(T.pa, 3)); i.hline(ox + 2, H - 1, W - 4, c(T.pa, 1));
-    // dog-ear bottom right + soft shadow under the sheet edge
-    for (let k = 0; k < 6; k++) { i.hline(ox + W - 7 + k, H - 7 + k, 6 - k, c(T.pa, 3)); }
-    i.line(ox + W - 7, H - 2, ox + W - 2, H - 7, c(T.pa, 1));
-  };
   // front
-  sheet(0);
+  sheet(i, 0, W, H);
   i.rect(2, 3, W - 4, 13, c(T.hb, 1)); i.hline(2, 16, W - 4, c(T.hb, 0));
   for (let y = 22; y <= 46; y += 12) i.hline(48, y + 8, W - 56, c(T.pa, 2));      // FROM / TIME / INDICATOR fields
   i.frame(6, 60, W - 12, 80, c(T.pa, 2));                                           // group area (cells are live DOM so long traffic can scroll)
   // back
   const ox = W;
-  sheet(ox);
+  sheet(i, ox, W, H);
   i.rect(ox + 2, 3, W - 4, 9, c(T.pa, 3));
   i.rect(ox + 8, 22, W - 16, 46, c(T.pa, 4)); i.frame(ox + 8, 22, W - 16, 46, c(T.pa, 1));        // ECHO stamp box
   for (let x = ox + 10; x < ox + W - 10; x += 4) { i.set(x, 24, c(T.pa, 2)); i.set(x, 65, c(T.pa, 2)); }
   i.frame(ox + 8, 78, 44, 30, c(T.pa, 2)); i.frame(ox + W - 52, 78, 44, 30, c(T.pa, 2));         // regular stamps
   i.hline(ox + 10, 128, W - 20, c(T.pa, 1));                                                         // signature line
   return { id: "paper-input", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Input sheet, front (header, fields, group grid) and back (Echo box, two stamp boxes, signature)" };
+}
+
+function paperOutput(): Sprite {
+  const { w: W, h: H } = DESK.paper, i = new Img(W * 2, H);
+  // front: machine-green header (the machine prints this sheet), two fields, group area, status line
+  sheet(i, 0, W, H);
+  i.rect(2, 3, W - 4, 13, c(T.e, 3)); i.hline(2, 16, W - 4, c(T.e, 1));
+  for (const y of [22, 34]) i.hline(48, y + 8, W - 56, c(T.pa, 2));
+  i.frame(6, 48, W - 12, 80, c(T.pa, 2));
+  i.hline(8, 138, W - 22, c(T.pa, 3));
+  // back: one large box for the red stamp (Stamping Rules: Output takes red on the back) and the signature line
+  const ox = W;
+  sheet(i, ox, W, H);
+  i.rect(ox + 2, 3, W - 4, 9, c(T.pa, 3));
+  i.frame(ox + 8, 24, W - 16, 62, c(T.red, 3)); i.frame(ox + 9, 25, W - 18, 60, c(T.pa, 3));
+  i.hline(ox + 10, 128, W - 20, c(T.pa, 1));
+  return { id: "paper-output", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Output sheet, front (header, fields, group area, status) and back (red stamp box, signature)" };
 }
 
 function mission(): Sprite {
@@ -235,5 +253,5 @@ function mission(): Sprite {
 }
 
 export function deskSprites(): Sprite[] {
-  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), mission()];
+  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission()];
 }

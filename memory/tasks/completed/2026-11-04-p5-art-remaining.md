@@ -1,11 +1,11 @@
 ---
 schema_version: 1
 id: task-2026-11-04-p5-art-remaining
-status: blocked
+status: completed
 owner: claude-desktop-session
 goal_confirmed_at: 2026-11-04T09:11:56.2618157Z
 started_at: 2026-11-04T09:11:56.2618157Z
-updated_at: 2026-11-04T09:11:56.2618157Z
+updated_at: 2026-11-04T13:09:00.6685746Z
 base_commit: 1feac6fa80ad31d10c46e194fc80c53e95f4c355
 owned_paths:
   - packages/radio-ui/tools/art
@@ -57,4 +57,4 @@ Presentation only: tools/art generator -> assets/sprites + manifest -> menu CSS 
 - Observability impact: none.
 - Residual risk: art remains TEMPORARY.
 - Rollback: revert the PR; regenerate with node tools/art/generate.ts.
-- Next safe action: operator review.
+- Next safe action: none; operator merged PR #18 on 2026-11-04.
