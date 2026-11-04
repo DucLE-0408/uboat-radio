@@ -74,4 +74,4 @@ Player -> Tauri window (WebView2) -> radio-ui static bundle (custom protocol, no
 - Observability impact: none new; ?diag=1 unchanged; CI artifact + checksum.
 - Residual risk: unsigned exe, placeholder icons, CI downloads the NSIS toolchain at build time, Windows launch unproven until CI.
 - Rollback: revert the PR (removes packages/desktop, workflow, vercel.json; the duplicate-registration fix is independent and safe to keep); delete the Vercel project.
-- Next safe action: user authorizes commit/push + draft PR; CI builds the installer; then Vercel preview.
+- Next safe action: create the pre-release (task-2026-11-04-desktop-prerelease); test the installer on a real Windows machine.

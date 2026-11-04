@@ -61,4 +61,4 @@ Visitor -> Vercel static host -> / (landing: HTML+CSS+game assets) or /play/ (ra
 - Observability impact: none added (no analytics by design).
 - Residual risk: placeholder art; fonts without Vietnamese glyphs; release link dead until a release exists.
 - Rollback: revert this PR (vercel.json returns to serving radio-ui at /).
-- Next safe action: push, open PR, deploy preview and verify headers; after PR 12 merges, create the pre-release the user authorised.
+- Next safe action: pre-release (task-2026-11-04-desktop-prerelease), then verify the Releases link and PWA install on the hosted URL.
