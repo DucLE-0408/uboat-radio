@@ -49,7 +49,7 @@ describe("desk paper model", () => {
     const raw = (o: unknown): string => JSON.stringify(o);
     expect(parseLayout(raw({ v: 1, seed: 7, papers: [ok] }), 8)).toEqual([]);
     for (const r of [null, "", "{", "[]", raw({ v: 2, seed: 7, papers: [] }), "x".repeat(40_000)]) expect(parseLayout(r, 7)).toEqual([]);
-    const full = { ...ok, place: "desk", clip: null, stamps: [], signed: false }; // a Stage 2 entry gets the Stage 3 defaults
+    const full = { ...ok, place: "desk", clip: null, stamps: [], signed: false, decoded: null }; // a Stage 2 entry gets the Stage 3 defaults
     const bad = [{ ...ok, id: "../x" }, { ...ok, id: "in:1" }, { ...ok, x: 1.5 }, { ...ok, x: 1e9 }, { ...ok, face: "side" }, null, 3, { ...ok, z: -1 }, ok,
       { ...ok, id: "in:2:1", stamps: ["green"] }, { ...ok, id: "in:3:1", stamps: ["red", "red", "red"] }, { ...ok, id: "in:4:1", place: "bin" },
       { ...ok, id: "in:5:1", clip: 0 }, { ...ok, id: "in:6:1", signed: "yes" }, { ...ok, id: "mission", stamps: ["red"] }];
@@ -106,5 +106,17 @@ describe("desk paper model", () => {
     expect([o.x - i.x, o.y - i.y]).toEqual([4, 4]);
     expect(m.clipTo(x.id, i.id)).toBe("otherMessage");
     expect(x.clip).toBeNull();
+  });
+  it("keeps a decoded Output's text through desk.v1 and validates it", () => {
+    const m = new PaperModel();
+    const o = m.ensure("output", 3, 0);
+    o.decoded = { words: ["XDSR", "YKH?"], bad: [false, true], damaged: 1 };
+    const n = new PaperModel();
+    n.restore(parseLayout(m.serialize(9), 9));
+    const o2 = n.ensure("output", 3, 0); n.applyPending(o2);
+    expect(o2.decoded).toEqual(o.decoded);
+    const raw = (d: unknown, id = "out:3:0"): string => JSON.stringify({ v: 1, seed: 9, papers: [{ id, x: 200, y: 150, z: 1, face: "front", decoded: d }] });
+    for (const bad of [{ words: ["<b>"], bad: [false], damaged: 0 }, { words: ["AB"], bad: [], damaged: 0 }, { words: ["AB"], bad: [false], damaged: -1 }, "x"]) expect(parseLayout(raw(bad), 9)).toEqual([]);
+    expect(parseLayout(raw({ words: ["AB"], bad: [false], damaged: 0 }, "in:3:0"), 9)).toEqual([]); // only Outputs carry decoded text
   });
 });

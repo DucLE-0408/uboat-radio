@@ -140,7 +140,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const model = new PaperModel();
   let storage: Storage | null = null;
   try { storage = window.localStorage; } catch { storage = null; }
-  try { model.restore(parseLayout(storage?.getItem(DESK_KEY) ?? null, ctx.seed)); } catch { /* unreadable storage: default layout */ }
+  // A watch that has not started yet (time 0, no traffic) is a new watch: a layout saved for an earlier watch with the same
+  // seed must not carry its stamps and hand-overs onto it.
+  const freshWatch = store.state.tSec === 0 && store.state.order.length === 0;
+  try { if (!freshWatch) model.restore(parseLayout(storage?.getItem(DESK_KEY) ?? null, ctx.seed)); } catch { /* unreadable storage: default layout */ }
   let saveTimer: ReturnType<typeof setTimeout> | null = null, saveWarned = false;
   const saveNow = (): void => {
     saveTimer = null;
@@ -192,7 +195,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const ins = mine.filter((q) => q.kind === "input"), outs = mine.filter((q) => q.kind === "output");
     return {
       printed: ins.some((q) => printer.done(q.id, performance.now())),
-      decoded: (rx?.analysis.size ?? 0) > 0,
+      decoded: (rx?.analysis.size ?? 0) > 0 || outs.some((q) => q.decoded !== null),
       echo: rx?.resolved != null,
       outStamp: outs.some((q) => q.stamps.includes("red")),
       signed: ins.some((q) => q.signed),
@@ -306,6 +309,12 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         if (an && text === decodedCopy) {
           grid.set(an.words.map((w) => ({ text: w.plain, bad: !w.ok })), t("desk.out.plainLabel"));
           setText(status, t("desk.out.damaged", { n: an.damagedGroups }));
+          const snap = { words: an.words.map((w) => w.plain), bad: an.words.map((w) => !w.ok), damaged: an.damagedGroups };
+          if (JSON.stringify(snap) !== JSON.stringify(p.decoded)) { p.decoded = snap; host.changed(); } // kept for a reload after the decision
+        } else if (!an && p.decoded && rx.resolved !== null) { // restored after the decision: the store has neither analysis nor copy
+          const d = p.decoded;
+          grid.set(d.words.map((w, k) => ({ text: w, bad: d.bad[k] === true })), t("desk.out.plainLabel"));
+          setText(status, t("desk.out.damaged", { n: d.damaged }));
         } else {
           const ws = groupsOf(text), typing = text.length > 0 && !text.endsWith(" "); // no decode yet, or the copy was edited after it
           grid.set(ws.map((w, i) => ({ text: w, cur: typing && i === ws.length - 1 })), t("desk.out.copyLabel"));

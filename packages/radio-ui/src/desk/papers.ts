@@ -22,7 +22,14 @@ export interface Paper {
   /** Regular stamps in box order. Ink does not come off (R6.2 applies to every stamp). */
   stamps: StampColor[];
   signed: boolean;
+  /**
+   * Output only: the deciphered groups as last shown. The store keeps no analysis across a reload and no copy of a resolved
+   * message, so a stamped Output keeps its text here.
+   */
+  decoded: Decoded | null;
 }
+
+export interface Decoded { readonly words: readonly string[]; readonly bad: readonly boolean[]; readonly damaged: number }
 
 /** Outcome of a stamp/sign/clip attempt; the UI turns a refusal into a short explanation. */
 export type MarkResult = "ok" | "front" | "full" | "already" | "notAllowed" | "otherMessage" | "none";
@@ -59,7 +66,7 @@ export class PaperModel {
     const id = paperId(kind, rxId, attempt);
     const old = this.byId.get(id);
     if (old) return old;
-    const p: Paper = { id, kind, rxId, attempt, x: 0, y: 0, z: ++this.top, face: "front", place: "desk", clip: null, stamps: [], signed: false };
+    const p: Paper = { id, kind, rxId, attempt, x: 0, y: 0, z: ++this.top, face: "front", place: "desk", clip: null, stamps: [], signed: false, decoded: null };
     this.spawnAt(p);
     this.byId.set(id, p);
     return p;
@@ -168,7 +175,7 @@ export class PaperModel {
   // ---------------------------------------------------------------- persistence (desk.v1)
 
   serialize(seed: number): string {
-    return JSON.stringify({ v: 1, seed, papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed })) });
+    return JSON.stringify({ v: 1, seed, papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed, ...(p.decoded ? { decoded: p.decoded } : {}) })) });
   }
 
   /** Applies a stored layout to sheets that exist now or appear later (positions are kept until the sheet is created). */
@@ -184,7 +191,7 @@ export class PaperModel {
     const e = this.pending.get(p.id);
     if (!e) return;
     this.pending.delete(p.id);
-    p.x = e.x; p.y = e.y; p.z = e.z; p.face = e.face; p.place = e.place; p.clip = e.clip; p.stamps = [...e.stamps]; p.signed = e.signed;
+    p.x = e.x; p.y = e.y; p.z = e.z; p.face = e.face; p.place = e.place; p.clip = e.clip; p.stamps = [...e.stamps]; p.signed = e.signed; p.decoded = e.decoded;
     this.clamp(p);
   }
 }
@@ -192,6 +199,7 @@ export class PaperModel {
 export interface StoredPaper {
   readonly id: string; readonly x: number; readonly y: number; readonly z: number; readonly face: Face;
   readonly place: Place; readonly clip: number | null; readonly stamps: readonly StampColor[]; readonly signed: boolean;
+  readonly decoded: Decoded | null;
 }
 export type StoredLayout = readonly StoredPaper[];
 
@@ -199,6 +207,16 @@ export const DESK_KEY = "uboat-radio.desk.v1";
 const MAX_BYTES = 32_768, MAX_PAPERS = 400;
 const ID_RE = /^(?:mission|(?:in|out):\d{1,6}:\d{1,3})$/;
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
+
+const WORD_RE = /^[A-Z0-9?]{0,12}$/;
+const MAX_WORDS = 120;
+function parseDecoded(x: unknown): Decoded | null {
+  if (typeof x !== "object" || x === null || Array.isArray(x)) return null;
+  const o = x as Record<string, unknown>, w = o["words"], b = o["bad"], d = int(o["damaged"], 0, MAX_WORDS);
+  if (!Array.isArray(w) || !Array.isArray(b) || w.length > MAX_WORDS || b.length !== w.length || d === null) return null;
+  if (!w.every((s) => typeof s === "string" && WORD_RE.test(s)) || !b.every((v) => typeof v === "boolean")) return null;
+  return { words: w as string[], bad: b as boolean[], damaged: d };
+}
 
 /** Validates a stored layout (untrusted). Wrong seed, bad JSON or oversize => empty; bad entries are dropped one by one. */
 export function parseLayout(raw: string | null, seed: number): StoredLayout {
@@ -222,10 +240,12 @@ export function parseLayout(raw: string | null, seed: number): StoredLayout {
     const rawStamps = r["stamps"] === undefined ? [] : r["stamps"];
     const stamps = Array.isArray(rawStamps) && rawStamps.length <= STAMP_SLOTS && rawStamps.every((c) => c === "blue" || c === "red") ? (rawStamps as StampColor[]) : null;
     const signed = r["signed"] === undefined ? false : typeof r["signed"] === "boolean" ? r["signed"] : null;
+    const decoded = r["decoded"] === undefined ? null : parseDecoded(r["decoded"]);
     if (place === null || (r["clip"] !== undefined && r["clip"] !== null && clip === null) || stamps === null || signed === null) continue;
+    if (r["decoded"] !== undefined && (decoded === null || !id.startsWith("out:"))) continue;
     if (id === "mission" && (stamps.length > 0 || signed || clip !== null || place !== "desk")) continue;
     seen.add(id);
-    out.push({ id, x, y, z, face, place, clip, stamps, signed });
+    out.push({ id, x, y, z, face, place, clip, stamps, signed, decoded });
   }
   return out;
 }

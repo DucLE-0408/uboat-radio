@@ -40,6 +40,7 @@ Desk calls only existing Actions (resolve, repeat) and the store's UI selection 
 - Hand-over requires the Echo mark so a bundle can never leave undecided; other rule breaks are reported in the notice.
 - PR #21 review fixes: reselecting a sheet always re-syncs the active message/attempt; clipping across messages is refused and the clip tool on the same sheet twice unclips; a bundle moves by one bounded displacement so its offsets survive the desk edge; Mission "printed" uses elapsed print time; stamping rules are checked per sheet (new "more than one stamp" problem); a cancelled pointer never hands over or bins; the flip button selects its sheet. 145/145 tests; the full Edge flow still passes (1 resolve).
 - PR #21 review (Codex): focus no longer selects a sheet; selection follows explicit actions only (click, Enter/Space, flip, tools), so Tab past the Output and Mission keeps the chosen Input for the stamper. Checked in headless Edge: TRUE ECHO, 1 resolve.
+- PR #21 review (Codex): a watch that has not started (time 0, no traffic) ignores a desk layout saved under the same seed, so a new same-seed watch starts clean; a decoded Output keeps its groups in desk.v1 (validated) and shows them after a reload once the message is decided (the store keeps neither analysis nor copy then). Edge: reload after the Echo stamp shows XDSR,YKHV and the decoded tick; a stale handed layout is ignored by a fresh watch.
 - Saved Output sheets are recreated on reload even without copy text (stamped/handed sheets must not vanish).
 
 ## Verification
