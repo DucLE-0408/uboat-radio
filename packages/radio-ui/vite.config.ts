@@ -30,13 +30,13 @@ function offlineServiceWorker(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: "./", // relative URLs: the build runs from any folder or sub-path (installed app, static host, preview)
-  plugins: [offlineServiceWorker()],
+  plugins: mode === "tauri" ? [] : [offlineServiceWorker()], // the desktop shell serves the bundle from the app itself: no worker
   resolve: { alias: { "@uboat/sim-core": barrel } },
   // Bind loopback by default (AGENTS.md s7); no proxy, no external hosts.
   server: { host: "127.0.0.1", port: 5173, strictPort: true },
   preview: { host: "127.0.0.1", port: 4173, strictPort: true },
   build: { target: "es2022", sourcemap: true },
   test: { environment: "node", include: ["test/**/*.test.ts"] },
-});
+}));

@@ -34,6 +34,10 @@ Notes:
 - The saved watch (seed + commands) and unfinished transcription live in the browser's local storage for that origin; clearing site data erases them.
 - A native `.exe`/`.msi` installer (Electron or Tauri) is not part of this package.
 
+## Desktop installer and hosting
+
+A Windows `.exe` is built from this bundle by `packages/desktop` (Tauri; see its README). The web build is hosted via the root `vercel.json`.
+
 ## Assets
 
 All sprites and icons are generated placeholders (`node tools/art/generate.ts`) listed with origin, licence and hashes in `assets/manifest.json`; fonts are SIL OFL-1.1 (`assets/fonts`).
