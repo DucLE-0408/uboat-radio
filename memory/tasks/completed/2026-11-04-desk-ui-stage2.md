@@ -39,6 +39,7 @@ Desk reads the P5 store; the only Action it calls in Stage 2 is repeat. Layout s
 - Branch desk-ui-stage2 is stacked on desk-ui-spec (PR #19).
 - Attempts are 0-based in the sim; sheets show them 1-based with the message number ("Input #1 · 2") so sheets of different messages are told apart.
 - PR #20 review fixes: Output shows the edited copy once it differs from the decoded one (Codex/cubic); held Enter/Space repeats are ignored; print marks use the same schedule() segments as the audio (dah, letter and word gaps weighted); spawn picks the first cascade slot not taken, opening a new column after six; dragged Mission keeps the raised shadow. Verified in headless Edge (decode XDSR,YKHV -> Backspace shows TPRD,OQW -> re-decode XDSR,YKH; sheet stays held across repeated Enter) and 134/134 tests.
+- PR #20 review (Codex): print jobs are queued like the Morse player queue (a sheet starts when the previous one has finished), checked in headless Edge: a Repeat during printing leaves in:1:1 at 0 groups while in:1:0 prints.
 - Pointer interaction does not focus a sheet (preventDefault on pointerdown), so Enter after a drag still decodes instead of picking the sheet up.
 
 ## Verification

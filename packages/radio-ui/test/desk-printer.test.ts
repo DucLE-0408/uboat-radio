@@ -37,6 +37,20 @@ describe("teletyper print pacing", () => {
   });
 });
 
+describe("teletyper queue", () => {
+  it("a sheet arriving during another print waits for it, like the Morse queue", () => {
+    const p = new Printer();
+    const tokens = encode("ABCD"), copy = copyFromTokens(tokens);
+    p.start("a", tokens, copy, 0, 10);
+    p.start("b", tokens, copy, 2000, 4);       // arrives at 2 s, the first sheet ends at 10 s
+    expect(p.queued("b", 5000)).toBe(true);
+    expect(p.visible("b", copy, 9000)).toBe(0);
+    expect(p.visible("b", copy, 14_000)).toBe(copy.length);
+    p.start("c", tokens, copy, 60_000, 2);     // the line was idle: starts at once
+    expect(p.queued("c", 60_000)).toBe(false);
+  });
+});
+
 describe("print timing follows the Morse schedule", () => {
   it("token end times add up to the audio plan and weight dahs and gaps", async () => {
     const { schedule } = await import("@uboat/sim-core");

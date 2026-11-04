@@ -59,9 +59,19 @@ export function printedCount(marks: readonly number[], elapsedSec: number, durat
 /** Print jobs keyed by sheet id. A sheet without a job is fully printed (restored sheets, silent rebuild R3.4). */
 export class Printer {
   private readonly jobs = new Map<string, { readonly marks: number[]; readonly startMs: number; readonly durSec: number }>();
+  private freeAtMs = 0;
+  /**
+   * Queues a print. Like the Morse player (Controller.frame starts the next transmission only when the previous one has
+   * finished), the Teletyper is one device: a sheet starts when the one before it is done, so each sheet follows its
+   * own transmission even when attempts arrive while another is still sounding. Works the same with audio off.
+   */
   start(id: string, tokens: string, copy: string, nowMs: number, durSec: number, ends?: readonly number[]): void {
-    this.jobs.set(id, { marks: printMarks(tokens, copy, ends), startMs: nowMs, durSec });
+    const startMs = Math.max(nowMs, this.freeAtMs);
+    this.freeAtMs = startMs + Math.max(0, durSec) * 1000;
+    this.jobs.set(id, { marks: printMarks(tokens, copy, ends), startMs, durSec });
   }
+  /** True while `id` waits for an earlier sheet to finish. */
+  queued(id: string, nowMs: number): boolean { const j = this.jobs.get(id); return j !== undefined && nowMs < j.startMs; }
   /** Characters of `copy` visible now; finished jobs are dropped. */
   visible(id: string, copy: string, nowMs: number): number {
     const j = this.jobs.get(id);
