@@ -110,7 +110,7 @@ describe("desk paper model", () => {
   it("keeps a decoded Output's text through desk.v1 and validates it", () => {
     const m = new PaperModel();
     const o = m.ensure("output", 3, 0);
-    o.decoded = { words: ["XDSR", "YKH?"], bad: [false, true], damaged: 1 };
+    o.decoded = { mode: "plain", words: ["XDSR", "YKH?"], bad: [false, true], damaged: 1 };
     const n = new PaperModel();
     n.restore(parseLayout(m.serialize(9), 9));
     const o2 = n.ensure("output", 3, 0); n.applyPending(o2);
@@ -124,6 +124,9 @@ describe("desk paper model", () => {
     expect(parseLayout(raw({ words: ["AB"], bad: [false], damaged: 0 }, "in:3:0"), 9).map((e) => e.decoded)).toEqual([null]); // only Outputs carry decoded text
     // a missed group space decodes as one long word; it must survive a reload
     const long = { words: ["ABCDEFGHIJKLMNOPQ", "XY"], bad: [true, false], damaged: 1 };
-    expect(parseLayout(raw(long), 9)[0]?.decoded).toEqual(long);
+    expect(parseLayout(raw(long), 9)[0]?.decoded).toEqual({ mode: "plain", ...long }); // older entries without a mode are plain
+    const copy = { mode: "copy", words: ["ABCE"], bad: [false], damaged: 0 };
+    expect(parseLayout(raw(copy), 9)[0]?.decoded).toEqual(copy);
+    expect(parseLayout(raw({ ...copy, mode: "both" }), 9)[0]?.decoded).toBeNull();
   });
 });
