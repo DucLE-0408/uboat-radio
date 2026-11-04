@@ -1,0 +1,46 @@
+/* Main menu. Integer scale --mpx; sprite sizes: panel 128x180, plate 112x34, icon 24x24, letter 44x26. */
+.menu { --mpx: 3; position: fixed; inset: 0; overflow: auto; background: #14122b var(--m-bg) right center / cover no-repeat; image-rendering: pixelated; color: #ebdde0; font-family: "VT323", ui-monospace, monospace; font-size: 20px; }
+.menu *, .menu *::before, .menu *::after { box-sizing: border-box; }
+.menu-bg { display: none; }
+.menu-title { position: absolute; right: calc(var(--mpx) * 8px); bottom: calc(var(--mpx) * 14px); margin: 0; font: 400 calc(var(--mpx) * 7px)/1.1 "Silkscreen", monospace; letter-spacing: .06em; text-transform: uppercase; color: #ebdde0; text-shadow: 0 calc(var(--mpx) * 1px) 0 #0c0a18, 0 calc(var(--mpx) * 2px) 0 #3a3475; text-align: right; max-width: calc(100% - var(--mpx) * 150px); }
+.menu-panel { position: absolute; left: 0; top: 50%; width: calc(var(--mpx) * 128px); height: calc(var(--mpx) * 180px); transform: translateY(-50%); background: var(--m-panel) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
+.menu-btn { position: absolute; left: calc(var(--mpx) * 8px); top: calc(var(--mpx) * (16px + var(--i) * 38px)); width: calc(var(--mpx) * 112px); height: calc(var(--mpx) * 34px); margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--m-plate) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; color: #c9d1ec; cursor: pointer; display: flex; align-items: center; text-align: left; }
+.menu-btn:hover:not(:disabled), .menu-btn:focus-visible { background-image: var(--m-plate-sel); color: #f6e2b0; outline: none; }
+.menu-btn:active:not(:disabled) { transform: translateY(calc(var(--mpx) * 1px)); }
+.menu-btn:disabled { cursor: not-allowed; opacity: .5; }
+.menu-btn .mi { flex: none; width: calc(var(--mpx) * 24px); height: calc(var(--mpx) * 24px); margin-left: calc(var(--mpx) * 6px); background: var(--m-icons) calc(var(--f) * var(--mpx) * -24px) 0 / calc(var(--mpx) * 96px) calc(var(--mpx) * 24px) no-repeat; image-rendering: pixelated; }
+.menu-btn .ml { margin-left: calc(var(--mpx) * 6px); font: 400 calc(var(--mpx) * 8px)/1 "Silkscreen", monospace; text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.menu-save { position: absolute; left: calc(var(--mpx) * 4px); top: calc(50% + var(--mpx) * 94px); margin: 0; max-width: calc(var(--mpx) * 124px); font-size: 18px; line-height: 1.1; color: #c9d1ec; text-shadow: 0 1px 0 #0c0a18; }
+.menu-letter { position: absolute; top: calc(var(--mpx) * 6px); right: calc(var(--mpx) * 8px); width: calc(var(--mpx) * 44px); height: calc(var(--mpx) * 26px); min-width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; background: var(--m-letter) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; cursor: pointer; }
+.menu-letter:hover, .menu-letter:focus-visible { outline: calc(var(--mpx) * 1px) solid #e9b96a; outline-offset: calc(var(--mpx) * 1px); }
+.menu-ticker { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 4px 12px 4px calc(var(--mpx) * 132px); background: rgba(12, 10, 24, .72); color: #e9b96a; font-size: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.menu-card { position: absolute; left: calc(var(--mpx) * 136px); top: 12px; right: 16px; max-width: 600px; max-height: calc(100% - 24px); overflow: auto; padding: 16px 18px 18px; background: #ebdde0; color: #3a2c3f; border: 4px solid #3a3475; box-shadow: inset 0 0 0 2px #0c0a18, 0 6px 0 #0c0a18; font-size: 22px; line-height: 1.2; }
+.menu-card[hidden] { display: none; }
+.menu-card h2 { margin: 0 0 10px; font: 400 16px/1.2 "Silkscreen", monospace; text-transform: uppercase; color: #3a2c3f; }
+.menu-card h3 { margin: 14px 0 6px; font: 400 13px/1.2 "Silkscreen", monospace; text-transform: uppercase; color: #5d4a63; }
+.mc-steps { margin: 0; padding-left: 22px; } .mc-steps li { margin-bottom: 6px; }
+.mc-keys { margin: 0; padding: 0; list-style: none; font-size: 19px; } .mc-keys li { margin-bottom: 4px; }
+.mc-field { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; margin: 0 0 10px; }
+.mc-field label { grid-column: 1 / -1; }
+.mc-field input[type="range"] { width: 100%; min-height: 44px; accent-color: #6a5fae; }
+.mc-field .mc-val { min-width: 3.5ch; text-align: right; }
+.mc-check { grid-template-columns: auto 1fr; } .mc-check label { grid-column: auto; }
+.mc-check input { width: 28px; height: 28px; margin: 0; accent-color: #6a5fae; }
+.mc-set { margin: 8px 0 12px; padding: 6px 10px 2px; border: 2px solid #8d7885; } .mc-set legend { padding: 0 6px; font: 400 12px/1 "Silkscreen", monospace; text-transform: uppercase; }
+.mc-input { display: block; width: 100%; min-height: 44px; margin: 4px 0 6px; padding: 6px 10px; font: 400 24px/1 "VT323", monospace; color: #3a2c3f; background: #fff8f8; border: 2px solid #5d4a63; }
+.mc-input[aria-invalid="true"] { border-color: #b13a56; }
+.mc-hint { margin: 0 0 8px; color: #5d4a63; font-size: 19px; } .mc-warn { margin: 0 0 10px; color: #7a4b10; } .mc-err { min-height: 1.2em; margin: 0 0 8px; color: #b13a56; }
+.mc-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.menu-act { min-height: 44px; padding: 8px 18px; font: 400 13px/1 "Silkscreen", monospace; text-transform: uppercase; color: #ebdde0; background: #4c4390; border: 3px solid #3a3475; box-shadow: inset 0 -3px 0 #2a2658, 0 3px 0 #0c0a18; cursor: pointer; }
+.menu-act.primary { background: #e9b96a; color: #0c0a18; border-color: #9a7b45; box-shadow: inset 0 -3px 0 #9a7b45, 0 3px 0 #0c0a18; }
+.menu-act:active { transform: translateY(2px); }
+.menu .menu-act:focus-visible, .menu-card :focus-visible, .menu-input:focus-visible { outline: 3px solid #e9b96a; outline-offset: 2px; }
+.menu-card :focus-visible { outline-color: #4c4390; }
+
+@media (max-width: 720px) {
+  .menu-card { left: 8px; right: 8px; top: 8px; max-height: calc(100% - 16px); max-width: none; }
+  .menu-title { left: calc(var(--mpx) * 134px); right: 8px; bottom: 48px; font-size: calc(var(--mpx) * 6px); }
+  .menu-ticker { padding-left: 12px; white-space: normal; }
+}
+@media (max-height: 520px) { .menu-panel { top: calc(var(--mpx) * 4px); transform: none; } .menu-save { top: calc(var(--mpx) * 186px); } }

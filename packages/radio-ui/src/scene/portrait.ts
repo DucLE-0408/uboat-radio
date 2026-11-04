@@ -29,7 +29,7 @@ export function mountPortrait(ctx: SceneCtx, root: HTMLElement, decor: Decor): {
   });
   return {
     frame: (now) => {
-      if (now >= nextBlink) { blinkUntil = now + 140; nextBlink = now + decor.nextBlinkMs(); }
+      if (now >= nextBlink && ctx.flags.reduceMotion !== true) { blinkUntil = now + 140; nextBlink = now + decor.nextBlinkMs(); }
       const s = store.state;
       const next = portraitPose({ emergency: s.emergency.reason !== null && s.ended === null, hurtRecent: now < hurtUntil, typingRecent: now - typedAt < 2500, listening: morse.toneOn() || now < listenUntil, blinking: now < blinkUntil });
       if (next !== pose) { pose = next; setFrame(img, "portrait", PORTRAIT_FRAMES[next]); }

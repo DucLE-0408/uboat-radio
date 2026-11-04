@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { encodePng } from "./pix.ts";
 import { iconSprites } from "./icons.ts";
+import { menuSprites } from "./menu.ts";
 import { buildSprites } from "./sprites.ts";
 
 const sha = (b: Uint8Array): string => createHash("sha256").update(b).digest("hex");
@@ -17,7 +18,7 @@ export interface ManifestEntry {
 export function buildManifest(): { entries: ManifestEntry[]; files: Map<string, Uint8Array> } {
   const entries: ManifestEntry[] = [];
   const files = new Map<string, Uint8Array>();
-  const all = [...buildSprites().map((s) => ({ s, path: `sprites/${s.id}.png` })), ...iconSprites().map((i) => ({ s: i.sprite, path: i.path }))];
+  const all = [...buildSprites().concat(menuSprites()).map((s) => ({ s, path: `sprites/${s.id}.png` })), ...iconSprites().map((i) => ({ s: i.sprite, path: i.path }))];
   for (const { s, path } of all) {
     const png = encodePng(s.img);
     files.set(path, png);

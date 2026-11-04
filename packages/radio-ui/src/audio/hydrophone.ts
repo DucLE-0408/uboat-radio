@@ -24,7 +24,7 @@ export class Hydrophone {
 
   start(): boolean {
     const ctx = this.engine.ctx;
-    const out = this.engine.out;
+    const out = this.engine.hydroOut;
     if (ctx === null || out === null || ctx.state !== "running") return false;
     if (this.chain !== null) return true;
     const osc = ctx.createOscillator();
