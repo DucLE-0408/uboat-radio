@@ -17,7 +17,9 @@ export const DESK = {
   stamper: { x: 428, y: 240, w: 204, h: 60 },
   machine: { x: 428, y: 304, w: 204, h: 48 },
   paper: { w: 112, h: 148 },
-  mission: { w: 128, h: 70 },
+  mission: { w: 128, h: 104 },
+  drawer: { x: 146, y: 196, w: 104, h: 96 },
+  bin: { x: 148, y: 318, w: 28, h: 32 },
 } as const;
 
 // ---------------------------------------------------------------- backdrop
@@ -245,13 +247,85 @@ function paperOutput(): Sprite {
 function mission(): Sprite {
   const { w: W, h: H } = DESK.mission, i = new Img(W, H);
   i.rect(1, 3, W - 2, H - 4, c(T.pa, 4)); i.vline(0, 4, H - 6, c(T.pa, 2)); i.vline(W - 1, 4, H - 6, c(T.pa, 1)); i.hline(1, H - 1, W - 2, c(T.pa, 1));
-  for (let r = 0; r < 4; r++) { const y = 18 + r * 12; i.frame(6, y, 7, 7, T.ink2); i.hline(16, y + 7, W - 24, c(T.pa, 2)); }
+  for (let r = 0; r < 7; r++) { const y = 18 + r * 12; i.frame(6, y, 7, 7, T.ink2); i.hline(16, y + 7, W - 24, c(T.pa, 2)); }
   // bulldog clip at the top
   i.rect(W / 2 - 16, 0, 32, 8, c(T.k, 5)); i.hline(W / 2 - 16, 0, 32, c(T.k, 7)); i.hline(W / 2 - 16, 7, 32, c(T.k, 1));
   i.ellipse(W / 2, 2, 5, 2, c(T.k, 3));
-  return { id: "desk-mission", img: i, note: "desk: Mission checklist sheet on a bulldog clip" };
+  return { id: "desk-mission", img: i, note: "desk: Mission checklist sheet (7 steps) on a bulldog clip" };
+}
+
+
+// ---------------------------------------------------------------- Stage 3: drawer tray, tools, bin, ink marks
+function drawerTray(): Sprite {
+  const { w: W, h: H } = DESK.drawer, i = new Img(W, H);
+  i.rect(0, 0, W, H, c(T.wl, 0)); i.frame(0, 0, W, H, c(T.wl, 3)); i.hline(1, 1, W - 2, c(T.wl, 4));
+  i.rect(3, 3, W - 6, H - 6, c(T.wl, 1));
+  // four compartments in a 2x2 grid, each with a felt floor
+  for (const [x, y] of [[4, 4], [W / 2 + 1, 4], [4, H / 2 + 1], [W / 2 + 1, H / 2 + 1]] as const) {
+    i.rect(x, y, W / 2 - 5, H / 2 - 5, c(T.m, 1)); i.hline(x, y, W / 2 - 5, c(T.m, 0)); i.vline(x, y, H / 2 - 5, c(T.m, 0));
+  }
+  i.rect(W / 2 - 1, 3, 2, H - 6, c(T.wl, 3)); i.rect(3, H / 2 - 1, W - 6, 2, c(T.wl, 3));
+  return { id: "desk-drawer", img: i, note: "desk: open drawer tray with four compartments (stamps, pen, clips)" };
+}
+
+function tools(): Sprite {
+  const S = 24, i = new Img(S * 4, S);
+  // 0 blue stamp, 1 red stamp: wooden handle, brass collar, rubber foot in the ink colour
+  for (const [f, ink] of [[0, [ramp3("#1d2c5c"), ramp3("#33519a"), ramp3("#6f8fd6")]], [1, [ramp3("#5c1820"), ramp3("#a3303a"), ramp3("#e0707a")]]] as const) {
+    const ox = f * S;
+    i.ellipse(ox + 12, 6, 4, 4, c(T.wl, 4)); i.ellipse(ox + 11, 5, 2, 2, c(T.wl, 5));
+    i.rect(ox + 10, 9, 4, 6, c(T.wl, 3)); i.vline(ox + 10, 9, 6, c(T.wl, 5));
+    i.rect(ox + 6, 15, 12, 3, c(T.brass, 3)); i.hline(ox + 6, 15, 12, c(T.brass, 4));
+    i.rect(ox + 5, 18, 14, 4, ink[1]); i.hline(ox + 5, 21, 14, ink[0]); i.hline(ox + 5, 18, 14, ink[2]);
+  }
+  // 2 pen: dark barrel on a diagonal, brass clip, nib
+  for (let k = 0; k < 14; k++) { i.set(48 + 4 + k, 19 - k, c(T.k, 2)); i.set(48 + 5 + k, 19 - k, c(T.k, 4)); i.set(48 + 4 + k, 20 - k, c(T.k, 1)); }
+  i.line(48 + 14, 9, 48 + 17, 6, c(T.brass, 4));
+  i.set(48 + 3, 21, c(T.brass, 3)); i.set(48 + 2, 22, T.ink);
+  // 3 paper clip: bent wire loops
+  const wire = c(T.k, 7), dark = c(T.k, 5);
+  i.frame(72 + 8, 3, 8, 18, wire); i.frame(72 + 10, 6, 4, 12, dark); i.vline(72 + 8, 3, 18, dark);
+  return { id: "desk-tools", img: i, frames: { w: S, h: S, count: 4 }, note: "desk tools: blue stamp, red stamp, pen, paper clip" };
+}
+const ramp3 = (h: string): RGBA => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16), 255];
+
+function bin(): Sprite {
+  const { w: W, h: H } = DESK.bin, i = new Img(W, H);
+  i.shade(2, 4, W - 4, H - 4, (x, y) => (x < 2 + (y - 4) / 10 || x > W - 3 - (y - 4) / 10 ? null : 0.25 + 0.5 * (1 - Math.abs(x - W / 2) / (W / 2))), T.k.slice(2, 7));
+  i.rect(0, 2, W, 4, c(T.k, 6)); i.hline(0, 2, W, c(T.k, 7)); i.hline(0, 5, W, c(T.k, 2));
+  for (let x = 6; x < W - 5; x += 5) i.vline(x, 8, H - 12, c(T.k, 2));
+  return { id: "desk-bin", img: i, note: "desk: waste-paper bin (refuses mission papers)" };
+}
+
+/** Ink marks drawn over sheets. Rough edges: a few dropped pixels along the border, fixed pattern (no noise). */
+function marks(): Sprite[] {
+  const rough = (i: Img, ox: number, w: number, h: number, ink: RGBA, seed: number): void => {
+    const rng = artRng(seed);
+    i.frame(ox + 1, 1, w - 2, h - 2, ink); i.frame(ox + 3, 3, w - 6, h - 6, ink);
+    for (let k = 0; k < (w + h) / 3; k++) { const x = ox + 1 + Math.floor(rng() * (w - 2)); i.set(x, rng() < 0.5 ? 1 : h - 2, [0, 0, 0, 0]); }
+  };
+  const echo = new Img(88 * 2, 40);
+  rough(echo, 0, 88, 40, ramp3("#2f7a4c"), 0xec01); rough(echo, 88, 88, 40, ramp3("#a3303a"), 0xec02);
+  const reg = new Img(40 * 2, 26);
+  for (const [f, ink] of [[0, ramp3("#33519a")], [1, ramp3("#a3303a")]] as const) {
+    const ox = f * 40;
+    reg.rrect(ox + 1, 1, 38, 24, 4, ink); reg.rrect(ox + 3, 3, 34, 20, 3, [0, 0, 0, 0]);
+    reg.ellipse(ox + 20, 13, 6, 6, ink); reg.ellipse(ox + 20, 13, 4, 4, [0, 0, 0, 0]); reg.hline(ox + 13, 13, 15, ink); reg.vline(ox + 20, 6, 15, ink);
+  }
+  const sign = new Img(56, 12);
+  const ink = ramp3("#1e2340");
+  let y = 7;
+  for (let x = 2; x < 54; x++) { y = Math.max(1, Math.min(10, Math.round(6 + 4 * Math.sin(x / 3.1) * Math.cos(x / 7.3)))); sign.set(x, y, ink); if (x % 9 === 4) sign.vline(x, Math.max(1, y - 3), 4, ink); }
+  const clip = new Img(10, 22);
+  clip.frame(1, 0, 7, 21, c(T.k, 7)); clip.frame(3, 3, 3, 14, c(T.k, 5)); clip.vline(1, 0, 21, c(T.k, 5));
+  return [
+    { id: "mark-echo", img: echo, frames: { w: 88, h: 40, count: 2 }, note: "ink mark: Echo stamp border (TRUE green, FALSE red); the words are live text" },
+    { id: "mark-regular", img: reg, frames: { w: 40, h: 26, count: 2 }, note: "ink mark: regular stamp (blue, red), neutral emblem" },
+    { id: "mark-sign", img: sign, note: "ink mark: signature" },
+    { id: "mark-clip", img: clip, note: "paper clip seen over the top edge of a bundle" },
+  ];
 }
 
 export function deskSprites(): Sprite[] {
-  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission()];
+  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission(), drawerTray(), tools(), bin(), ...marks()];
 }

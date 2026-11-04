@@ -12,6 +12,12 @@ export interface SheetHost {
   changed(): void;
   /** Short live announcement for keyboard users. */
   announce(text: string): void;
+  /** The sheet was clicked or activated with Enter/Space (not merely focused): it becomes the selected sheet (and its message the active one). */
+  select(paper: Paper): void;
+  /** A tool is armed (stamp, pen, clip): apply it to this sheet. Returns true when the click was used by the tool. */
+  activate(paper: Paper): boolean;
+  /** A mouse drag ended over the screen point (client px): the door or the bin may take the sheet. */
+  dropAt(paper: Paper, clientX: number, clientY: number, from: { readonly x: number; readonly y: number }): void;
 }
 
 export interface SheetView {
@@ -47,12 +53,14 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
   let drag: { id: number; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null = null;
   el.addEventListener("pointerdown", (ev) => {
     if (ev.button !== 0 || (ev.target as HTMLElement).closest("button")) return;
-    host.model.raise(paper.id);
+    ev.preventDefault(); // no text selection, no focus: typing keeps going to the copy
+    host.select(paper);
+    if (host.activate(paper)) return;
+    host.model.raiseGroup(paper.id);
     drag = { id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, ox: paper.x, oy: paper.y, moved: false };
     el.setPointerCapture(ev.pointerId);
     setClass(el, "dragging", true);
     host.changed();
-    ev.preventDefault(); // no text selection, no focus: typing keeps going to the copy
   });
   el.addEventListener("pointermove", (ev) => {
     if (!drag || ev.pointerId !== drag.id) return;
@@ -60,24 +68,26 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
     const dx = (ev.clientX - drag.sx) / k, dy = (ev.clientY - drag.sy) / k;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 1) return;
     drag.moved = true;
-    host.model.moveTo(paper.id, drag.ox + dx, drag.oy + dy);
-    sync();
+    host.model.moveWith(paper.id, drag.ox + dx, drag.oy + dy); // a clipped bundle moves as one
+    host.changed();
   });
-  const end = (ev: PointerEvent): void => {
+  const end = (ev: PointerEvent, released: boolean): void => {
     if (!drag || ev.pointerId !== drag.id) return;
-    const moved = drag.moved;
+    const d = drag;
     drag = null;
     setClass(el, "dragging", false);
-    if (moved) host.changed();
+    if (!d.moved) return;
+    host.changed();
+    if (released) host.dropAt(paper, ev.clientX, ev.clientY, { x: d.ox, y: d.oy }); // a cancelled pointer never hands over or bins
   };
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", end);
+  el.addEventListener("pointerup", (ev) => end(ev, true));
+  el.addEventListener("pointercancel", (ev) => end(ev, false));
 
   // ---- keyboard: Enter/Space picks the sheet up, arrows move it, Enter/Space puts it down, Esc puts it back (R2.3)
   let held: { x: number; y: number } | null = null;
   const drop = (cancel: boolean): void => {
     if (!held) return;
-    if (cancel) host.model.moveTo(paper.id, held.x, held.y);
+    if (cancel) host.model.moveWith(paper.id, held.x, held.y);
     held = null;
     setClass(el, "held", false);
     el.setAttribute("aria-pressed", "false");
@@ -92,20 +102,24 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
       if (ev.repeat) { ev.preventDefault(); ev.stopPropagation(); return; } // holding the key must not drop what it just picked up
       if (held) drop(false);
       else {
-        held = { x: paper.x, y: paper.y };
-        host.model.raise(paper.id); host.changed();
-        setClass(el, "held", true); el.setAttribute("aria-pressed", "true");
-        host.announce(t("desk.sheet.picked", { name: title }));
+        host.select(paper);                       // Enter/Space is the explicit choice of this sheet
+        if (!host.activate(paper)) {              // no armed tool: pick the sheet up
+          held = { x: paper.x, y: paper.y };
+          host.model.raiseGroup(paper.id); host.changed();
+          setClass(el, "held", true); el.setAttribute("aria-pressed", "true");
+          host.announce(t("desk.sheet.picked", { name: title }));
+        }
       }
     } else if (held && c === "Escape") drop(true);
     else if (held && (c === "ArrowLeft" || c === "ArrowRight" || c === "ArrowUp" || c === "ArrowDown")) {
       const s = ev.shiftKey ? BIG_STEP : STEP;
       host.model.nudge(paper.id, c === "ArrowLeft" ? -s : c === "ArrowRight" ? s : 0, c === "ArrowUp" ? -s : c === "ArrowDown" ? s : 0);
-      sync();
+      host.changed();
     } else return;                               // letters, digits, Backspace... still type the copy
     ev.preventDefault(); ev.stopPropagation();
   });
   el.addEventListener("blur", () => drop(false));
+  // Focus alone never selects: Tab passes over other sheets on the way to the stamper and must not steal the chosen Input.
 
   return { el, front, back, sync };
 }
@@ -114,7 +128,7 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
 export function flipButton(host: SheetHost, paper: Paper, view: { sync(): void }, x: number, y: number): HTMLButtonElement {
   const b = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.paper.flip"), title: t("desk.paper.flip") }, text: "⟲" });
   place(b, x, y, 14, 11);
-  b.addEventListener("click", () => { host.model.flip(paper.id); view.sync(); host.changed(); });
+  b.addEventListener("click", () => { host.select(paper); host.model.flip(paper.id); view.sync(); host.changed(); }); // flipping a sheet also selects it
   return b;
 }
 

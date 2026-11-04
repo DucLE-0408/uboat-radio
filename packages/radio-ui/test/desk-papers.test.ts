@@ -49,8 +49,84 @@ describe("desk paper model", () => {
     const raw = (o: unknown): string => JSON.stringify(o);
     expect(parseLayout(raw({ v: 1, seed: 7, papers: [ok] }), 8)).toEqual([]);
     for (const r of [null, "", "{", "[]", raw({ v: 2, seed: 7, papers: [] }), "x".repeat(40_000)]) expect(parseLayout(r, 7)).toEqual([]);
-    const bad = [{ ...ok, id: "../x" }, { ...ok, id: "in:1" }, { ...ok, x: 1.5 }, { ...ok, x: 1e9 }, { ...ok, face: "side" }, null, 3, { ...ok, z: -1 }, ok];
-    expect(parseLayout(raw({ v: 1, seed: 7, papers: bad }), 7)).toEqual([ok]);
-    expect(parseLayout(raw({ v: 1, seed: 7, papers: [ok, { ...ok, x: 10 }] }), 7)).toEqual([ok]); // duplicate id: first wins
+    const full = { ...ok, place: "desk", clip: null, stamps: [], signed: false, decoded: null }; // a Stage 2 entry gets the Stage 3 defaults
+    const bad = [{ ...ok, id: "../x" }, { ...ok, id: "in:1" }, { ...ok, x: 1.5 }, { ...ok, x: 1e9 }, { ...ok, face: "side" }, null, 3, { ...ok, z: -1 }, ok,
+      { ...ok, id: "in:2:1", stamps: ["green"] }, { ...ok, id: "in:3:1", stamps: ["red", "red", "red"] }, { ...ok, id: "in:4:1", place: "bin" },
+      { ...ok, id: "in:5:1", clip: 0 }, { ...ok, id: "in:6:1", signed: "yes" }, { ...ok, id: "mission", stamps: ["red"] }];
+    expect(parseLayout(raw({ v: 1, seed: 7, papers: bad }), 7)).toEqual([full]);
+    expect(parseLayout(raw({ v: 1, seed: 7, papers: [ok, { ...ok, x: 10 }] }), 7)).toEqual([full]); // duplicate id: first wins
+  });
+  it("stamps and signs only the back of a mission paper, two boxes, ink stays", () => {
+    const m = new PaperModel();
+    const a = m.ensure("output", 1, 0), ms = m.ensure("mission");
+    expect(m.stamp(a.id, "red")).toBe("front");
+    m.flip(a.id);
+    expect(m.stamp(a.id, "red")).toBe("ok");
+    expect(m.stamp(a.id, "blue")).toBe("ok");
+    expect(m.stamp(a.id, "red")).toBe("full");
+    expect(a.stamps).toEqual(["red", "blue"]);
+    expect(m.sign(a.id)).toBe("ok"); expect(m.sign(a.id)).toBe("already");
+    m.flip(ms.id);
+    expect(m.stamp(ms.id, "red")).toBe("notAllowed");
+  });
+  it("clips sheets into one bundle that moves together, and hands it over", () => {
+    const m = new PaperModel();
+    const i = m.ensure("input", 1, 0), o = m.ensure("output", 1, 0), ms = m.ensure("mission");
+    expect(m.clipTo(o.id, i.id)).toBe("ok");
+    expect([o.x - i.x, o.y - i.y]).toEqual([4, 4]);
+    expect(o.z).toBeGreaterThan(i.z); // the clipped sheet lies on top of the bundle
+    expect(m.group(i.id).map((p) => p.id).sort()).toEqual(["in:1:0", "out:1:0"]);
+    expect(m.clipTo(o.id, i.id)).toBe("already");
+    expect(m.clipTo(ms.id, i.id)).toBe("notAllowed");
+    m.moveWith(i.id, i.x + 10, i.y + 6);
+    expect([o.x - i.x, o.y - i.y]).toEqual([4, 4]);
+    m.handOver(m.group(i.id).map((p) => p.id));
+    expect([i.place, o.place]).toEqual(["handed", "handed"]);
+    expect(m.stamp(i.id, "red")).toBe("none");
+    m.unclip(o.id);
+    expect([i.clip, o.clip]).toEqual([null, null]);
+  });
+  it("round-trips marks, clips and hand-over through desk.v1", () => {
+    const m = new PaperModel();
+    const i = m.ensure("input", 1, 0), o = m.ensure("output", 1, 0);
+    m.flip(o.id); m.stamp(o.id, "red"); m.sign(o.id); m.clipTo(o.id, i.id); m.handOver([i.id]);
+    const n = new PaperModel();
+    n.restore(parseLayout(m.serialize(3), 3));
+    const i2 = n.ensure("input", 1, 0), o2 = n.ensure("output", 1, 0); n.applyPending(i2); n.applyPending(o2);
+    expect([o2.stamps, o2.signed, o2.clip === i2.clip && o2.clip !== null, i2.place]).toEqual([["red"], true, true, "handed"]);
+    const x = n.ensure("input", 2, 0), y = n.ensure("output", 2, 0);
+    n.clipTo(y.id, x.id);
+    expect(x.clip).not.toBe(i2.clip); // new groups never reuse a restored group number
+  });
+  it("a bundle keeps its offsets at the desk edge and never mixes messages", () => {
+    const m = new PaperModel();
+    const i = m.ensure("input", 1, 0), o = m.ensure("output", 1, 0), x = m.ensure("input", 2, 0);
+    m.clipTo(o.id, i.id);
+    m.moveWith(i.id, 9999, 9999); m.moveWith(i.id, 200, 200);
+    expect([o.x - i.x, o.y - i.y]).toEqual([4, 4]);
+    expect(m.clipTo(x.id, i.id)).toBe("otherMessage");
+    expect(x.clip).toBeNull();
+  });
+  it("keeps a decoded Output's text through desk.v1 and validates it", () => {
+    const m = new PaperModel();
+    const o = m.ensure("output", 3, 0);
+    o.decoded = { mode: "plain", words: ["XDSR", "YKH?"], bad: [false, true], damaged: 1 };
+    const n = new PaperModel();
+    n.restore(parseLayout(m.serialize(9), 9));
+    const o2 = n.ensure("output", 3, 0); n.applyPending(o2);
+    expect(o2.decoded).toEqual(o.decoded);
+    const raw = (d: unknown, id = "out:3:0"): string => JSON.stringify({ v: 1, seed: 9, papers: [{ id, x: 200, y: 150, z: 1, face: "front", decoded: d }] });
+    // malformed text drops only the text: the sheet, its stamps and its clip survive
+    for (const bad of [{ words: ["<b>"], bad: [false], damaged: 0 }, { words: ["AB"], bad: [], damaged: 0 }, { words: ["AB"], bad: [false], damaged: -1 }, { words: ["A".repeat(401)], bad: [false], damaged: 0 }, "x"]) {
+      const got = parseLayout(raw(bad), 9);
+      expect(got.map((e) => [e.id, e.decoded])).toEqual([["out:3:0", null]]);
+    }
+    expect(parseLayout(raw({ words: ["AB"], bad: [false], damaged: 0 }, "in:3:0"), 9).map((e) => e.decoded)).toEqual([null]); // only Outputs carry decoded text
+    // a missed group space decodes as one long word; it must survive a reload
+    const long = { words: ["ABCDEFGHIJKLMNOPQ", "XY"], bad: [true, false], damaged: 1 };
+    expect(parseLayout(raw(long), 9)[0]?.decoded).toEqual({ mode: "plain", ...long }); // older entries without a mode are plain
+    const copy = { mode: "copy", words: ["ABCE"], bad: [false], damaged: 0 };
+    expect(parseLayout(raw(copy), 9)[0]?.decoded).toEqual(copy);
+    expect(parseLayout(raw({ ...copy, mode: "both" }), 9)[0]?.decoded).toBeNull();
   });
 });
