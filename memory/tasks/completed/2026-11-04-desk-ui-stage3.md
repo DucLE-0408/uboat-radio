@@ -38,6 +38,7 @@ Desk calls only existing Actions (resolve, repeat) and the store's UI selection 
 - PR #20 merged (operator); branch desk-ui-stage3 from main e6cc107.
 - The stamper acts on the selected sheet (click or focus) instead of a physical slot: same rule (Input, back side up), keyboard reachable.
 - Hand-over requires the Echo mark so a bundle can never leave undecided; other rule breaks are reported in the notice.
+- PR #21 review fixes: reselecting a sheet always re-syncs the active message/attempt; clipping across messages is refused and the clip tool on the same sheet twice unclips; a bundle moves by one bounded displacement so its offsets survive the desk edge; Mission "printed" uses elapsed print time; stamping rules are checked per sheet (new "more than one stamp" problem); a cancelled pointer never hands over or bins; the flip button selects its sheet. 145/145 tests; the full Edge flow still passes (1 resolve).
 - Saved Output sheets are recreated on reload even without copy text (stamped/handed sheets must not vanish).
 
 ## Verification

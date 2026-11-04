@@ -81,6 +81,6 @@ export class Printer {
     return k;
   }
   busy(): boolean { return this.jobs.size > 0; }
-  /** True once `id` has nothing left to print (or never had a job). */
-  done(id: string): boolean { return !this.jobs.has(id); }
+  /** True once `id` has nothing left to print at `nowMs` (or never had a job); independent of whether visible() ran first. */
+  done(id: string, nowMs: number): boolean { const j = this.jobs.get(id); return !j || nowMs - j.startMs >= j.durSec * 1000; }
 }

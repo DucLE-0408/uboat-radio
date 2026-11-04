@@ -25,7 +25,7 @@ export interface Paper {
 }
 
 /** Outcome of a stamp/sign/clip attempt; the UI turns a refusal into a short explanation. */
-export type MarkResult = "ok" | "front" | "full" | "already" | "notAllowed" | "none";
+export type MarkResult = "ok" | "front" | "full" | "already" | "notAllowed" | "otherMessage" | "none";
 
 export interface Rect { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
 
@@ -92,8 +92,16 @@ export class PaperModel {
   moveWith(id: string, x: number, y: number): void {
     const p = this.byId.get(id);
     if (!p) return;
-    const dx = Math.round(x) - p.x, dy = Math.round(y) - p.y;
-    for (const q of this.group(id)) { q.x += dx; q.y += dy; this.clamp(q); }
+    this.shift(this.group(id), Math.round(x) - p.x, Math.round(y) - p.y);
+  }
+  /** One shared displacement, limited so that every sheet stays grabbable: the offsets inside a bundle never change. */
+  private shift(sheets: readonly Paper[], dx: number, dy: number): void {
+    for (const q of sheets) {
+      const b = this.bounds(q);
+      dx = Math.min(b.maxX - q.x, Math.max(b.minX - q.x, dx));
+      dy = Math.min(b.maxY - q.y, Math.max(b.minY - q.y, dy));
+    }
+    for (const q of sheets) { q.x += dx; q.y += dy; }
   }
   /** Raises a whole clip group, keeping its inner order. */
   raiseGroup(id: string): void { for (const q of this.group(id)) q.z = ++this.top; }
@@ -123,11 +131,13 @@ export class PaperModel {
     if (!a || !b || a === b || a.place !== "desk" || b.place !== "desk") return "none";
     if (a.kind === "mission" || b.kind === "mission") return "notAllowed";
     if (a.clip !== null && a.clip === b.clip) return "already";
+    if (a.rxId !== b.rxId || this.group(id).some((q) => q.rxId !== b.rxId) || this.group(onto).some((q) => q.rxId !== a.rxId)) return "otherMessage"; // one message per bundle
     const moving = this.group(id);                       // a's own bundle (or just a) joins b's
     const top = this.group(onto).at(-1) ?? b;
     const dx = top.x + 4 - a.x, dy = top.y + 4 - a.y;
     const g = b.clip ?? (b.clip = ++this.clips);
-    for (const q of moving) { q.clip = g; q.x += dx; q.y += dy; this.clamp(q); }
+    for (const q of moving) q.clip = g;
+    this.shift(moving, dx, dy); // only the joining sheets move, keeping their own offsets
     const ids = new Set(moving.map((q) => q.id));
     for (const q of this.group(onto)) if (!ids.has(q.id)) q.z = ++this.top; // the bundle comes up...
     for (const q of moving) q.z = ++this.top;                                // ...with the newly clipped sheet on top
@@ -145,10 +155,14 @@ export class PaperModel {
   handOver(ids: readonly string[]): void { for (const id of ids) { const p = this.byId.get(id); if (p) p.place = "handed"; } }
   private clips = 0;
 
-  private clamp(p: Paper): void {
+  private bounds(p: Paper): { minX: number; maxX: number; minY: number; maxY: number } {
     const { w } = SIZE[p.kind], a = DESK_AREA;
-    p.x = Math.min(a.x + a.w - KEEP, Math.max(a.x - w + KEEP, p.x));
-    p.y = Math.min(a.y + a.h - KEEP, Math.max(a.y, p.y)); // never under the boat banner
+    return { minX: a.x - w + KEEP, maxX: a.x + a.w - KEEP, minY: a.y, maxY: a.y + a.h - KEEP }; // never under the boat banner
+  }
+  private clamp(p: Paper): void {
+    const b = this.bounds(p);
+    p.x = Math.min(b.maxX, Math.max(b.minX, p.x));
+    p.y = Math.min(b.maxY, Math.max(b.minY, p.y));
   }
 
   // ---------------------------------------------------------------- persistence (desk.v1)

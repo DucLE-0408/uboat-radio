@@ -152,7 +152,12 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     px: () => px,
     changed: () => { for (const v of views.values()) v.view.sync(); if (saveTimer === null) saveTimer = setTimeout(saveNow, SAVE_DELAY_MS); },
     announce: (text) => setText(live, text),
-    select: (p) => { if (selected === p.id) return; selected = p.id; if (p.rxId !== null) focusMessage(p); syncPapers(); stations(performance.now()); },
+    select: (p) => { // always re-sync the active message/attempt: a repeat or PageUp/PageDown may have moved it since the last click
+      const same = selected === p.id;
+      selected = p.id;
+      if (p.rxId !== null) focusMessage(p);
+      if (!same) { syncPapers(); stations(performance.now()); }
+    },
     activate: (p) => applyTool(p),
     dropAt: (p, cx, cy, from) => {
       const r = scene.getBoundingClientRect(), lx = (cx - r.left) / px, ly = (cy - r.top) / px;
@@ -186,7 +191,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const rx = store.state.rx.get(rxId), mine = model.list().filter((q) => q.rxId === rxId);
     const ins = mine.filter((q) => q.kind === "input"), outs = mine.filter((q) => q.kind === "output");
     return {
-      printed: ins.some((q) => printer.done(q.id)),
+      printed: ins.some((q) => printer.done(q.id, performance.now())),
       decoded: (rx?.analysis.size ?? 0) > 0,
       echo: rx?.resolved != null,
       outStamp: outs.some((q) => q.stamps.includes("red")),
@@ -369,11 +374,16 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const onEsc = (ev: KeyboardEvent): void => { if (ev.code === "Escape" && tool !== null) { armTool(null); ev.preventDefault(); ev.stopPropagation(); } };
   window.addEventListener("keydown", onEsc, true); // before the game's Esc (pause)
 
-  const refuse = (r: MarkResult): void => { store.notify(t(r === "front" ? "desk.tool.front" : r === "full" ? "desk.tool.full" : r === "already" ? "desk.tool.already" : "desk.tool.notAllowed")); };
+  const refuse = (r: MarkResult): void => { store.notify(t(r === "front" ? "desk.tool.front" : r === "full" ? "desk.tool.full" : r === "already" ? "desk.tool.already" : r === "otherMessage" ? "desk.tool.otherMessage" : "desk.tool.notAllowed")); };
   const applyTool = (p: Paper): boolean => {
     if (tool === null) return false;
     if (tool === "clip") {
-      if (clipFirst === null || clipFirst === p.id) { clipFirst = clipFirst === p.id ? null : p.id; host.announce(clipFirst ? t("desk.tool.clipNext") : t("desk.tool.none")); return true; }
+      if (clipFirst === p.id) { // the same sheet twice: take it out of its bundle (or just let go of it)
+        clipFirst = null;
+        if (p.clip !== null && model.unclip(p.id) === "ok") { host.announce(t("desk.tool.unclipped")); host.changed(); syncPapers(); } else host.announce(t("desk.tool.none"));
+        return true;
+      }
+      if (clipFirst === null) { clipFirst = p.id; host.announce(t("desk.tool.clipNext")); return true; }
       const r = model.clipTo(clipFirst, p.id);
       clipFirst = null;
       if (r === "ok") host.announce(t("desk.tool.clipped")); else refuse(r);

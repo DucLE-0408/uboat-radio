@@ -27,7 +27,14 @@ describe("G1 stamping rules and hand-over", () => {
     expect(checkHandOver(bundle(true, true, false).sheets, () => true)).toEqual({ ok: true, rxId: 4, problems: ["noOutput"] });
     const { m, sheets } = bundle(true, true);
     m.stamp((sheets[1] as { id: string }).id, "blue"); m.stamp((sheets[0] as { id: string }).id, "red");
-    expect(checkHandOver(sheets, () => true)).toMatchObject({ ok: true, problems: ["outputWrongInk", "inputStamped"] });
+    expect(checkHandOver(sheets, () => true)).toMatchObject({ ok: true, problems: ["outputWrongInk", "outputTwoStamps", "inputStamped"] });
+  });
+  it("checks every sheet on its own", () => {
+    const m = new PaperModel();
+    const i = m.ensure("input", 4, 0), i2 = m.ensure("input", 4, 1), o1 = m.ensure("output", 4, 0), o2 = m.ensure("output", 4, 1);
+    for (const p of [i, i2, o1, o2]) m.flip(p.id);
+    m.sign(i.id); m.stamp(o1.id, "red");
+    expect(checkHandOver([i, i2, o1, o2], () => true)).toMatchObject({ ok: true, problems: ["outputUnstamped", "inputUnsigned"] });
   });
   it("never lets mission papers into the bin", () => {
     for (const k of ["input", "output", "mission"] as const) expect(canTrash(k)).toBe(false);

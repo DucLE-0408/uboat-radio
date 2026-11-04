@@ -71,15 +71,17 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
     host.model.moveWith(paper.id, drag.ox + dx, drag.oy + dy); // a clipped bundle moves as one
     host.changed();
   });
-  const end = (ev: PointerEvent): void => {
+  const end = (ev: PointerEvent, released: boolean): void => {
     if (!drag || ev.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
     setClass(el, "dragging", false);
-    if (d.moved) { host.changed(); host.dropAt(paper, ev.clientX, ev.clientY, { x: d.ox, y: d.oy }); }
+    if (!d.moved) return;
+    host.changed();
+    if (released) host.dropAt(paper, ev.clientX, ev.clientY, { x: d.ox, y: d.oy }); // a cancelled pointer never hands over or bins
   };
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", end);
+  el.addEventListener("pointerup", (ev) => end(ev, true));
+  el.addEventListener("pointercancel", (ev) => end(ev, false));
 
   // ---- keyboard: Enter/Space picks the sheet up, arrows move it, Enter/Space puts it down, Esc puts it back (R2.3)
   let held: { x: number; y: number } | null = null;
@@ -124,7 +126,7 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
 export function flipButton(host: SheetHost, paper: Paper, view: { sync(): void }, x: number, y: number): HTMLButtonElement {
   const b = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.paper.flip"), title: t("desk.paper.flip") }, text: "⟲" });
   place(b, x, y, 14, 11);
-  b.addEventListener("click", () => { host.model.flip(paper.id); view.sync(); host.changed(); });
+  b.addEventListener("click", () => { host.select(paper); host.model.flip(paper.id); view.sync(); host.changed(); }); // flipping a sheet also selects it
   return b;
 }
 

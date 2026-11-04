@@ -8,7 +8,8 @@ export const RULES = { outputStamp: "red", inputSigned: true } as const;
 export type HandOverProblem =
   | "noOutput"        // the decode sheet is missing from the bundle
   | "outputUnstamped" // the Output has no red stamp
-  | "outputWrongInk"  // the Output carries a blue stamp
+  | "outputWrongInk"  // an Output carries a blue stamp
+  | "outputTwoStamps" // an Output carries more than the one stamp the rule asks for
   | "inputUnsigned"   // the Input was not signed
   | "inputStamped";   // the Input carries a regular stamp (only the Echo stamp belongs there)
 
@@ -32,10 +33,12 @@ export function checkHandOver(bundle: readonly Paper[], echoStamped: (rxId: numb
   const outputs = bundle.filter((p) => p.kind === "output");
   if (outputs.length === 0) problems.push("noOutput");
   else {
-    if (!outputs.some((o) => o.stamps.includes(RULES.outputStamp))) problems.push("outputUnstamped");
+    // every sheet must follow the rule on its own: one correct Output cannot cover for another
+    if (outputs.some((o) => !o.stamps.includes(RULES.outputStamp))) problems.push("outputUnstamped");
     if (outputs.some((o) => o.stamps.some((c) => c !== RULES.outputStamp))) problems.push("outputWrongInk");
+    if (outputs.some((o) => o.stamps.length > 1)) problems.push("outputTwoStamps");
   }
-  if (RULES.inputSigned && !inputs.some((i) => i.signed)) problems.push("inputUnsigned");
+  if (RULES.inputSigned && inputs.some((i) => !i.signed)) problems.push("inputUnsigned");
   if (inputs.some((i) => i.stamps.length > 0)) problems.push("inputStamped");
   return { ok: true, rxId, problems };
 }

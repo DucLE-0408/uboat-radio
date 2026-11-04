@@ -98,4 +98,13 @@ describe("desk paper model", () => {
     n.clipTo(y.id, x.id);
     expect(x.clip).not.toBe(i2.clip); // new groups never reuse a restored group number
   });
+  it("a bundle keeps its offsets at the desk edge and never mixes messages", () => {
+    const m = new PaperModel();
+    const i = m.ensure("input", 1, 0), o = m.ensure("output", 1, 0), x = m.ensure("input", 2, 0);
+    m.clipTo(o.id, i.id);
+    m.moveWith(i.id, 9999, 9999); m.moveWith(i.id, 200, 200);
+    expect([o.x - i.x, o.y - i.y]).toEqual([4, 4]);
+    expect(m.clipTo(x.id, i.id)).toBe("otherMessage");
+    expect(x.clip).toBeNull();
+  });
 });
