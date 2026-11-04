@@ -15,6 +15,12 @@ on:
       - "packages/sim-core/**"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Create a GitHub pre-release with this tag from main (desktop-preview-YYYYMMDD). Leave empty to only build."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -68,3 +74,45 @@ jobs:
             packages/desktop/src-tauri/target/release/bundle/nsis/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
+
+  prerelease:
+    # Publishing is opt-in: only a manual run on main that names a tag. Needs the write scope, so it lives in its own job.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_tag != ''
+    needs: installer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      ARTIFACT: uboat-radio-windows-installer-${{ github.sha }}
+    steps:
+      - name: Validate the tag name
+        run: |
+          [[ "$RELEASE_TAG" =~ ^desktop-preview-[0-9]{8}$ ]] || { echo "tag must match desktop-preview-YYYYMMDD" >&2; exit 1; }
+      - name: Download the installer built by this run
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: release
+      - name: Verify the installer against its recorded checksum
+        working-directory: release
+        run: |
+          ls -l
+          # the checksum file is written on Windows (CRLF): strip the CR before checking
+          tr -d '\r' < SHA256SUMS.txt | sha256sum --check -
+      - name: Create the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: release
+        run: |
+          cat > notes.md <<NOTES
+          Development preview of the Windows installer (VERSION v0.0.0.0, not a supported release).
+
+          - **Unsigned**: Windows SmartScreen shows "Unknown publisher" (More info, Run anyway).
+          - Verify the download against SHA256SUMS.txt before running it.
+          - Built from commit ${GITHUB_SHA} by workflow run ${GITHUB_RUN_ID}.
+          NOTES
+          gh release create "$RELEASE_TAG" ./*.exe ./SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Windows installer preview ($RELEASE_TAG)" --notes-file notes.md
