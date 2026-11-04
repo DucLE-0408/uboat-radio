@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "preview": "vite preview",
+    "serve": "vite build && vite preview"
   },
   "devDependencies": {
     "typescript": "7.0.2",

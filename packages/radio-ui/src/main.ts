@@ -14,6 +14,7 @@ import { Session, type StorageLike } from "./sim/session";
 import { rebuildStore, Store } from "./store";
 import { CopyPersistence, loadCopies } from "./sim/transcripts";
 import { Diag, mountDiagOverlay } from "./diag";
+import { registerServiceWorker } from "./pwa";
 
 const app = document.getElementById("app");
 if (!app) throw new Error("#app missing");
@@ -108,5 +109,7 @@ const frame = (now: number): void => {
   store.flush();
   view.frame();
   requestAnimationFrame(frame);
+registerServiceWorker(diag, import.meta.env.PROD, () => store.notify("A new version is ready. It starts the next time you open the app.")); // offline-capable installed app (production build only)
 };
 requestAnimationFrame(frame);
+registerServiceWorker(diag, import.meta.env.PROD, () => store.notify("A new version is ready. It starts the next time you open the app.")); // offline-capable installed app (production build only)

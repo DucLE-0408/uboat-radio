@@ -1,6 +1,6 @@
 // Sanitised diagnostics (R11.3). Vietnamese: chỉ mã lỗi ngắn + số đo; TUYỆT ĐỐI không ghi nội dung tin, bản chép hay thông báo lỗi tự do.
 // In-memory only, never sent anywhere, kept apart from the player-visible store.
-export type DiagKind = "asset" | "audio" | "save";
+export type DiagKind = "asset" | "audio" | "save" | "pwa";
 
 export interface DiagSnapshot {
   readonly sessionId: string;
@@ -8,7 +8,7 @@ export interface DiagSnapshot {
   readonly frames: { readonly n: number; readonly p50: number; readonly p95: number; readonly max: number };
   readonly catchUpClamped: number;
   readonly frameClamped: number;
-  readonly errors: { readonly asset: readonly string[]; readonly audio: readonly string[]; readonly save: readonly string[] };
+  readonly errors: { readonly asset: readonly string[]; readonly audio: readonly string[]; readonly save: readonly string[]; readonly pwa: readonly string[] };
 }
 
 const CODE = /^[A-Z][A-Z0-9_]{1,30}(:[A-Za-z0-9_-]{1,24})?$/; // e.g. SAVE_WRITE_FAILED, ASSET_LOAD:machine
@@ -22,7 +22,7 @@ export class Diag {
   private tickNow = 0;
   private clamped = 0;
   private frameClamped = 0;
-  private readonly errs: Record<DiagKind, string[]> = { asset: [], audio: [], save: [] };
+  private readonly errs: Record<DiagKind, string[]> = { asset: [], audio: [], save: [], pwa: [] };
 
   constructor(readonly sessionId: string) {}
 
@@ -48,7 +48,7 @@ export class Diag {
       sessionId: this.sessionId, tick: this.tickNow,
       frames: { n: a.length, p50: q(0.5), p95: q(0.95), max: a.length ? (a[a.length - 1] as number) : 0 },
       catchUpClamped: this.clamped, frameClamped: this.frameClamped,
-      errors: { asset: [...this.errs.asset], audio: [...this.errs.audio], save: [...this.errs.save] },
+      errors: { asset: [...this.errs.asset], audio: [...this.errs.audio], save: [...this.errs.save], pwa: [...this.errs.pwa] },
     };
   }
 }
@@ -62,7 +62,7 @@ export function mountDiagOverlay(diag: Diag): () => void {
   const draw = (): void => {
     const s = diag.snapshot();
     el.textContent = [`sid ${s.sessionId} tick ${s.tick}`, `frame ms p50 ${s.frames.p50.toFixed(1)} p95 ${s.frames.p95.toFixed(1)} max ${s.frames.max.toFixed(1)}`,
-      `catch-up clamped ${s.catchUpClamped} frames clamped ${s.frameClamped}`, `asset ${s.errors.asset.join(",") || "-"}`, `audio ${s.errors.audio.join(",") || "-"}`, `save ${s.errors.save.join(",") || "-"}`].join("\n");
+      `catch-up clamped ${s.catchUpClamped} frames clamped ${s.frameClamped}`, `asset ${s.errors.asset.join(",") || "-"}`, `audio ${s.errors.audio.join(",") || "-"}`, `save ${s.errors.save.join(",") || "-"}`, `pwa ${s.errors.pwa.join(",") || "-"}`].join("\n");
   };
   draw();
   const id = window.setInterval(draw, 500);

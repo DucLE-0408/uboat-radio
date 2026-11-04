@@ -92,6 +92,13 @@ export class Img {
   pixelBytes(): Uint8Array { return this.d; }
 }
 
+/** Nearest-neighbour integer upscale (pixel art stays crisp). */
+export function scaleNearest(src: Img, k: number): Img {
+  const out = new Img(src.w * k, src.h * k);
+  for (let y = 0; y < out.h; y++) for (let x = 0; x < out.w; x++) out.set(x, y, src.get(Math.floor(x / k), Math.floor(y / k)));
+  return out;
+}
+
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = (b: Uint8Array): number => { let c = 0xffffffff; for (const v of b) c = (CRC[(c ^ v) & 255] as number) ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
 

@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { encodePng } from "./pix.ts";
+import { iconSprites } from "./icons.ts";
 import { buildSprites } from "./sprites.ts";
 
 const sha = (b: Uint8Array): string => createHash("sha256").update(b).digest("hex");
@@ -16,9 +17,9 @@ export interface ManifestEntry {
 export function buildManifest(): { entries: ManifestEntry[]; files: Map<string, Uint8Array> } {
   const entries: ManifestEntry[] = [];
   const files = new Map<string, Uint8Array>();
-  for (const s of buildSprites()) {
+  const all = [...buildSprites().map((s) => ({ s, path: `sprites/${s.id}.png` })), ...iconSprites().map((i) => ({ s: i.sprite, path: i.path }))];
+  for (const { s, path } of all) {
     const png = encodePng(s.img);
-    const path = `sprites/${s.id}.png`;
     files.set(path, png);
     entries.push({
       id: s.id, path, width: s.img.w, height: s.img.h, frames: s.frames ?? null,
@@ -40,6 +41,7 @@ const entryUrl = (globalThis as { process?: { argv?: string[] } }).process?.argv
 if (entryUrl.endsWith("generate.ts")) {
   const { entries, files } = buildManifest();
   mkdirSync("assets/sprites", { recursive: true });
+  mkdirSync("public/icons", { recursive: true });
   for (const [p, b] of files) writeFileSync(`assets/${p}`, b);
   writeFileSync("assets/manifest.json", `${JSON.stringify({ schema: 1, scene: { width: 640, height: 360 }, sprites: entries, fonts: FONTS }, null, 2)}\n`);
   console.log(`wrote ${entries.length} sprites`);
