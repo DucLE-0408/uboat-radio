@@ -15,7 +15,7 @@ export interface ControllerEnv {
   readonly storage: { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void } | null;
   readonly navigate: (query: string) => void;
   readonly cosmeticSeed: number; // audio jitter stream seed, independent of the sim seed (R1.2)
-  readonly ctxRef: { flags: Ctx["flags"] };
+  readonly ctxRef: { flags: Ctx["flags"]; hooks?: Ctx["hooks"] };
 }
 
 const QUEUE_MAX = 3;
@@ -156,7 +156,8 @@ export class Controller implements Actions {
     const att = rx.attempts.find((a) => a.attempt === st.activeAttempt);
     const copy = (rx.copy.get(st.activeAttempt) ?? "").trim();
     if (!att || copy.length === 0) { this.store.notify("Copy the signal first (type what you hear), then press Enter."); return; }
-    const d = this.watch.decipher(att.indicator, copy);
+    const dialled = this.env.ctxRef.hooks?.decodeSetting?.() ?? null; // desk G2: the player's own rotor setting, wrong or right
+    const d = this.watch.decipher(dialled !== null && /^[A-Z]{4}$/.test(dialled) ? dialled : att.indicator, copy);
     const words = copy.split(/\s+/).filter((w) => w.length > 0);
     const last = words[words.length - 1];
     if (last !== undefined && last.length === 1 && /[A-Z]/.test(last)) words.pop(); // mirrors decipherCopy: trailing single letter = check letter
@@ -250,6 +251,7 @@ export class Controller implements Actions {
 
   handle(a: Action): void {
     const s = this.store.state;
+    if ((a.t === "char" || a.t === "space" || a.t === "backspace") && !s.lookup.active && this.env.ctxRef.hooks?.typingGate?.() === false) return; // machine off / cover open
     switch (a.t) {
       case "char":
         if (s.lookup.active) this.lookupLetter(a.ch); else if (s.ended === null) this.store.typeChar(a.ch);

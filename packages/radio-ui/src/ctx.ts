@@ -50,6 +50,8 @@ export interface Ctx {
   /** Seed of the purely cosmetic RNG streams (audio jitter, blinks, flicker); never the simulation seed. */
   readonly cosmeticSeed: number;
   readonly flags: { showMorse: boolean; simSpeed: number; reduceMotion?: boolean };
+  /** Optional presentation hooks (desk G2). `typingGate` false = the keyboard is dead (machine off); `decodeSetting` = the 4 letters the player dialled in. */
+  readonly hooks?: { typingGate: (() => boolean) | null; decodeSetting: (() => string | null) | null };
 }
 
 export interface Panel { readonly el: HTMLElement; frame?(): void }

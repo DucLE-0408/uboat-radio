@@ -105,13 +105,14 @@ const loop = new FixedStepLoop();
 loop.setSpeed(initialSpeed);
 
 const cosmeticSeed = randomSeed();
+const hooks: NonNullable<Ctx["hooks"]> = { typingGate: null, decodeSetting: null }; // set by the desk UI only (G2); null = classic/P5 behaviour
 const controller = new Controller(session, store, audio, morse, hydro, loop, {
   storage,
   navigate: (q) => { location.assign(`${location.pathname}${q}`); },
   cosmeticSeed, // separate stream for audio jitter and scene decoration (R1.2)
-  ctxRef: { flags },
+  ctxRef: { flags, hooks },
 });
-const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, diag, seed: session.seed, cosmeticSeed, flags };
+const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, diag, seed: session.seed, cosmeticSeed, flags, hooks };
 const copies = new CopyPersistence(storage, session.seed, () => store.exportCopies(), (c) => diag.err("save", c));
 store.on(["copy"], () => copies.schedule());
 if (params.get("diag") === "1") mountDiagOverlay(diag);
