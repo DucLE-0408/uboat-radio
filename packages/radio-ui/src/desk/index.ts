@@ -195,7 +195,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const ins = mine.filter((q) => q.kind === "input"), outs = mine.filter((q) => q.kind === "output");
     return {
       printed: ins.some((q) => printer.done(q.id, performance.now())),
-      decoded: (rx?.analysis.size ?? 0) > 0 || outs.some((q) => q.decoded !== null),
+      decoded: (rx?.analysis.size ?? 0) > 0 || outs.some((q) => q.decoded?.mode === "plain"), // a copy-only snapshot is not a decode
       echo: rx?.resolved != null,
       outStamp: outs.some((q) => q.stamps.includes("red")),
       signed: ins.some((q) => q.signed),
