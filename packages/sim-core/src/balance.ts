@@ -52,6 +52,16 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  readonly watch: {
+    readonly durationSec: number; readonly startMin: number; readonly originKm: { readonly x: number; readonly y: number };
+    readonly freqKhz: number; readonly seaState: number; readonly rxSnrDb: number; readonly jam: number;
+    readonly startIntelScore: number; readonly repeatDelaySec: Range; readonly repeatTxSec: number;
+    readonly challengeTxSec: number; readonly ackTxSec: number; readonly challengeReplySec: Range;
+    readonly sonarPeriodSec: number;
+    readonly merchant: { readonly rangeM: number; readonly speedMs: number };
+    readonly ambush: { readonly rangeM: number; readonly speedMs: number };
+    readonly messages: readonly { readonly atSec: number; readonly forged: boolean }[];
+  };
 }
 
 // Vietnamese: data-driven balance — mọi tunable nằm trong data/balance.json, không hard-code trong logic.

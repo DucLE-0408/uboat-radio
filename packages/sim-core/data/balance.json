@@ -102,7 +102,7 @@
     "kinds": {
       "merchant": {
         "shaftRps": {
-          "min": 1.0,
+          "min": 1,
           "max": 1.8
         },
         "blades": 4,
@@ -113,7 +113,7 @@
       },
       "escort": {
         "shaftRps": {
-          "min": 3.0,
+          "min": 3,
           "max": 4.5
         },
         "blades": 3,
@@ -124,8 +124,8 @@
       },
       "uboat": {
         "shaftRps": {
-          "min": 2.0,
-          "max": 3.0
+          "min": 2,
+          "max": 3
         },
         "blades": 2,
         "srcLevelDb": {
@@ -147,12 +147,12 @@
     "periscopeDepthM": 12,
     "diveDepthM": 60,
     "maxDepthM": 200,
-    "descentMps": 2.0,
-    "ascentMps": 1.0,
+    "descentMps": 2,
+    "ascentMps": 1,
     "antennaExposure": {
-      "surface": 1.0,
+      "surface": 1,
       "periscope": 0.6,
-      "dive": 0.0
+      "dive": 0
     },
     "hull": 100,
     "depthChargeDamage": 60,
@@ -160,5 +160,48 @@
     "depthChargeDropDepthM": 100,
     "torpedoes": 14,
     "radioSelfNoisePerKnotDb": 0.4
+  },
+  "watch": {
+    "durationSec": 1800,
+    "startMin": 1320,
+    "originKm": {
+      "x": 1000,
+      "y": 1100
+    },
+    "freqKhz": 7000,
+    "seaState": 3,
+    "rxSnrDb": 34,
+    "jam": 0,
+    "startIntelScore": 45,
+    "repeatDelaySec": {
+      "min": 45,
+      "max": 90
+    },
+    "repeatTxSec": 8,
+    "challengeTxSec": 6,
+    "ackTxSec": 4,
+    "challengeReplySec": {
+      "min": 20,
+      "max": 45
+    },
+    "sonarPeriodSec": 5,
+    "merchant": {
+      "rangeM": 9000,
+      "speedMs": 5
+    },
+    "ambush": {
+      "rangeM": 6000,
+      "speedMs": 10
+    },
+    "messages": [
+      {
+        "atSec": 60,
+        "forged": false
+      },
+      {
+        "atSec": 600,
+        "forged": true
+      }
+    ]
   }
 }
