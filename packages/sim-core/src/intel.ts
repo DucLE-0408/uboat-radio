@@ -45,6 +45,13 @@ export class Intel {
     this.score = Math.max(this.score, t2) + this.b.intel.lostCodebook;
   }
 
+  /** "Marked" by the enemy (G3 citation): jump to the next Intel threshold, or add the pattern bonus at the top level. */
+  mark(): void {
+    const next = this.b.intel.thresholds[this.level];
+    if (next !== undefined) this.score = Math.max(this.score, next);
+    else this.score += this.b.intel.repeatedPattern;
+  }
+
   tickMinutes(min: number): void {
     this.score = Math.max(0, this.score - min * this.b.intel.decayPerMin);
   }

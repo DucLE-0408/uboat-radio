@@ -76,6 +76,20 @@ export class HfdfDetector {
     return out;
   }
 
+  /**
+   * A fix forced from outside (G3 citation): the enemy already knows roughly where the boat is, so the escort and its depth
+   * charge come on a short fixed schedule (a bounded ETA, not the usual distance draw). Deterministic: draws from the
+   * detector's own stream at a tick boundary.
+   */
+  forceFix(freqKhz: number, react: { readonly min: number; readonly max: number }, eta: { readonly min: number; readonly max: number }): SimEvent[] {
+    this.cooldownUntil = this.t + this.b.detection.cooldownSec;
+    const reactSec = react.min + this.rng.next() * (react.max - react.min);
+    const travel = eta.min + this.rng.next() * (eta.max - eta.min);
+    this.pending.push({ atSec: this.t + reactSec, event: { type: "ESCORT_DISPATCHED", tSec: this.t + reactSec, etaSec: travel } });
+    this.pending.push({ atSec: this.t + reactSec + travel, event: { type: "DEPTH_CHARGE", tSec: this.t + reactSec + travel } });
+    return [{ type: "HFDF_FIX", tSec: this.t, freqKhz, cumulativeTxSec: this.cumulativeTx(freqKhz) }];
+  }
+
   /** Cancel inbound attack (e.g. boat dived and evaded). Returns number of cancelled events. */
   cancelPending(): number {
     const n = this.pending.length;

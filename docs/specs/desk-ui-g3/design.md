@@ -24,7 +24,7 @@ Nguyên tắc: **sim quyết định hậu quả**, desk chỉ báo sự thật 
 
 | Mục | Thay đổi | Ghi chú |
 |---|---|---|
-| Dữ liệu | `data/paper.json`: luật lỗi, trọng số, ngưỡng 3/5, hạn giờ, lệnh lưu/hủy theo ngày, xác suất tell giấy | cân bằng nằm ngoài code |
+| Dữ liệu | mục `paper` trong `data/balance.json`: luật lỗi, trọng số, ngưỡng 3/5, hạn giờ, lệnh lưu/hủy theo ngày, xác suất tell giấy | cân bằng nằm ngoài code |
 | `messages.ts` | hồ sơ giấy (`authMark`, `signatureVariant`, `senderApproved`, `senderId`) sinh bằng `derive(seed, "paper", rxId)`; `verifyTells` trả thêm tell giấy | giữ D8 |
 | `events.ts` | thêm `CITATION`, `CONSEQUENCE`; `WATCH_END.reason` thêm `"executed"`; `MSG_RX` thêm trường giấy công khai | đổi hợp đồng sự kiện |
 | `watch.ts` | lệnh mới: `paperwork {rxId, facts}`, `dispose {rxId, how}`, `timeout` (do sim tự phát khi hết hạn sim-time); sổ cảnh cáo idempotent | replay từ log |
@@ -71,7 +71,7 @@ Hạn giờ G3 dùng thời gian sim. Chỉ báo G2 (thời gian thực) bị th
 
 1. ~~**Mức phạt**~~ **ĐÃ CHỐT 2026-11-04** (người vận hành): lần 1–2 nhắc nhở, trừ điểm, mất thông tin quan trọng, bị địch đánh dấu; lần 3 địch biết ~80% vị trí và đánh bom tàu; lần 5 bị thuyền trưởng kéo ra ngoài tàu hành quyết. Ánh xạ vào sim: lần 1–2 = `INTEL_LEVEL`+1 (hazard HF/DF tăng theo `intelHazardStep`); lần 3 = `HFDF_FIX` độ tin cậy 0.8 + `ESCORT_DISPATCHED` + `DEPTH_CHARGE` (cơ chế sẵn có, người chơi vẫn có thể lặn/đổi hướng); lần 5 = `WATCH_END "executed"`.
 2. ~~**Xử tử**~~ **ĐÃ CHỐT**: kết thúc ca kèm cảnh kết (thuyền trưởng kéo ra ngoài tàu).
-2b. ~~**Lần 4**~~ **ĐÃ CHỐT**: mất thông tin và tăng mức nghiêm trọng (`CONSEQUENCE "severe"`: mất thêm một mục, đánh dấu thêm, định vị lại độ tin cậy 0.9, escort thứ hai gần hơn).
+2b. ~~**Lần 4**~~ **ĐÃ CHỐT**: mất thông tin và tăng mức nghiêm trọng (`CONSEQUENCE "severe"`: mất thêm một mục, đánh dấu thêm, định vị lại độ tin cậy 0.9, escort thứ hai tới sớm hơn).
 3. ~~**Save**~~ **ĐÃ CHỐT** ("làm save"): lệnh mới đi vào `commandLog`; định dạng file save v2 giữ nguyên (thêm kiểu lệnh là tương thích ngược), `parseCommand` ở radio-ui validate từng kiểu lệnh mới. Save cũ nạp như trước, không có cảnh cáo.
 4. ~~**Chống gian lận**~~ **ĐÃ CHỐT** (theo đề xuất): chấp nhận `paperwork` do client báo ở G3; giới hạn ghi ở mục 3.
 5. ~~**Hạn giờ**~~ **ĐÃ CHỐT**: 120 giây sim-time, chung mọi loại tin.

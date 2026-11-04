@@ -7,16 +7,22 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04** (người vận hành trả lời to�
 - Cổng đã mở; được sửa `packages/sim-core` trong phạm vi bảng ở `design.md` mục 2.
 
 ## Stage 1 — Sim-core: luật, cảnh cáo, hậu quả (sau S0)
-- [ ] **T1.1** `data/paper.json` + loader có validate; test dữ liệu. (R1.5, R9.1)
-- [ ] **T1.2** Lệnh `paperwork`, bảng luật, sổ cảnh cáo idempotent, sự kiện `CITATION`/`CONSEQUENCE`. (R1.1–R1.4, R1.6)
-- [ ] **T1.3** Hậu quả theo bậc: `INTEL_LEVEL`+1 (1–2), `HFDF_FIX` 0.8 + escort + depth charge (3), `WATCH_END "executed"` (5). (R1.3–R1.5)
-- [ ] **T1.4** Test: tất định, replay từ seed + log bit-exact, idempotent, ngưỡng 3 và 5. (R7.1)
-- [ ] **T1.5** Save: phiên bản, nạp v2, từ chối/nạp v3 sai; P5/classic không đổi hành vi. (R7.2, R7.3)
+- [x] **T1.1** `data/paper.json` + loader có validate; test dữ liệu. (R1.5, R9.1)
+  - Xong: dữ liệu nằm trong `data/balance.json` mục `paper` (cùng chỗ với cân bằng khác, thay vì file riêng); kiểu `Balance.paper`.
+- [x] **T1.2** Lệnh `paperwork`, bảng luật, sổ cảnh cáo idempotent, sự kiện `CITATION`/`CONSEQUENCE`. (R1.1–R1.4, R1.6)
+  - Xong: `src/paper.ts` (`judge`, `validAction`, `orderItems`, `lossOrder`), lệnh `paperwork` và `timer`, sổ cảnh cáo idempotent theo (rxId, lỗi), sự kiện `CITATION`/`CONSEQUENCE`.
+- [x] **T1.3** Hậu quả theo bậc: `INTEL_LEVEL`+1 (1–2), `HFDF_FIX` 0.8 + escort + depth charge (3), `WATCH_END "executed"` (5). (R1.3–R1.5)
+  - Xong: lần 1–2 `warning` + `Intel.mark()` + mất mục; 3 `located` (`HFDF_FIX` 0.8 + escort + depth charge theo lịch ngắn có chặn trên: react 20–40 s, ETA 120–240 s); 4 `severe` (0.9, 10–20 s, 60–120 s, mất thêm mục); 5 `executed` + `WATCH_END "executed"`.
+- [x] **T1.4** Test: tất định, replay từ seed + log bit-exact, idempotent, ngưỡng 3 và 5. (R7.1)
+  - Xong: `test/paper.test.ts` (luật, idempotent, các bậc, replay bit-exact, loss order theo seed).
+- [x] **T1.5** Save: phiên bản, nạp v2, từ chối/nạp v3 sai; P5/classic không đổi hành vi. (R7.2, R7.3)
+  - Xong: file save giữ v2 (thêm kiểu lệnh là tương thích ngược); `parseCommand` validate `paperwork`/`timer`; `test/g3-save.test.ts` (lưu, nạp bằng replay, save cũ vẫn nạp, store dựng lại từ log).
 
 ## Stage 2 — Sim-core: tell giấy và hạn giờ (sau Stage 1)
 - [ ] **T2.1** Hồ sơ giấy từ `derive(seed, "paper", rxId)`; trường công khai trong `MSG_RX`. (R2.1, R2.5, R2.6)
 - [ ] **T2.2** `verifyTells` mở rộng; test bất biến D8 trên 1000 seed, dấu giả y hệt không là tell. (R2.3, R2.4)
-- [ ] **T2.3** Hạn giờ theo sim-time, sự kiện/lệnh `timeout`, một lần mỗi bức điện, tắt khi không bật đồng hồ. (R4)
+- [x] **T2.3** Hạn giờ theo sim-time, sự kiện/lệnh `timeout`, một lần mỗi bức điện, tắt khi không bật đồng hồ. (R4)
+  - Xong: hạn 120 s sim-time từ lần `MSG_RX` đầu, chỉ khi lệnh `timer` bật, một lần mỗi bức điện, giao bức điện thì dừng; bật muộn thì tính ngay các tin quá hạn.
 - [ ] **T2.4** Lệnh `dispose` và lệnh lưu/hủy theo ngày. (R5)
 
 ## Stage 3 — Sim-core: plugboard

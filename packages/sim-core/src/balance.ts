@@ -52,6 +52,16 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G3 (desk UI): paperwork citations. Counts are the running number of citations in one watch. */
+  readonly paper: {
+    readonly deadlineSec: number;
+    readonly warnUntil: number; readonly locatedAt: number; readonly severeAt: number; readonly executeAt: number;
+    readonly lostAt: readonly number[];
+    /** Enemy strike after a citation: how well they know the position, and how soon the escort and its depth charge arrive. */
+    readonly located: { readonly positionKnown: number; readonly reactSec: Range; readonly etaSec: Range };
+    readonly severe: { readonly positionKnown: number; readonly reactSec: Range; readonly etaSec: Range };
+    readonly items: { readonly safeCoords: number; readonly resupply: number; readonly rangeKm: number };
+  };
   readonly watch: {
     readonly durationSec: number; readonly startMin: number; readonly originKm: { readonly x: number; readonly y: number };
     readonly freqKhz: number; readonly seaState: number; readonly rxSnrDb: number; readonly jam: number;
