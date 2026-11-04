@@ -118,7 +118,7 @@ describe("desk.v1 G2 fields, Obscura page, timer setting", () => {
   it("round-trips the machine and ration and rejects bad data", () => {
     const m = new PaperModel();
     const raw = m.serialize(5, { mach: { power: true, cover: false, pos: "QWER" }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
-    expect(parseExtra(raw, 5)).toEqual({ mach: { power: true, cover: false, pos: "QWER" }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
+    expect(parseExtra(raw, 5)).toEqual({ mach: { power: true, cover: false, pos: "QWER", plugs: [] }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
     expect(parseExtra(raw, 6).mach.pos).toBe("AAAA");                      // another watch
     expect(parseExtra(raw.replace("QWER", "qwer"), 5).mach.pos).toBe("AAAA");
     expect(parseExtra(raw.replace('"power":true,"cover":false', '"power":true,"cover":true'), 5).mach.power).toBe(false); // interlock survives storage
@@ -142,5 +142,49 @@ describe("desk.v1 G2 fields, Obscura page, timer setting", () => {
     expect(d.timer).toBe(false);
     expect(parseSettings(JSON.stringify({ timer: true }), d).timer).toBe(true);
     expect(parseSettings(JSON.stringify({ timer: "yes" }), d).timer).toBe(false);
+  });
+});
+
+describe("G3 plugboard on the desk machine", () => {
+  it("replay with the player's plugboard matches decipherCopy with the same plugboard (property)", () => {
+    const r = derive(77, "plug-prop");
+    for (let t = 0; t < 150; t++) {
+      const seed = r.int(100000), start = randWord(r, 4);
+      const letters = Array.from({ length: 26 }, (_, i) => L(i)); const sh = r.shuffle(letters);
+      const pairs: string[] = []; for (let i = 0; i < r.int(11); i++) pairs.push(sh[2 * i] as string + (sh[2 * i + 1] as string));
+      const copy = Array.from({ length: 1 + r.int(5) }, () => randWord(r, 4)).join(" ");
+      expect(replayCopy(seed, 1, start, copy, true, pairs).plain).toBe(decipherCopy(seed, 1, start, copy, pairs).plain);
+    }
+  });
+  it("wiring: cover open only, free distinct letters, at most 10 pairs, unplug and clear; stored state is validated", () => {
+    const m = new DeskMachine();
+    expect(m.plug("A", "B")).toBe(false);                 // cover shut
+    m.openCover();
+    expect(m.plug("A", "B")).toBe(true); expect(m.plugboard).toEqual(["AB"]);
+    expect(m.plug("B", "C")).toBe(false); expect(m.plug("D", "D")).toBe(false); expect(m.plug("a", "c")).toBe(false);
+    expect(m.partnerOf("A")).toBe("B"); expect(m.partnerOf("B")).toBe("A"); expect(m.partnerOf("Z")).toBeNull();
+    expect(m.plug("Z", "C")).toBe(true); expect(m.plugboard).toEqual(["AB", "CZ"]);
+    expect(m.unplug("C")).toBe(true); expect(m.plugboard).toEqual(["AB"]);
+    for (const p of ["CD", "EF", "GH", "IJ", "KL", "MN", "OP", "QR", "ST"]) expect(m.plug(p[0] as string, p[1] as string)).toBe(true);
+    expect(m.plugboard).toHaveLength(10); expect(m.plug("U", "V")).toBe(false);
+    expect(m.clearPlugs()).toBe(true); expect(m.plugboard).toEqual([]);
+    expect(new DeskMachine({ power: false, cover: false, pos: "AAAA", plugs: ["AB", "BC"] }).plugboard).toEqual([]); // invalid stored board is dropped
+    const raw = new PaperModel().serialize(5, { mach: { power: false, cover: false, pos: "AAAA", plugs: ["AB", "CD"] }, ration: { score: 0, scored: {}, bonus: {} } });
+    expect(parseExtra(raw, 5).mach.plugs).toEqual(["AB", "CD"]);
+    expect(parseExtra(raw.replace('["AB","CD"]', '["AB","BC"]'), 5).mach.plugs).toEqual([]);
+  });
+  it("decode through the controller uses the wired plugboard: day plugboard reads the text, an empty board does not", () => {
+    const h = harness(12); runTo(h, 70);
+    const rx = h.store.activeView() as NonNullable<ReturnType<typeof h.store.activeView>>;
+    const att = rx.attempts[0] as { indicator: string };
+    for (const ch of "ABCD") h.ctl.handle({ t: "char", ch });
+    h.hooks.decodeSetting = () => att.indicator;
+    (h.hooks as { decodePlugs?: () => readonly string[] }).decodePlugs = () => dayEnigma(12, 1).plugboard;
+    h.ctl.handle({ t: "confirm" });
+    const right = h.store.activeView()?.analysis.get(h.store.state.activeAttempt)?.plain;
+    expect(right).toBe(h.session.watch.decipher(att.indicator, "ABCD").plain);
+    (h.hooks as { decodePlugs?: () => readonly string[] }).decodePlugs = () => [];
+    h.ctl.handle({ t: "confirm" });
+    expect(h.store.activeView()?.analysis.get(h.store.state.activeAttempt)?.plain).not.toBe(right);
   });
 });

@@ -1,6 +1,6 @@
 # Desk UI G3 — Tasks
 
-Trạng thái: **ĐÃ DUYỆT 2026-11-04** (người vận hành trả lời toàn bộ câu hỏi mở và giao câu 6, 7 cho tôi quyết). Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
+Trạng thái: **ĐÃ DUYỆT 2026-11-04; Stage 1-5 xong** (người vận hành trả lời toàn bộ câu hỏi mở và giao câu 6, 7 cho tôi quyết). Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
 
 ## Cổng S0 — Duyệt spec (bắt buộc, chưa xong)
 - [x] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở còn lại (design mục 8). Đã chốt 2026-11-04: bậc phạt 1–2 / 3 / 5 (câu 1 và 2).
@@ -35,16 +35,24 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04** (người vận hành trả lời to�
   - Xong: `encipherSenderId`/`decipherSenderId`; test giải được bằng khóa ngày, sai plugboard hoặc indicator ra từ khác.
 
 ## Stage 4 — Desk UI (sau Stage 1–3)
-- [ ] **T4.1** Bảng cắm plugboard trong nắp rotor; `replayCopy` nhận plugboard; property test với plugboard bất kỳ. (R6.1, R6.2)
-- [ ] **T4.2** In dấu xác thực, chữ ký, Sender ID lên Input; Daily Orders thêm mẫu chữ ký, người gửi được duyệt, lệnh lưu/hủy. (R2.2, R3)
-- [ ] **T4.3** Gửi `paperwork` khi đóng dấu/giao/vứt; tờ Citation; lời thoại phản ứng không lộ đúng/sai. (R1.7, D4)
-- [ ] **T4.4** Ngăn hồ sơ và chỗ hủy giấy; đồng hồ đếm ngược sim-time. (R4.3, R5.2)
-- [ ] **T4.5** Cảnh cáo trừ Ration. (R8)
+- [x] **T4.1** Bảng cắm plugboard trong nắp rotor; `replayCopy` nhận plugboard; property test với plugboard bất kỳ. (R6.1, R6.2)
+  - Xong: bảng cắm 26 chữ trong nắp rotor (`desk/index.ts`), `DeskMachine.plug/unplug/clearPlugs`, `replayCopy(..., plugboard)`, `hooks.decodePlugs`; lưu trong `desk.v1` (`mach.plugs`, validate bằng `validPlugboard`). Mặc định người chơi PHẢI cắm theo Orders. Property test 150 ca với plugboard bất kỳ.
+- [x] **T4.2** In dấu xác thực, chữ ký, Sender ID lên Input; Daily Orders thêm mẫu chữ ký, người gửi được duyệt, lệnh lưu/hủy. (R2.2, R3)
+  - Xong: mặt sau tờ Input in dấu in, chữ ký (nét ngắn, 6 biến thể) và Sender ID đọc qua máy của người chơi; Daily Orders thêm trang Authentication (mẫu chữ ký, người gửi được duyệt), Standing order, Safe waters and resupply (mục bị thu hồi hiện `[REVOKED]`).
+- [x] **T4.3** Gửi `paperwork` khi đóng dấu/giao/vứt; tờ Citation; lời thoại phản ứng không lộ đúng/sai. (R1.7, D4)
+  - Xong: đóng dấu, vứt thùng rác (bị từ chối nhưng bị cảnh cáo) và giao giấy gửi `paperwork`; toast cảnh cáo/hậu quả en/vi; mất mục thì Orders cập nhật; kết thúc `executed` ra màn Court-martial. Lời thoại thuyền viên vẫn chỉ dựa trên quan sát.
+- [x] **T4.4** Ngăn hồ sơ và chỗ hủy giấy; đồng hồ đếm ngược sim-time. (R4.3, R5.2)
+  - Xong: bảng Records sau khi giao (lưu/hủy Input và Output, hoặc không làm gì) gửi `dispose`; đồng hồ đếm ngược theo sim-time (`BALANCE.paper.deadlineSec`) và `timer` gửi qua `Actions.setTimer`.
+- [x] **T4.5** Cảnh cáo trừ Ration. (R8)
+  - Xong: mỗi cảnh cáo trừ 10 Ration (`penalize`), điểm chỉ do desk giữ.
 
 ## Stage 5 — Kiểm chứng G3
-- [ ] **T5.1** `tsc`, vitest cả hai gói, invariants D8, replay bit-exact, `git diff` sim-core đúng phạm vi đã duyệt, check-repo.
-- [ ] **T5.2** Chơi trọn ca: gây 3 cảnh cáo (lộ vị trí) và 5 cảnh cáo (kết thúc ca), reload giữa chừng, `en`/`vi`, console sạch, ảnh chụp.
-- [ ] **T5.3** Cập nhật `docs/architecture.md`, task record, báo cáo.
+- [x] **T5.1** `tsc`, vitest cả hai gói, invariants D8, replay bit-exact, `git diff` sim-core đúng phạm vi đã duyệt, check-repo.
+  - Xong: tsc, vitest (sim-core 95, radio-ui 177), build, validate_repo.
+- [x] **T5.2** Chơi trọn ca: gây 3 cảnh cáo (lộ vị trí) và 5 cảnh cáo (kết thúc ca), reload giữa chừng, `en`/`vi`, console sạch, ảnh chụp.
+  - Xong ở mức runtime Playwright: đặt máy, cắm plugboard, Sender ID, giải mã đúng; 4 cảnh cáo rồi cảnh cáo thứ 5 kết thúc ca (Court-martial); console sạch; ảnh `evidence/g3-*.png`. Chưa lái ở runtime: bảng Records sau khi giao, sát thương thân tàu do depth charge, bản `vi` của chuỗi G3.
+- [x] **T5.3** Cập nhật `docs/architecture.md`, task record, báo cáo.
+  - Xong: mục G3 trong `docs/architecture.md`, task record.
 
 ## G4 — Sau G3 (ngoài phạm vi spec này)
 Endless (mô-đun + độ khó), mã hóa và gửi tin, Private Message, Roster. Cần spec riêng.

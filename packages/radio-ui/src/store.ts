@@ -1,10 +1,10 @@
 // UI state derived ONLY from SimEvents plus the player's own input and the public observation helpers.
 // Vietnamese: không trường nào ở đây đến từ ground truth của sim; hazard/Intel không bao giờ được lưu hay hiển thị.
-import type { Fist, LoggedCommand, SimEvent, Tell } from "@uboat/sim-core";
+import type { Fist, LoggedCommand, PaperObservable, SimEvent, Tell } from "@uboat/sim-core";
 
 export type Topic = "drawer" | "view" | "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
 
-export interface AttemptView { readonly attempt: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly tSec: number }
+export interface AttemptView { readonly attempt: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly tSec: number; readonly paper?: PaperObservable }
 export interface WordView { readonly copy: string; readonly plain: string; readonly ok: boolean }
 export interface Analysis {
   readonly plain: string;
@@ -62,6 +62,9 @@ export interface UiState {
   /** G3: running number of paperwork citations and the Daily Orders items they took away (rebuilt from CITATION events). */
   citations: number;
   lostItems: Set<string>;
+  /** Last citation and consequence seen (for the desk to announce; never persisted). */
+  lastCitation: { reason: string; rxId: number | null; lostItem: string | null } | null;
+  lastConsequence: string | null;
   notice: { text: string; seq: number } | null;
   pendingCheck: number | null;
   /** True while a restored event log is being re-applied (silent: no alarms survive unless still in force). */
@@ -80,7 +83,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(),
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null,
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -204,11 +207,13 @@ export class Store {
       }
       case "CITATION":
         st.citations = e.count;
+        st.lastCitation = { reason: e.reason, rxId: e.rxId, lostItem: e.lostItem };
         if (e.lostItem !== null) st.lostItems.add(e.lostItem);
         this.log(e.tSec, "alert", `Citation ${e.count}: ${e.reason}${e.rxId === null ? "" : ` (#${e.rxId})`}`);
         this.mark("ui", "log");
         break;
       case "CONSEQUENCE":
+        st.lastConsequence = e.level;
         this.log(e.tSec, "alert", `Consequence: ${e.level}`);
         this.mark("ui", "log");
         break;
@@ -231,7 +236,7 @@ export class Store {
       st.rx.set(e.rxId, rx);
       st.order.push(e.rxId);
     }
-    rx.attempts.push({ attempt: e.attempt, indicator: e.indicator, tokens: e.tokens, snrDb: e.snrDb, tSec: e.tSec });
+    rx.attempts.push({ attempt: e.attempt, indicator: e.indicator, tokens: e.tokens, snrDb: e.snrDb, tSec: e.tSec, ...(e.paper ? { paper: e.paper } : {}) });
     if (st.activeRx === null) { st.activeRx = e.rxId; st.activeAttempt = e.attempt; rx.unread = false; }
     else if (st.activeRx === e.rxId) { st.activeAttempt = e.attempt; }
     this.log(e.tSec, "info", `Signal #${e.rxId} from ${e.from}${e.attempt > 0 ? ` (repeat ${e.attempt})` : ""}`);

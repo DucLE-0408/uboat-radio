@@ -1,5 +1,5 @@
 // Controller: the only place that mutates the sim (Session.dispatch / Session.step). Vietnamese: UI -> Command -> dispatch; sự kiện về qua bus.
-import type { Command, SimEvent } from "@uboat/sim-core";
+import type { Command, PaperAction, SimEvent } from "@uboat/sim-core";
 import type { Actions, BoatOrder, Ctx } from "./ctx";
 import type { AudioEngine } from "./audio/engine";
 import { hydrophoneParams, type Hydrophone } from "./audio/hydrophone";
@@ -119,6 +119,20 @@ export class Controller implements Actions {
 
   // ------------------------------------------------------------------ commands
 
+  // ------------------------------------------------------------------ G3 paperwork (the sim judges; refusals are silent)
+  paperwork(rxId: number | null, action: PaperAction): void { this.sendG3({ kind: "paperwork", rxId, action }); }
+  dispose(rxId: number, sheet: "input" | "output", how: "archive" | "burn"): void { this.sendG3({ kind: "dispose", rxId, sheet, how }); }
+  setTimer(on: boolean): void {
+    let last: boolean | null = null;
+    for (const c of this.session.watch.commandLog()) if (c.cmd.kind === "timer") last = c.cmd.on; // a reload must not stack identical commands
+    if ((last ?? false) !== on) this.sendG3({ kind: "timer", on });
+  }
+  private sendG3(cmd: Command): void {
+    if (this.store.state.ended !== null) return;
+    this.session.dispatch(cmd);
+    this.syncTelemetry();
+  }
+
   private send(cmd: Command): boolean {
     const s = this.store.state;
     if (needsRx(cmd) && s.rx.get(cmd.rxId) === undefined) { this.store.notify("Select a message first — none has arrived yet."); return false; }
@@ -157,7 +171,8 @@ export class Controller implements Actions {
     const copy = (rx.copy.get(st.activeAttempt) ?? "").trim();
     if (!att || copy.length === 0) { this.store.notify("Copy the signal first (type what you hear), then press Enter."); return; }
     const dialled = this.env.ctxRef.hooks?.decodeSetting?.() ?? null; // desk G2: the player's own rotor setting, wrong or right
-    const d = this.watch.decipher(dialled !== null && /^[A-Z]{4}$/.test(dialled) ? dialled : att.indicator, copy);
+    const plugs = this.env.ctxRef.hooks?.decodePlugs?.() ?? undefined; // desk G3: the plugboard the player wired (undefined = the day key)
+    const d = this.watch.decipher(dialled !== null && /^[A-Z]{4}$/.test(dialled) ? dialled : att.indicator, copy, plugs);
     const words = copy.split(/\s+/).filter((w) => w.length > 0);
     const last = words[words.length - 1];
     if (last !== undefined && last.length === 1 && /[A-Z]/.test(last)) words.pop(); // mirrors decipherCopy: trailing single letter = check letter

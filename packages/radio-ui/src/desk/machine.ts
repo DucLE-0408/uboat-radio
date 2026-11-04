@@ -1,7 +1,7 @@
 // Desk cipher machine (G2, R4.3–R4.7): pure state, no DOM. Everything the windows and the lampboard show is a function of
 // (day key, the 4 letters the player set, the copy typed so far) so Backspace, reload and replay cannot desynchronise it.
 // Vietnamese: máy giả lập chỉ là "cách tính" hiển thị; bản rõ cuối cùng vẫn do decipherCopy (qua Watch.decipher) quyết định.
-import { Enigma, dayEnigma } from "@uboat/sim-core";
+import { Enigma, dayEnigma, validPlugboard } from "@uboat/sim-core";
 
 export const GROUP = 4;
 export const WHEELS = 4; // Greek, left, middle, right (M4 order, same as the indicator)
@@ -24,9 +24,10 @@ export interface MachineView {
  * only damages itself and the groups after it keep their own start positions.
  * `dropCheck` removes a trailing one-letter word (the check letter, which decipherCopy does not decipher).
  */
-export function replayCopy(seed: number | string, day: number, start: string, copy: string, dropCheck = false): MachineView {
+export function replayCopy(seed: number | string, day: number, start: string, copy: string, dropCheck = false, plugboard?: readonly string[]): MachineView {
   if (!isPositions(start)) throw new RangeError("start must be 4 letters A-Z");
-  const base = dayEnigma(seed, day);
+  const day0 = dayEnigma(seed, day);
+  const base = plugboard === undefined ? day0 : { ...day0, plugboard }; // G3: the plugboard the player wired (undefined = the day key, as in G2)
   const words = copy.split(/\s+/).filter((w) => w.length > 0);
   if (dropCheck) { const last = words[words.length - 1]; if (last !== undefined && last.length === 1 && /[A-Z]/.test(last)) words.pop(); }
   const groups = words.reduce((n, w) => n + Math.ceil(w.length / GROUP), 0);
@@ -49,14 +50,16 @@ export function replayCopy(seed: number | string, day: number, start: string, co
   return { window, lamp, plain };
 }
 
-export interface MachineState { readonly power: boolean; readonly cover: boolean; readonly pos: string }
-export const MACHINE_DEFAULT: MachineState = { power: false, cover: false, pos: "AAAA" };
+export interface MachineState { readonly power: boolean; readonly cover: boolean; readonly pos: string; readonly plugs?: readonly string[] }
+export const MACHINE_DEFAULT: MachineState = { power: false, cover: false, pos: "AAAA", plugs: [] };
 
 /** Switches, cover and the 4 letters the player dialled in. Methods return false when the real machine would refuse. */
 export class DeskMachine {
   power = false;
   cover = false;
   private letters: number[] = [0, 0, 0, 0];
+  /** Plug pairs the player wired (G3); the day key is on the Orders and is NOT applied for them. */
+  private pairs: string[] = [];
 
   constructor(s: MachineState = MACHINE_DEFAULT) { this.load(s); }
 
@@ -64,8 +67,26 @@ export class DeskMachine {
     this.power = s.power && !s.cover; // a stored state with the cover open and the power on cannot exist
     this.cover = s.cover;
     this.letters = isPositions(s.pos) ? [...s.pos].map((c) => c.charCodeAt(0) - 65) : [0, 0, 0, 0];
+    this.pairs = s.plugs !== undefined && validPlugboard(s.plugs) ? [...s.plugs] : [];
   }
-  state(): MachineState { return { power: this.power, cover: this.cover, pos: this.positions }; }
+  state(): MachineState { return { power: this.power, cover: this.cover, pos: this.positions, plugs: [...this.pairs] }; }
+  get plugboard(): readonly string[] { return this.pairs; }
+  /** Partner of `ch` on the board, or null. */
+  partnerOf(ch: string): string | null { const p = this.pairs.find((q) => q.includes(ch)); return p === undefined ? null : (p[0] === ch ? p[1] : p[0]) as string; }
+  /** Wire two letters (cover open only; both free, distinct, at most 10 pairs). */
+  plug(a: string, b: string): boolean {
+    if (!this.cover || !/^[A-Z]$/.test(a) || !/^[A-Z]$/.test(b) || a === b || this.partnerOf(a) !== null || this.partnerOf(b) !== null || this.pairs.length >= 10) return false;
+    this.pairs.push(a < b ? a + b : b + a);
+    return true;
+  }
+  /** Pull the plug on `ch` (and its partner). */
+  unplug(ch: string): boolean {
+    if (!this.cover) return false;
+    const n = this.pairs.length;
+    this.pairs = this.pairs.filter((q) => !q.includes(ch));
+    return this.pairs.length !== n;
+  }
+  clearPlugs(): boolean { if (!this.cover || this.pairs.length === 0) return false; this.pairs = []; return true; }
   get positions(): string { return this.letters.map((n) => String.fromCharCode(65 + n)).join(""); }
 
   /** The keyboard works only with the power on and the cover shut. */

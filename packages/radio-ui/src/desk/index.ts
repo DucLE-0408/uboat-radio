@@ -5,7 +5,7 @@ import { h, setAttr, setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { formatClock, formatDtg, type RxView } from "../store";
 import { cosmeticRng } from "../audio/morse";
-import { dayEnigma, schedule } from "@uboat/sim-core";
+import { BALANCE, dayEnigma, decipherSenderId, schedule } from "@uboat/sim-core";
 import { assetErrors, preloadSprites } from "../scene/assets";
 import { mountBoat } from "../scene/boat";
 import { makeDecor } from "../scene/decor";
@@ -20,11 +20,11 @@ import { mountToast } from "../scene/toast";
 import { derive } from "@uboat/sim-core";
 import { getLang } from "../i18n";
 import { CREW, crewName, crewRole, pickScene, triggersBetween, YOU, type Observed, type Scene, type Trigger } from "./dialogue";
-import { MANUAL, ordersPages, pickNews, type DocPage } from "./docs";
+import { MANUAL, ordersPages, pickNews, SIGNATURES, type DocPage, type PaperDocs } from "./docs";
 import { EchoPress, type EchoDecision } from "./echo";
 import { DESK_KEY, PaperModel, parseExtra, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
 import { DeskMachine, replayCopy, type MachineView } from "./machine";
-import { awardSteps, copyMarks, MISSION_STEPS, RATION_EMPTY, scoreCopy, type RationState } from "./ration";
+import { awardSteps, copyMarks, MISSION_STEPS, penalize, RATION_EMPTY, scoreCopy, type RationState } from "./ration";
 import { canTrash, checkHandOver } from "./rules";
 import { Printer, tokenEnds } from "./printer";
 import { flipButton, groupGrid, mountSheet, type SheetHost, type SheetView } from "./sheets";
@@ -202,7 +202,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   // ---------------------------------------------------------------- G2: machine logic (R4.3–R4.7) and rations (R10)
   const DAY = 1; // the sim's day number (Watch decipher uses the same constant; desk-machine.test.ts pins the equality)
   const activeCopy = (): { key: string; copy: string } => { const s = store.state; return { key: `${s.activeRx}:${s.activeAttempt}`, copy: s.activeRx === null ? "" : store.copyText(s.activeRx, s.activeAttempt) }; };
-  const machineView = (): MachineView => replayCopy(ctx.seed, DAY, dm.positions, activeCopy().copy);
+  const machineView = (): MachineView => replayCopy(ctx.seed, DAY, dm.positions, activeCopy().copy, false, dm.plugboard);
   const shownWindows = (): string => (dm.keysLive ? machineView().window : dm.positions);
   const machine = mountMachine(ctx, machWrap, { windows: shownWindows });
   machWrap.append(push); // keep the push-in button above the machine sprite
@@ -218,7 +218,36 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     setClass(cov, "on", dm.cover); cov.setAttribute("aria-pressed", String(dm.cover)); cov.setAttribute("aria-label", t(dm.cover ? "desk.mach.coverOpen" : "desk.mach.coverShut")); cov.title = cov.getAttribute("aria-label") ?? "";
     machine.refresh();
   };
-  const machineChanged = (): void => { scheduleSave(); renderMachine(); };
+  // G3: plugboard panel (cover open): click two free letters to wire them, click a wired letter to pull its plug.
+  const plug = h("section", { class: "sc dplug", attrs: { "aria-label": t("desk.plug.title") } }); place(plug, 396, 188, 236, 104); plug.hidden = true;
+  const plugInfo = h("div", { class: "dplugi typ" }), plugClear = h("button", { class: "dkey dplugc", attrs: { type: "button" }, text: t("desk.plug.clear") });
+  const plugKeys = new Map<string, HTMLButtonElement>();
+  let plugPending: string | null = null;
+  const plugGrid = h("div", { class: "dplugg" });
+  for (let i = 0; i < 26; i++) {
+    const ch = String.fromCharCode(65 + i), b = h("button", { class: "dplugk typ", attrs: { type: "button" }, text: ch });
+    b.addEventListener("click", () => {
+      if (dm.partnerOf(ch) !== null) { dm.unplug(ch); plugPending = null; }
+      else if (plugPending === null) plugPending = ch;
+      else if (plugPending === ch) plugPending = null;
+      else { if (!dm.plug(plugPending, ch)) store.notify(t("desk.plug.full")); plugPending = null; }
+      machineChanged();
+    });
+    plugKeys.set(ch, b); plugGrid.append(b);
+  }
+  plugClear.addEventListener("click", () => { dm.clearPlugs(); plugPending = null; machineChanged(); });
+  plug.append(h("div", { class: "dplugt" , text: t("desk.plug.title") }), plugGrid, plugInfo, plugClear);
+  scene.append(plug);
+  const renderPlug = (): void => {
+    plug.hidden = !dm.cover;
+    for (const [ch, b] of plugKeys) {
+      const partner = dm.partnerOf(ch);
+      setClass(b, "paired", partner !== null); setClass(b, "pend", plugPending === ch);
+      b.setAttribute("aria-label", partner !== null ? t("desk.plug.key", { a: ch, b: partner }) : ch); b.title = b.getAttribute("aria-label") ?? "";
+    }
+    setText(plugInfo, t("desk.plug.pairs", { n: dm.plugboard.length, list: dm.plugboard.map((p) => `${p[0]}-${p[1]}`).join(" ") || "—" }));
+  };
+  const machineChanged = (): void => { scheduleSave(); renderMachine(); renderPlug(); const now = performance.now(); for (const v of views.values()) v.refresh(now); };
   pwr.addEventListener("click", () => { if (!dm.setPower(!dm.power)) store.notify(t("desk.mach.interlock")); machineChanged(); });
   cov.addEventListener("click", () => { if (dm.cover) dm.closeCover(); else if (!dm.openCover()) store.notify(t("desk.mach.coverNeedsOff")); machineChanged(); });
   wins.forEach((w, k) => {
@@ -239,6 +268,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   if (ctx.hooks) {
     ctx.hooks.typingGate = () => dm.keysLive;
     ctx.hooks.decodeSetting = () => dm.positions;
+    ctx.hooks.decodePlugs = () => dm.plugboard; // G3: the plugboard is wired by the player; the day key on the Orders says how
     ctx.hooks.denied = () => { const now = performance.now(); if (now - deniedAt < 1500) return; deniedAt = now; store.notify(t(dm.cover ? "desk.mach.keysCover" : "desk.mach.keysOff")); };
   }
 
@@ -384,6 +414,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const phStamps = [label("faint center", t("desk.paper.stamp"), 8, 89, 44, 7), label("faint center", t("desk.paper.stamp"), 60, 89, 44, 7)];
     view.back.append(label("ink", t("desk.paper.back"), 4, 4, 88, 7), phEcho, ...phStamps, label("ink", t("desk.paper.sign"), 10, 131, 60, 7),
       flipButton(host, p, view, 94, 2));
+    const sealV = label("ink typ small", "", 38, 13, 66, 8), sigV = label("ink typ", "", 38, 21, 66, 9), sndV = label("ink typ small", "", 38, 31, 66, 8);
+    view.back.append(label("ink fld", t("desk.paper.seal"), 6, 13, 30, 7), label("ink fld", t("desk.paper.sig"), 6, 22, 30, 7), label("ink fld", t("desk.paper.sender"), 6, 31, 30, 7), sealV, sigV, sndV);
     let last = -1;
     const mk = marks(p, view, [12, 25], [[10, 80], [62, 80]], [12, 117], { echo: phEcho, stamps: phStamps });
     return {
@@ -392,6 +424,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         const rx = store.state.rx.get(rxId), a = rx?.attempts.find((x) => x.attempt === attempt);
         if (!rx || !a) return;
         mk();
+        // G3: the printed seal, the signature strokes and the sender id (enciphered: read through the player's own machine setting and plugboard)
+        setText(sealV, a.paper === undefined ? "" : t(a.paper.authMark === "stamped" ? "desk.paper.sealYes" : "desk.paper.sealNone"));
+        setText(sigV, a.paper === undefined ? "" : SIGNATURES[a.paper.signatureVariant] ?? "?");
+        setText(sndV, a.paper === undefined ? "" : dm.keysLive ? decipherSenderId(ctx.seed, DAY, dm.positions, a.paper.senderIdCipher, dm.plugboard) : t("desk.paper.senderOff"));
         const copy = watch.copy(a.tokens); // what the line printed: letters, ? where noise ate a symbol
         const k = printer.visible(p.id, copy, now);
         if (k === last) return;
@@ -451,26 +487,20 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     };
   };
 
-  // ---- optional 2-minute timer per message (R10.3, G2: indicator only; running late is not penalised before G3)
-  const TIMER_MS = 120_000, timers = new Map<number, number>(), warned = new Set<number>();
-  let lastTick = performance.now(), lastShown = "";
-  const timerTick = (now: number): void => {
-    const dt = Math.min(now - lastTick, 1000); lastTick = now; // a stalled tab must not burn the clock
+  // ---- optional per-message deadline (G3): measured in SIM time from the message's first arrival, so replays agree with the sim.
+  // The sim cites 'timeout' itself (command `timer`); this is only the indicator.
+  const DEADLINE = BALANCE.paper.deadlineSec;
+  actions.setTimer(ctx.flags.timer === true);
+  let lastShown = "";
+  const timerTick = (_now: number): void => {
     const on = ctx.flags.timer === true;
     if (timerBox.hidden === on) timerBox.hidden = !on;
     if (!on) return;
-    const s = store.state, run = !s.paused && s.ended === null;
-    for (const id of s.order) {
-      if (!timers.has(id)) timers.set(id, 0);
-      if (run && (timers.get(id) as number) < TIMER_MS && !stepDone(id).handed) {
-        const ms = Math.min(TIMER_MS, (timers.get(id) as number) + dt); timers.set(id, ms);
-        if (ms >= TIMER_MS && !warned.has(id)) { warned.add(id); store.notify(t("desk.timer.up", { rx: id })); }
-      }
-    }
-    const id = missionMsg(), left = id === null ? TIMER_MS : Math.max(0, TIMER_MS - (timers.get(id) ?? 0));
-    const txt = `${Math.floor(Math.ceil(left / 1000) / 60)}:${String(Math.ceil(left / 1000) % 60).padStart(2, "0")}`;
+    const id = missionMsg(), first = id === null ? undefined : store.state.rx.get(id)?.attempts[0];
+    const left = first === undefined ? DEADLINE : Math.max(0, Math.ceil(first.tSec + DEADLINE - store.state.tSec));
+    const txt = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     if (txt !== lastShown) { lastShown = txt; setText(timerV, txt); }
-    setClass(timerBox, "late", id !== null && left === 0);
+    setClass(timerBox, "late", id !== null && first !== undefined && left === 0 && !stepDone(id).handed);
   };
 
   add(model.ensure("mission"), mission);
@@ -551,7 +581,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       clipFirst = null;
       if (r === "ok") host.announce(t("desk.tool.clipped")); else refuse(r);
     } else {
-      const r = tool === "pen" ? model.sign(p.id) : model.stamp(p.id, tool);
+      const before = p.stamps.length, r = tool === "pen" ? model.sign(p.id) : model.stamp(p.id, tool);
+      if (r === "ok" && tool !== "pen" && (p.kind === "input" || p.kind === "output") && p.rxId !== null) actions.paperwork(p.rxId, { act: "stamp", sheet: p.kind, color: tool, stampsBefore: before });
       if (r === "ok") host.announce(t("desk.tool.done", { name: t(`desk.tool.${tool}`) })); else refuse(r);
     }
     host.changed(); syncPapers();
@@ -559,17 +590,59 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   };
   const putBack = (p: Paper, from: { x: number; y: number } | null): void => { if (from) { model.moveWith(p.id, from.x, from.y); host.changed(); } };
   const trash = (p: Paper, from: { x: number; y: number } | null): void => {
-    if (!canTrash(p.kind)) { store.notify(t("desk.bin.refuse")); putBack(p, from); }
+    if (!canTrash(p.kind)) { store.notify(t("desk.bin.refuse")); actions.paperwork(p.rxId, { act: "bin", sheet: p.kind }); putBack(p, from); } // G3: records may not be binned: the sim cites it
   };
   const handOver = (p: Paper, from: { x: number; y: number } | null): void => {
     const bundle = model.group(p.id);
     const res = checkHandOver(bundle, (id) => store.state.rx.get(id)?.resolved != null);
     if (!res.ok) { store.notify(t(`desk.give.${res.reason}`)); putBack(p, from); return; }
     model.handOver(bundle.map((q) => q.id));
+    {
+      const ins = bundle.filter((q) => q.kind === "input"), outs = bundle.filter((q) => q.kind === "output");
+      actions.paperwork(res.rxId, { act: "handover", echo: true, signed: ins.every((q) => q.signed), inputStamps: ins.reduce((n, q) => n + q.stamps.length, 0), outputs: outs.length,
+        outputRed: outs.filter((q) => q.stamps.includes("red")).length, outputOther: outs.filter((q) => q.stamps.some((c) => c !== "red")).length, messages: 1 });
+      showRecords(res.rxId, outs.length > 0);
+    }
     if (selected !== null && bundle.some((q) => q.id === selected)) selected = null;
     say("handover");
     store.notify(res.problems.length === 0 ? t("desk.give.ok", { rx: res.rxId }) : t("desk.give.okWith", { rx: res.rxId, list: res.problems.map((k) => t(`desk.rule.${k}`)).join("; ") }));
     host.changed(); syncPapers();
+  };
+
+  // ---------------------------------------------------------------- G3: records after a hand-over, citations
+  // The day's standing order (Daily Orders) says whether to archive or burn the handed-over sheets; the sim judges what is chosen.
+  const rec = h("section", { class: "sc drec", attrs: { "aria-label": t("desk.rec.title") } }); place(rec, 8, 104, 132, 132); rec.hidden = true;
+  const recTitle = h("div", { class: "dlbl strip" }), recBody = h("div", { class: "drecb" });
+  rec.append(recTitle, recBody);
+  scene.append(rec);
+  const showRecords = (rxId: number, hasOutput: boolean): void => {
+    setText(recTitle, t("desk.rec.title", { rx: rxId }));
+    recBody.replaceChildren();
+    const left = new Set<string>();
+    const done = (key: string): void => { left.delete(key); for (const b of recBody.querySelectorAll<HTMLButtonElement>(`[data-k="${key}"]`)) b.disabled = true; if (left.size === 0) rec.hidden = true; };
+    const mkBtn = (sheet: "input" | "output", how: "archive" | "burn"): HTMLButtonElement => {
+      const b = h("button", { class: "dkey drecbtn", attrs: { type: "button", "data-k": sheet }, text: t(`desk.rec.${how}${sheet === "input" ? "Input" : "Output"}`) });
+      b.addEventListener("click", () => { actions.dispose(rxId, sheet, how); done(sheet); });
+      return b;
+    };
+    for (const sheet of hasOutput ? (["input", "output"] as const) : (["input"] as const)) { left.add(sheet); recBody.append(mkBtn(sheet, "archive"), mkBtn(sheet, "burn")); }
+    const skip = h("button", { class: "dkey drecskip", attrs: { type: "button" }, text: t("desk.rec.skip") });
+    skip.addEventListener("click", () => { rec.hidden = true; });
+    recBody.append(skip);
+    rec.hidden = false;
+  };
+  let seenCitations = store.state.citations, seenLost = store.state.lostItems.size;
+  const onCitation = (): void => {
+    const s = store.state;
+    if (s.citations > seenCitations) {
+      const n = s.citations - seenCitations; seenCitations = s.citations;
+      addRation(penalize(ration, n)); // R8: citations cost rations; the count itself belongs to the sim
+      const c = s.lastCitation;
+      store.notify(t("desk.cite.n", { n: s.citations, reason: c === null ? "" : t(`desk.cite.${c.reason}` as never) }));
+      if (s.lostItems.size > seenLost) { seenLost = s.lostItems.size; store.notify(t("desk.cite.lost")); }
+      if (s.lastConsequence !== null && s.lastConsequence !== "warning") store.notify(t(`desk.cons.${s.lastConsequence}` as never));
+      const now = performance.now(); for (const v of views.values()) v.refresh(now);
+    }
   };
 
   // ---------------------------------------------------------------- Echo press (exactly one resolve per message)
@@ -593,17 +666,27 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
 
   // ---------------------------------------------------------------- Daily Orders and Manual (R5.1, R5.3)
   const newsIdx = pickNews(((r) => () => r.next())(derive(ctx.cosmeticSeed, "desk-news")));
+  const paperDocs = (): PaperDocs => {
+    const o = watch.paperOrders(), items = watch.orderItems();
+    let safe = 0, supply = 0;
+    return {
+      signatures: Object.entries(o.signatures).map(([callsign, variant]) => ({ callsign, variant })),
+      approved: o.approvedSenders,
+      order: watch.standingOrder(),
+      items: items.map((i) => ({ kind: i.kind, n: i.kind === "safeCoords" ? ++safe : ++supply, xKm: i.xKm, yKm: i.yKm, lost: store.state.lostItems.has(i.id) })),
+    };
+  };
   const docPages = (kind: "orders" | "manual"): { head: string; pages: readonly DocPage[] } => {
     if (kind === "manual") return MANUAL[getLang()];
     const w = watch.worldCtx();
-    return ordersPages(getLang(), w.callsigns.map((cs) => ({ callsign: cs, wpm: w.knownFists[cs] ? Math.round((w.knownFists[cs] as { wpm: number }).wpm) : null })), newsIdx, dayEnigma(ctx.seed, DAY));
+    return ordersPages(getLang(), w.callsigns.map((cs) => ({ callsign: cs, wpm: w.knownFists[cs] ? Math.round((w.knownFists[cs] as { wpm: number }).wpm) : null })), newsIdx, dayEnigma(ctx.seed, DAY), paperDocs());
   };
   const doc = (p: Paper): Live => {
     const kind = p.kind as "orders" | "manual";
     const view = mountSheet(host, p, null, t(`desk.doc.${kind}`), `ddoc d-${kind}`);
     paint(view.el, "paper-doc", kind === "manual" ? 1 : 0);
-    const { head, pages } = docPages(kind);
-    let page = 0;
+    const { head, pages: pages0 } = docPages(kind);
+    let pages = pages0, page = 0, lostSeen = store.state.lostItems.size;
     const mx = kind === "manual" ? 18 : 8; // the Manual page has a ruled margin and spiral holes
     const title = label("ink", "", mx, 22, 120 - mx, 8), body = h("div", { class: "dbody typ" }); place(body, mx, 32, 120 - mx, 100);
     const num = label("ink typ center", "", 44, 136, 40, 9);
@@ -616,7 +699,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     close.addEventListener("click", () => toggleDoc(kind));
     view.front.append(label("strip", head, 4, 6, 104, 9), title, body, num, prev, next, close);
     show();
-    return { view, refresh: () => { view.el.hidden = p.place !== "desk"; setClass(view.el, "sel", selected === p.id); } };
+    return { view, refresh: () => {
+      view.el.hidden = p.place !== "desk"; setClass(view.el, "sel", selected === p.id);
+      if (kind === "orders" && store.state.lostItems.size !== lostSeen) { lostSeen = store.state.lostItems.size; pages = docPages(kind).pages; show(); } // a citation struck an item off the Orders
+    } };
   };
   for (const kind of ["orders", "manual"] as const) {
     const restored = model.hasPending(kind);
@@ -728,6 +814,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     setClass(scene, "silent", s.boat.silence);
   };
   scope.on(["copy"], onCopy);
+  scope.on(["ui", "log"], onCitation);
   scope.on(["rx", "copy", "analysis", "clock", "boat", "tx", "ui"], () => { syncPapers(); stations(performance.now()); });
   scope.on(["rx", "challenge", "ended", "alert", "ui", "clock"], watchTalk);
   syncPapers(); stations(performance.now()); renderRation(0);
@@ -747,7 +834,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       window.removeEventListener("keydown", onTalkKey, true); window.removeEventListener("keyup", onTalkUp, true);
       if (leaveTimer) clearTimeout(leaveTimer); if (spaceTimer) clearTimeout(spaceTimer);
       machine.dispose();
-      if (ctx.hooks) { ctx.hooks.typingGate = null; ctx.hooks.decodeSetting = null; ctx.hooks.denied = null; }
+      if (ctx.hooks) { ctx.hooks.typingGate = null; ctx.hooks.decodeSetting = null; ctx.hooks.decodePlugs = null; ctx.hooks.denied = null; }
       if (rationFlash.timer !== null) clearTimeout(rationFlash.timer);
       onHide();
       ctx.morse.stop(); scope.dispose();
