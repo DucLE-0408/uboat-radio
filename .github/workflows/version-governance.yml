@@ -1,0 +1,67 @@
+name: Version governance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-version:
+    runs-on: windows-latest
+    steps:
+      - name: Check out exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - name: Validate exact version metadata
+        shell: pwsh
+        run: ./scripts/version.ps1 validate
+      - name: Run version regression checks
+        shell: pwsh
+        run: |
+          ./tests/version-tests.ps1
+          ./tests/workflow-tests.ps1
+          ./tests/initialize-tests.ps1
+      - name: Install locked FastAPI example dependencies
+        shell: pwsh
+        run: python -m pip install --require-hashes -r examples/fastapi/requirements.lock
+      - name: Run Python governance and runtime tests
+        shell: pwsh
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build versioned example image
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          docker build --file examples/fastapi/Dockerfile \
+            --build-arg VERSION="$version" \
+            --build-arg VCS_REF="$GITHUB_SHA" \
+            --tag "repo-template-example:$version" .
+      - name: Verify labels and runtime access control
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          image="repo-template-example:$version"
+          token="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}')" = "$version"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          container_id="$(docker run -d -p 18080:8080 -e INTERNAL_VERSION_TOKEN="$token" "$image")"
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --connect-timeout 2 --max-time 3 --fail --silent http://127.0.0.1:18080/health >/dev/null; then break; fi
+            if [ "$attempt" -eq 20 ]; then docker logs "$container_id"; exit 1; fi
+            sleep 1
+          done
+          test "$(curl --connect-timeout 2 --max-time 3 --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/version)" = "404"
+          test "$(curl --connect-timeout 2 --max-time 3 --fail --silent -H "X-Internal-Version-Token: $token" http://127.0.0.1:18080/version)" = "{\"version\":\"$version\"}"

@@ -1,0 +1,52 @@
+{
+  "morse": {
+    "pBase": 0.002,
+    "pSnr": 0.25,
+    "snrScale": 6,
+    "pJam": 0.4,
+    "pMax": 0.5,
+    "errorRatios": { "flip": 0.35, "drop": 0.25, "crash": 0.2, "spuriousGap": 0.2 },
+    "gapVanishFactor": 0.5,
+    "wpmRange": { "min": 12, "max": 28 }
+  },
+  "fist": {
+    "dahRatio": { "min": 2.6, "max": 3.4 },
+    "gapStretch": { "min": 0.9, "max": 1.4 },
+    "jitter": { "min": 0.02, "max": 0.12 },
+    "measureNoise": 0.02,
+    "mismatchThreshold": 0.25,
+    "forgedMinDistance": 0.45
+  },
+  "world": {
+    "cols": 26,
+    "rows": 26,
+    "cellKm": 90,
+    "landCols": [23, 24, 25],
+    "maxMessageAgeMin": 180
+  },
+  "df": {
+    "measureNoiseDeg": 5,
+    "toleranceDeg": 15,
+    "forgedMinErrorDeg": 40,
+    "minRangeKm": 60
+  },
+  "intel": {
+    "thresholds": [15, 40, 80, 140],
+    "perTxSecond": 0.1,
+    "repeatedPattern": 8,
+    "reusedIndicator": 12,
+    "lostCodebook": 45,
+    "decayPerMin": 0.02,
+    "level3KnownFraction": { "min": 0.2, "max": 0.9 }
+  },
+  "detection": {
+    "windowSec": 600,
+    "refTxSec": 120,
+    "hazardPerSecAtRef": 0.01,
+    "intelHazardStep": 0.25,
+    "cooldownSec": 300,
+    "reactionSec": { "min": 60, "max": 240 },
+    "escortDistanceKm": { "min": 20, "max": 80 },
+    "escortSpeedKmh": 45
+  }
+}

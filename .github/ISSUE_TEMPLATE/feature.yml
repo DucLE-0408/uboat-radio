@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a measurable user or operational outcome.
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope and out of scope
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Security, data, compatibility, and operational risks
+    validations:
+      required: true

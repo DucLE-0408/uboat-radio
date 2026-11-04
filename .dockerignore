@@ -1,0 +1,7 @@
+**
+!VERSION
+!examples/
+!examples/fastapi/
+!examples/fastapi/Dockerfile
+!examples/fastapi/main.py
+!examples/fastapi/requirements.lock

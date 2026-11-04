@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repository plan frontmatter",
+  "type": "object",
+  "required": ["schema_version", "id", "task", "status", "owner", "base_commit"],
+  "properties": {
+    "schema_version": { "type": "integer", "enum": [1] },
+    "id": { "type": "string", "pattern": "^plan-[a-z0-9-]+$" },
+    "task": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["draft", "approved", "completed", "superseded"] },
+    "owner": { "type": "string", "minLength": 1 },
+    "base_commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "documentation_targets": [
+    { "path": "README.md", "label": "Current repository version" },
+    { "path": "docs/release/VERSIONING.md", "label": "Canonical repository version" },
+    { "path": "docs/release/RELEASE-RUNBOOK.md", "label": "Target version" }
+  ],
+  "derived_wiring": [
+    {
+      "path": "examples/fastapi/main.py",
+      "required_patterns": ["VERSION_FILE", "FastAPI\\(title=.*version=VERSION\\)", "secrets\\.compare_digest"]
+    },
+    {
+      "path": "examples/fastapi/Dockerfile",
+      "required_patterns": ["org\\.opencontainers\\.image\\.version", "org\\.opencontainers\\.image\\.revision", "--require-hashes", "cat /app/VERSION"]
+    }
+  ]
+}

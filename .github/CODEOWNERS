@@ -1,0 +1,9 @@
+# Replace comments with real owners in each derived repository.
+# Do not add placeholder usernames: invalid owners create a false review guarantee.
+# Recommended minimum coverage:
+# *                         @organization/platform-owners
+# /.github/                 @organization/security-owners
+# /AGENTS.md                @organization/platform-owners @organization/security-owners
+# /docs/security/           @organization/security-owners
+# /docs/release/            @organization/release-owners
+# /memory/schemas/          @organization/platform-owners

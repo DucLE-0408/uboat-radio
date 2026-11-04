@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible defect without secrets or production data.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal sanitized reproduction
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence and environment
+      description: Never include credentials, customer data, or raw production logs.
+    validations:
+      required: true

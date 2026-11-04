@@ -1,0 +1,11 @@
+[project]
+name = "repository-template-fastapi-example"
+dynamic = ["version"]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn==0.52.1",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,11 @@
+{
+  "version": "derived-from-root-VERSION",
+  "commit": "full-commit-sha",
+  "artifact": "registry/repository:version",
+  "digest": "sha256:replace-after-build",
+  "sbom": "artifact-or-url",
+  "provenance": "artifact-or-url",
+  "upgrade_runbook": "docs/release/RELEASE-RUNBOOK.md",
+  "rollback_version": "previous-immutable-version",
+  "rollback_digest": "sha256:previous-known-good"
+}

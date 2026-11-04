@@ -1,0 +1,45 @@
+# Local and generated state
+.env
+.env.*
+!.env.example
+*.log
+memory/logs/*.log
+memory/logs/*.jsonl
+memory/logs/*.txt
+!memory/logs/README.md
+!memory/logs/incident-template.md
+
+# Secrets and certificates
+*.pem
+*.key
+*.pfx
+*.p12
+secrets/
+
+# Runtime and build outputs
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+
+# Editors and operating systems
+.idea/
+.vscode/
+!.vscode/extensions.json
+Thumbs.db
+.DS_Store
+
+# Release/security outputs are generated, reviewed, and attached to releases/CI.
+sbom*.json
+*.sarif
+*.att
+*.sig

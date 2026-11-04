@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repository handoff frontmatter",
+  "type": "object",
+  "required": ["schema_version", "id", "task", "from_agent", "to_agent", "created_at", "base_commit", "current_commit", "supersedes"],
+  "properties": {
+    "schema_version": { "type": "integer", "enum": [1] },
+    "id": { "type": "string", "pattern": "^handoff-[a-z0-9-]+$" },
+    "task": { "type": "string", "minLength": 1 },
+    "from_agent": { "type": "string", "minLength": 1 },
+    "to_agent": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "base_commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "current_commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "supersedes": { "type": ["string", "null"] }
+  }
+}
