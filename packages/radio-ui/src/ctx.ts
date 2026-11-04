@@ -27,6 +27,9 @@ export interface Actions {
   toggleLookup(): void;
   lookupCell(row: string, col: string): void;
   dismissEmergency(): void;
+  openAuthTable(): void;
+  closeDrawer(): void;
+  showView(v: "copy" | "plain"): void;
   newGame(sameSeed: boolean): void;
 }
 

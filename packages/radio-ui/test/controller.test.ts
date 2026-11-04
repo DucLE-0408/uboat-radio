@@ -50,3 +50,48 @@ describe("controller (real Watch, inert audio)", () => {
     expect(h.store.copyText(1, h.store.state.activeAttempt)).toBe("Z");
   });
 });
+
+describe("auth drawer and lookup (controller)", () => {
+  it("Alt+L opens the drawer with lookup on, Esc closes it and leaves lookup; Esc then pauses", () => {
+    const h = harness(42);
+    h.ctl.handle({ t: "toggleLookup" });
+    expect(h.store.state.drawer).toBe("auth");
+    expect(h.store.state.lookup.active).toBe(true);
+    h.ctl.handle({ t: "char", ch: "F" }); h.ctl.handle({ t: "char", ch: "G" });
+    expect(h.store.state.lookup).toMatchObject({ row: "F", col: "G" });
+    h.ctl.handle({ t: "pause" });                       // Esc while the drawer is open: close it, do NOT pause
+    expect(h.store.state.drawer).toBeNull();
+    expect(h.store.state.lookup.active).toBe(false);
+    expect(h.store.state.paused).toBe(false);
+    h.ctl.handle({ t: "pause" });                       // Esc again: now it pauses
+    expect(h.store.state.paused).toBe(true);
+  });
+
+  it("the Table button opens the drawer in lookup mode so letters do not leak into the copy", () => {
+    const h = harness(42);
+    runTo(h, 70);
+    h.ctl.openAuthTable();
+    h.ctl.handle({ t: "char", ch: "A" });
+    expect(h.store.copyText(1, 0)).toBe("");
+    expect(h.store.state.lookup.row).toBe("A");
+  });
+
+  it("decode switches the paper to PLAIN and typing switches back to COPY", () => {
+    const h = harness(42);
+    runTo(h, 70);
+    h.store.typeChar("A"); h.store.typeChar("B"); h.store.typeChar("C"); h.store.typeChar("D");
+    h.ctl.decode();
+    expect(h.store.state.view).toBe("plain");
+    expect(h.store.state.decodeSeq).toBe(1);
+    h.store.typeChar("E");
+    expect(h.store.state.view).toBe("copy");
+  });
+
+  it("pausing and the end of the watch silence audio and drop queued plays", () => {
+    const h = harness(42);
+    runTo(h, 70);
+    h.ctl.togglePause();
+    expect(h.store.state.paused).toBe(true);
+    expect(h.store.state.hydrophone).toBeNull();
+  });
+});

@@ -1,6 +1,6 @@
 import type { Tell } from "@uboat/sim-core";
 import { setClass, setText } from "../dom";
-import type { Ctx } from "../ctx";
+import type { SceneCtx } from "./scope";
 import { formatDtg } from "../store";
 import { paint, place, sliceVars, u } from "./px";
 
@@ -15,7 +15,7 @@ const LONG: Readonly<Record<Tell, string>> = {
 };
 
 /** Telegram (observed header, challenge cell, verdict, tells) and the command dock under it. */
-export function mountTelegram(ctx: Ctx, root: HTMLElement): void {
+export function mountTelegram(ctx: SceneCtx, root: HTMLElement): void {
   const { store, actions, watch } = ctx;
   const tg = mk("section", "sc tg"); tg.setAttribute("aria-label", "Telegram"); place(tg, 148, 108, 268, 104); paint(tg, "telegram");
   const dl = mk("dl", "sc"); dl.style.inset = "0"; tg.append(dl);
@@ -64,7 +64,7 @@ export function mountTelegram(ctx: Ctx, root: HTMLElement): void {
     tell.title = tells.map((t) => LONG[t]).join(" ");
     tell.setAttribute("aria-label", a ? (tells.length === 0 ? "No inconsistency found in the header." : tells.map((t) => LONG[t]).join(" ")) : "");
   };
-  store.on(["rx", "analysis", "challenge", "clock"], refresh);
+  ctx.scope.on(["rx", "analysis", "challenge", "clock"], refresh);
   refresh();
   root.append(tg, dock);
 }

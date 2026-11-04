@@ -72,3 +72,30 @@
 .fx-noise { position: absolute; inset: 0; pointer-events: none; display: none; background-size: calc(64px * var(--px)); }
 .scene.crt .fx-noise { display: block; }
 @media (prefers-reduced-motion: reduce) { .secret .sgrp.cur::after { animation: none; } .scene.crt .fx-noise { display: none; } }
+
+/* receiver HUD, inbox, alerts */
+.hud { background: rgba(12, 10, 24, .8); border: calc(1px * var(--px)) solid #3a3475; }
+.hud canvas.wave { position: absolute; image-rendering: pixelated; background: #0c0a18; }
+.hudtxt { position: absolute; display: flex; align-items: center; overflow: hidden; color: #b8c2e6; font-size: calc(10px * var(--px)); padding-left: calc(2px * var(--px)); }
+.hudtxt.prompt { color: var(--sc-amber); font-family: var(--f-label); font-size: calc(8px * var(--px)); }
+.inbox .chip { justify-content: flex-start; padding-left: calc(2px * var(--px)); }
+.alerts .alertp { background: #3a0f1c; color: #ffd0d6; border: calc(1px * var(--px)) solid #ff7b8c; display: flex; align-items: center; padding-left: calc(3px * var(--px)); }
+.sbanner.hit { animation: sc-hit .7s steps(2) 1; }
+@keyframes sc-hit { 0%, 50% { filter: brightness(1.6) saturate(1.5) hue-rotate(-30deg); } 100% { filter: none; } }
+@media (prefers-reduced-motion: reduce) { .sbanner.hit { animation: none; } }
+
+/* auth drawer */
+.drawer { background: #d2bfc6; border: calc(2px * var(--px)) solid #3a2c3f; box-shadow: 0 0 0 calc(2px * var(--px)) #0c0a18; z-index: 6; }
+.drawer[hidden] { display: none; }
+.drawer .dtitle { position: absolute; color: #3a2c3f; }
+.authtbl { position: absolute; border-collapse: collapse; table-layout: fixed; font-family: var(--f-label); font-size: calc(8px * var(--px)); color: #3a2c3f; }
+.authtbl th, .authtbl td { width: calc(16px * var(--px)); height: calc(11px * var(--px)); padding: 0; text-align: center; line-height: 1; border: calc(1px * var(--px)) solid #b49fa9; cursor: default; }
+.authtbl th { color: #5d4a63; background: #c4aeb6; }
+.authtbl td.r, .authtbl td.c { background: #e3d3d6; }
+.authtbl th.hl { color: #0c0a18; background: #e9b96a; }
+.authtbl td.cur { background: #3a2c3f; color: #ebdde0; }
+.authtbl td.chal { outline: calc(2px * var(--px)) solid #b13a56; outline-offset: calc(-2px * var(--px)); }
+.drawer .dread { position: absolute; color: #3a2c3f; font-size: calc(14px * var(--px)); white-space: nowrap; overflow: hidden; }
+
+/* the hidden attribute must win over any display rule used by scene elements */
+.scene [hidden] { display: none !important; }

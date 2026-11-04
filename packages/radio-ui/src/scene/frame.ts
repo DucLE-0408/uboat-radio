@@ -1,4 +1,4 @@
-import type { Ctx } from "../ctx";
+import type { SceneCtx } from "./scope";
 import { formatClock } from "../store";
 import { setText, setClass } from "../dom";
 import { sprite } from "./assets";
@@ -7,7 +7,7 @@ import { paint, place, sliceVars, u } from "./px";
 const mk = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string): HTMLElementTagNameMap[K] => { const e = document.createElement(tag); e.className = cls; return e; };
 
 /** Banner (submarine cutaway) + pause button + operator portrait + instrument plate. */
-export function mountFrame(ctx: Ctx, root: HTMLElement): void {
+export function mountFrame(ctx: SceneCtx, root: HTMLElement): void {
   const { store, actions } = ctx;
 
   const banner = mk("section", "sc sbanner"); banner.setAttribute("aria-label", "Submarine"); place(banner, 8, 8, 624, 92); paint(banner, "banner-sub");
@@ -34,11 +34,14 @@ export function mountFrame(ctx: Ctx, root: HTMLElement): void {
   };
   const report = mkBtn("Report", 8, () => actions.report(10)); report.setAttribute("aria-label", "Report: key the transmitter for 10 seconds (Alt+T)");
   const silence = mkBtn("Silence", 68, () => actions.toggleSilence()); silence.setAttribute("aria-label", "Toggle radio silence (Alt+S)");
+  const table = mk("button", "sbtn"); table.type = "button"; table.textContent = "Table"; table.setAttribute("aria-label", "Open the authentication table (Alt+L)"); place(table, 78, 228, 50, 16); sliceVars(table, "btn");
+  table.addEventListener("click", () => actions.openAuthTable()); portrait.append(table);
   root.append(banner, portrait, g);
 
   const refresh = (): void => {
     const s = store.state, b = s.boat;
-    setText(label, `${b.mode} · ${b.speedKn.toFixed(1)} kn · T ${formatClock(s.tSec)}`);
+    setText(label, `${b.mode} · ${b.speedKn.toFixed(1)} kn · T ${formatClock(s.tSec)}${s.paused ? " · PAUSED" : ""}`);
+    pause.setAttribute("aria-pressed", String(s.paused));
     setText(vals[0] as HTMLElement, `TX   ${formatClock(s.tx.totalSec)}`);
     setText(vals[1] as HTMLElement, `HULL ${String(Math.round(b.hull)).padStart(3, " ")}`);
     setText(vals[2] as HTMLElement, `SPD  ${b.speedKn.toFixed(1)}`);
@@ -48,6 +51,6 @@ export function mountFrame(ctx: Ctx, root: HTMLElement): void {
     setClass(silence, "on", b.silence);
     silence.setAttribute("aria-pressed", String(b.silence));
   };
-  store.on(["clock", "boat", "tx"], refresh);
+  ctx.scope.on(["clock", "boat", "tx", "ui"], refresh);
   refresh();
 }

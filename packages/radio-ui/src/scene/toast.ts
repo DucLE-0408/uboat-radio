@@ -1,8 +1,8 @@
-import type { Ctx } from "../ctx";
+import type { SceneCtx } from "./scope";
 import { setText } from "../dom";
 
 /** Player-visible notices (refused orders, storage warnings). Live region; text via textContent; fades after 9 s of wall time. */
-export function mountToast(ctx: Ctx, root: HTMLElement): { frame(): void } {
+export function mountToast(ctx: SceneCtx, root: HTMLElement): { frame(): void } {
   const el = document.createElement("div");
   el.className = "sc toast lbl";
   el.setAttribute("role", "status"); el.setAttribute("aria-live", "assertive");
@@ -10,7 +10,7 @@ export function mountToast(ctx: Ctx, root: HTMLElement): { frame(): void } {
   el.hidden = true;
   root.append(el);
   let lastSeq = 0, shownAt = 0;
-  ctx.store.on(["ui"], () => {
+  ctx.scope.on(["ui"], () => {
     const n = ctx.store.state.notice;
     if (n && n.seq !== lastSeq) { lastSeq = n.seq; shownAt = performance.now(); setText(el, n.text); el.hidden = false; }
   });

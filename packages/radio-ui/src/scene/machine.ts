@@ -1,4 +1,4 @@
-import type { Ctx } from "../ctx";
+import type { SceneCtx } from "./scope";
 import { setText } from "../dom";
 import { paint, place, setFrame, sliceVars } from "./px";
 
@@ -9,8 +9,8 @@ const ROWS = ["QWERTZUIO", "ASDFGHJK", "PYXCVBNML"] as const; // Enigma keyboard
 const codeOf = (ch: string): string => (/[0-9]/.test(ch) ? `Digit${ch}` : `Key${ch}`);
 
 /** Cipher machine: nameplate, 4 rotor windows (M4 indicator), lampboard (lit by decode in stage 4), working keyboard. */
-export function mountMachine(ctx: Ctx, root: HTMLElement): () => void {
-  const { store, input } = ctx;
+export function mountMachine(ctx: SceneCtx, root: HTMLElement): { frame(now: number): void; dispose(): void } {
+  const { store, input, reveal } = ctx;
   const m = mk("section", "sc mach"); m.setAttribute("aria-label", "Cipher machine"); place(m, 424, 108, 208, 244); paint(m, "machine");
   const plate = mk("div", "plate lbl"); plate.textContent = "Funk-M4"; place(plate, 8, 4, 192, 14); m.append(plate);
 
@@ -22,7 +22,17 @@ export function mountMachine(ctx: Ctx, root: HTMLElement): () => void {
   // lampboard (decorative here; lit sequentially by decode in stage 4)
   const lampRows: [string, number, number][] = [[ROWS[0], 14, 62], [ROWS[1], 24, 80], [ROWS[2], 14, 98]];
   const lampBoard = mk("div", "sc"); lampBoard.style.inset = "0"; lampBoard.setAttribute("role", "img"); lampBoard.setAttribute("aria-label", "Lampboard showing the deciphered letters"); m.append(lampBoard);
-  for (const [letters, x0, y] of lampRows) [...letters].forEach((ch, k) => { const l = mk("span", "slamp"); l.dataset["ch"] = ch; place(l, x0 + k * 20, y, 14, 14); paint(l, "lamp", 0); l.textContent = ch; lampBoard.append(l); });
+  const lampByChar = new Map<string, HTMLElement>();
+  for (const [letters, x0, y] of lampRows) [...letters].forEach((ch, k) => { const l = mk("span", "slamp"); l.dataset["ch"] = ch; place(l, x0 + k * 20, y, 14, 14); paint(l, "lamp", 0); l.textContent = ch; lampBoard.append(l); lampByChar.set(ch, l); });
+  let litLamp: HTMLElement | null = null;
+  /** Light the lamp of the letter being revealed (decorative; mirrors the deciphered text). */
+  const light = (ch: string | null): void => {
+    const next = ch === null ? null : lampByChar.get(ch) ?? null;
+    if (next === litLamp) return;
+    if (litLamp) { setFrame(litLamp, "lamp", 0); litLamp.classList.remove("on"); }
+    if (next) { setFrame(next, "lamp", 1); next.classList.add("on"); }
+    litLamp = next;
+  };
 
   // keyboard
   const buttons = new Map<string, HTMLButtonElement>(); // event.code -> key (for physical-key feedback)
@@ -56,8 +66,12 @@ export function mountMachine(ctx: Ctx, root: HTMLElement): () => void {
     setText(statusTxt, ok ? "Transmitter ready" : s.boat.silence ? "Radio silence" : "Antenna down");
     status.title = statusTxt.textContent ?? "";
   };
-  store.on(["rx", "boat"], refresh);
+  ctx.scope.on(["rx", "boat"], refresh);
   refresh();
   root.append(m);
-  return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
+  const plainLetters = (): string => { const a = store.activeView()?.analysis.get(store.state.activeAttempt); return a ? a.words.map((w) => w.plain).join("") : ""; };
+  return {
+    frame: (now) => { const i = reveal.lit(now); light(i >= 0 ? plainLetters()[i] ?? null : null); },
+    dispose: () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); light(null); },
+  };
 }

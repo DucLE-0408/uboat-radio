@@ -20,11 +20,11 @@ Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, ki�
 - [x] **S3.4** Tương quan `AUTH_RESULT` + test nhiều `check` cùng tick. (R5.5)
 - [x] **S3.5** `input/modes.ts` + test tách chế độ; `refusal.ts` chỉ nêu sự kiện quan sát. (R3.5, R6.3)
 
-## Stage 4 — Nối toàn bộ gameplay radio và Web Audio
-- [ ] **S4.1** Receiver (đèn tone/sóng), phát Morse, mở âm bằng cử chỉ, dọn nguồn âm khi pause/kết thúc/unmount. (R2)
-- [ ] **S4.2** Máy: cửa sổ indicator 4 chữ, lamp sáng tuần tự, decipher, đánh dấu nhóm hỏng (suy từ bản copy) + số từ `damagedGroups`. (R4)
-- [ ] **S4.3** Điện tín: header, tells, KHỚP/KHÔNG KHỚP; lưới auth nhỏ + ngăn kéo bảng đầy đủ + lookup; challenge/reply/check. (R5)
-- [ ] **S4.4** Dock lệnh: repeat/challenge/check/accept/reject/report/silence; đồng hồ giờ phát; cảnh báo `HFDF_FIX`/`ESCORT`/`DEPTH_CHARGE`. (R6)
+## Stage 4 — Nối toàn bộ gameplay radio và Web Audio (xong)
+- [x] **S4.1** Receiver (đèn tone/sóng), phát Morse, mở âm bằng cử chỉ, dọn nguồn âm khi pause/kết thúc/unmount. (R2)
+- [x] **S4.2** Máy: cửa sổ indicator 4 chữ, lamp sáng tuần tự, decipher, đánh dấu nhóm hỏng (suy từ bản copy) + số từ `damagedGroups`. (R4)
+- [x] **S4.3** Điện tín: header, tells, KHỚP/KHÔNG KHỚP; lưới auth nhỏ + ngăn kéo bảng đầy đủ + lookup; challenge/reply/check. (R5)
+- [x] **S4.4** Dock lệnh: repeat/challenge/check/accept/reject/report/silence; đồng hồ giờ phát; cảnh báo `HFDF_FIX`/`ESCORT`/`DEPTH_CHARGE`. (R6)
 
 ## Stage 5 — Tàu, chân dung, sonar, khẩn cấp, tổng kết, responsive
 - [ ] **S5.1** Cutaway phản ánh mode/tốc độ/hull/báo động; chân dung 5 trạng thái; `decorRng` riêng. (R7.1, R7.2, R1.4)
