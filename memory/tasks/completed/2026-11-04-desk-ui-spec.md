@@ -16,7 +16,7 @@ handoff: null
 
 # Task: desk-ui-spec
 
-## U## User-confirmed goal
+## User-confirmed goal
 
 - Confirmation reference: operator chat 2026-11-04: "okey bắt đầu đi" after the goal confirmation (spec only, DRAFT)
 - Outcome and acceptance criteria: three DRAFT files docs/specs/desk-ui/{requirements,design,tasks}.md for a False-Echo-style paperwork desk (?ui=desk) in the P5 art style; EARS requirements, two-sided paper model, UI action -> existing Command mapping, inferred vs verified marked, open decisions listed.

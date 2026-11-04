@@ -2,7 +2,7 @@
 .deskui { --d-ink: #2a1920; --d-ink-dim: #7d505b; --d-plate: #3b2a16; --d-strip: #f3dfe1; --d-dim: #b9beb8; }
 /* Silkscreen has no Vietnamese glyphs: in Vietnamese the label font is VT323, one step larger so it reads at the same height. */
 .deskui:lang(vi) { --f-label: "VT323", ui-monospace, Menlo, Consolas, monospace; }
-.deskui .dlbl { position: absolute; display: flex; align-items: center; font-family: var(--f-label); font-size: calc(7px * var(--px)); line-height: 1; text-transform: uppercase; white-space: nowrap; overflow: hidden; color: var(--d-dim); }
+.deskui .dlbl { position: absolute; display: flex; align-items: center; font-family: var(--f-label); font-size: calc(7px * var(--px)); line-height: 1; text-transform: uppercase; white-space: nowrap; overflow-x: clip; overflow-y: visible; color: var(--d-dim); } /* clip only sideways: Vietnamese VT323 line boxes are taller than some label boxes */
 .deskui:lang(vi) .dlbl { font-size: calc(9px * var(--px)); text-transform: none; }
 .deskui .dlbl.typ { font-family: var(--f-type); font-size: calc(10px * var(--px)); text-transform: none; }
 .deskui .dlbl.small { font-size: calc(8px * var(--px)); }

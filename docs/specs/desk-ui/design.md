@@ -111,8 +111,8 @@ Hệ quả: log lệnh của sim **giống hệt** P5 cho cùng quyết định;
 
 ## 8. Đa ngôn ngữ
 
-- `src/i18n/en.json`, `src/i18n/vi.json`; hàm `t(key, vars)` thuần, test bảng khóa đủ ở cả hai ngôn ngữ.
-- Glyph tiếng Việt: Silkscreen và VT323 bản `latin` hiện có không có dấu tiếng Việt. Cần bộ `vietnamese` của cùng font hoặc font OFL khác (xem quyết định mở số 3). Không tải font từ ngoài lúc chạy.
+- `packages/radio-ui/src/i18n/en.ts` (bộ khóa gốc) và `vi.ts` (kiểu `Record<MsgKey, string>` nên thiếu khóa là lỗi biên dịch); hàm `t(key, vars)` thuần, test bảng khóa đủ ở cả hai ngôn ngữ (`test/i18n.test.ts`).
+- Glyph tiếng Việt: bản `latin` của Silkscreen và VT323 không có dấu tiếng Việt, và Silkscreen không có subset tiếng Việt. Đã thêm `vt323-vietnamese-400-normal.woff2` (quyết định §13.3, Stage 1); Desk dùng VT323 cho nhãn khi `lang=vi`. Không tải font từ ngoài lúc chạy.
 
 ## 9. Art (TEMPORARY, sinh bằng `tools/art`)
 
@@ -136,7 +136,7 @@ Mặt bàn, khung cột trái, bảng điều khiển tàu (cần gạt, nút, �
 ## 12. Rủi ro
 - Khối lượng art và nội dung (thoại, tin tức, Manual hai ngôn ngữ) lớn; chất lượng art code-drawn có giới hạn.
 - Kéo thả cần đường thay thế bằng bàn phím đầy đủ; dễ thiếu sót.
-- Font tiếng Việt chưa có; nếu phải thêm font cần duyệt.
+- Font tiếng Việt: đã duyệt (§13.3) và đã thêm subset VT323 ở Stage 1; nhãn tiếng Việt dùng VT323 nên khác nét chữ với Silkscreen của bản tiếng Anh.
 - Bố cục dày đặc ở 640×360; có thể phải bớt chi tiết sau lần chơi thử.
 - Các luật False Echo suy từ ảnh có thể sai ở chi tiết.
 
