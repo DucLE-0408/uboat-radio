@@ -3,13 +3,13 @@
 Trạng thái: **DRAFT — CHƯA DUYỆT**. Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
 
 ## Cổng S0 — Duyệt spec (bắt buộc, chưa xong)
-- [ ] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở (design mục 8).
+- [ ] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở còn lại (design mục 8). Đã chốt 2026-11-04: bậc phạt 1–2 / 3 / 5 (câu 1 và 2).
 - **Không sửa `packages/sim-core` trước cổng này.**
 
 ## Stage 1 — Sim-core: luật, cảnh cáo, hậu quả (sau S0)
 - [ ] **T1.1** `data/paper.json` + loader có validate; test dữ liệu. (R1.5, R9.1)
 - [ ] **T1.2** Lệnh `paperwork`, bảng luật, sổ cảnh cáo idempotent, sự kiện `CITATION`/`CONSEQUENCE`. (R1.1–R1.4, R1.6)
-- [ ] **T1.3** `WATCH_END "executed"`; hậu quả "lộ vị trí" nối vào detection/Intel. (R1.3, R1.4)
+- [ ] **T1.3** Hậu quả theo bậc: `INTEL_LEVEL`+1 (1–2), `HFDF_FIX` 0.8 + escort + depth charge (3), `WATCH_END "executed"` (5). (R1.3–R1.5)
 - [ ] **T1.4** Test: tất định, replay từ seed + log bit-exact, idempotent, ngưỡng 3 và 5. (R7.1)
 - [ ] **T1.5** Save: phiên bản, nạp v2, từ chối/nạp v3 sai; P5/classic không đổi hành vi. (R7.2, R7.3)
 

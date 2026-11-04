@@ -69,10 +69,12 @@ Hạn giờ G3 dùng thời gian sim. Chỉ báo G2 (thời gian thực) bị th
 
 ## 8. Câu hỏi mở (cần người vận hành quyết trước khi làm)
 
-1. **Mức phạt**: 3 lần "lộ vị trí" nên là một `HFDF_FIX` ngay, tăng `Intel`, hay cộng dồn rủi ro định vị? Đề xuất: một lần `HFDF_FIX` + tăng Intel một bậc.
-2. **Xử tử**: kết thúc ca (`WATCH_END "executed"`) hay chỉ tổng kết thua? Đề xuất: kết thúc ca, màn tổng kết có lý do.
+1. ~~**Mức phạt**~~ **ĐÃ CHỐT 2026-11-04** (người vận hành): lần 1–2 nhắc nhở, trừ điểm, mất thông tin quan trọng, bị địch đánh dấu; lần 3 địch biết ~80% vị trí và đánh bom tàu; lần 5 bị thuyền trưởng kéo ra ngoài tàu hành quyết. Ánh xạ vào sim: lần 1–2 = `INTEL_LEVEL`+1 (hazard HF/DF tăng theo `intelHazardStep`); lần 3 = `HFDF_FIX` độ tin cậy 0.8 + `ESCORT_DISPATCHED` + `DEPTH_CHARGE` (cơ chế sẵn có, người chơi vẫn có thể lặn/đổi hướng); lần 5 = `WATCH_END "executed"`.
+2. ~~**Xử tử**~~ **ĐÃ CHỐT**: kết thúc ca kèm cảnh kết (thuyền trưởng kéo ra ngoài tàu).
+2b. **Lần 4**: giả định giữ mức "located" và tăng điểm trừ, không thêm bậc mới. Xác nhận?
 3. **Save**: v3 có nhận save v2 không (đề xuất có) hay buộc ca mới.
 4. **Chống gian lận**: chấp nhận `paperwork` do client báo ở G3 (đề xuất có, ghi rõ giới hạn), hay làm ngay giao thức chuỗi thao tác.
 5. **Hạn giờ**: giá trị mặc định (đề xuất 120 giây sim-time) và có chia theo loại tin không.
 6. **Lệnh lưu/hủy**: danh sách lệnh ban đầu (đề xuất 3: hủy Input sau giao, lưu Output, không lưu gì).
 7. **Chữ ký mẫu**: số biến thể (đề xuất 6) và cách vẽ (vector nhỏ gán `TEMPORARY`, không chép game tham chiếu).
+8. **Mất thông tin quan trọng** (lần 1–2): đề xuất thu hồi/gạch một trang Daily Orders (ví dụ danh sách đài đã biết hoặc mẫu chữ ký) trong phần còn lại của ca, chọn tất định từ seed và bảng cân bằng. Chấp nhận, hay muốn dạng khác (ví dụ mất một bức điện chưa giao)?
