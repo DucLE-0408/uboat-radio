@@ -109,7 +109,6 @@ const frame = (now: number): void => {
   store.flush();
   view.frame();
   requestAnimationFrame(frame);
-registerServiceWorker(diag, import.meta.env.PROD, () => store.notify("A new version is ready. It starts the next time you open the app.")); // offline-capable installed app (production build only)
 };
 requestAnimationFrame(frame);
-registerServiceWorker(diag, import.meta.env.PROD, () => store.notify("A new version is ready. It starts the next time you open the app.")); // offline-capable installed app (production build only)
+registerServiceWorker(diag, import.meta.env.PROD && import.meta.env.MODE !== "tauri", () => store.notify("A new version is ready. It starts the next time you open the app.")); // offline-capable installed app (production web build only; the Tauri shell has no worker)

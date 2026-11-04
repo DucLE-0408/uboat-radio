@@ -43,3 +43,7 @@ sbom*.json
 *.sarif
 *.att
 *.sig
+
+# Tauri desktop shell build output
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/
