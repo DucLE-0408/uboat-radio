@@ -16,6 +16,9 @@ describe("G3 commands in the save", () => {
     expect(parseCommand({ kind: "paperwork", rxId: 1, action: { act: "bin", sheet: "evil" } })).toBeNull();
     expect(parseCommand({ kind: "paperwork", rxId: 1, action: { act: "stamp", sheet: "output", color: "green", stampsBefore: 0 } })).toBeNull();
     expect(parseCommand({ kind: "paperwork", rxId: 1 })).toBeNull();
+    expect(parseCommand({ kind: "dispose", rxId: 2, sheet: "input", how: "burn" })).toEqual({ kind: "dispose", rxId: 2, sheet: "input", how: "burn" });
+    expect(parseCommand({ kind: "dispose", rxId: 2, sheet: "mission", how: "burn" })).toBeNull();
+    expect(parseCommand({ kind: "dispose", rxId: 2, sheet: "input", how: "eat" })).toBeNull();
   });
   it("a watch with citations saves as v2, reloads by replay with the same events, and old saves still parse", () => {
     const mem = new Map<string, string>();

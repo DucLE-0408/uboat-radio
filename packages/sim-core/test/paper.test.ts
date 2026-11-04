@@ -149,3 +149,29 @@ describe("determinism and save", () => {
     expect(orders.size).toBeGreaterThan(1);
   });
 });
+
+import { dayOrder, judgeDispose, DAY_ORDERS } from "../src/paper";
+describe("standing order and dispose", () => {
+  it("judgeDispose follows the day's order", () => {
+    expect(judgeDispose("burnInput", "input", "burn")).toEqual([]);
+    expect(judgeDispose("burnInput", "input", "archive")).toEqual(["orderBreach"]);
+    expect(judgeDispose("burnInput", "output", "archive")).toEqual([]);
+    expect(judgeDispose("archiveOutput", "output", "burn")).toEqual(["orderBreach"]);
+    expect(judgeDispose("archiveOutput", "output", "archive")).toEqual([]);
+    expect(judgeDispose("keepNothing", "input", "burn")).toEqual(["orderBreach"]);
+  });
+  it("the day order is seed-derived from the three orders", () => {
+    const seen = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((s) => dayOrder(s, 1)));
+    expect(seen.size).toBeGreaterThan(1); for (const o of seen) expect(DAY_ORDERS).toContain(o);
+  });
+  it("dispose works only after the hand-over and cites a breach once", () => {
+    let seed = 1; while (dayOrder(seed, 1) !== "keepNothing") seed++;
+    const w = new Watch(seed); w.runUntil(100);
+    expect(w.dispatch({ kind: "dispose", rxId: 1, sheet: "input", how: "burn" })).toBe(false); // not handed over yet
+    w.dispatch({ kind: "paperwork", rxId: 1, action: goodHandover });
+    expect(w.dispatch({ kind: "dispose", rxId: 1, sheet: "input", how: "burn" })).toBe(true);
+    w.dispatch({ kind: "dispose", rxId: 1, sheet: "input", how: "burn" });
+    expect(ev(w, "CITATION")).toMatchObject([{ rxId: 1, reason: "orderBreach", count: 1 }]);
+    expect(w.standingOrder()).toBe("keepNothing");
+  });
+});

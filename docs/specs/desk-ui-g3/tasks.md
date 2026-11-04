@@ -19,15 +19,20 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04** (người vận hành trả lời to�
   - Xong: file save giữ v2 (thêm kiểu lệnh là tương thích ngược); `parseCommand` validate `paperwork`/`timer`; `test/g3-save.test.ts` (lưu, nạp bằng replay, save cũ vẫn nạp, store dựng lại từ log).
 
 ## Stage 2 — Sim-core: tell giấy và hạn giờ (sau Stage 1)
-- [ ] **T2.1** Hồ sơ giấy từ `derive(seed, "paper", rxId)`; trường công khai trong `MSG_RX`. (R2.1, R2.5, R2.6)
-- [ ] **T2.2** `verifyTells` mở rộng; test bất biến D8 trên 1000 seed, dấu giả y hệt không là tell. (R2.3, R2.4)
+- [x] **T2.1** Hồ sơ giấy từ `derive(seed, "paper", rxId)`; trường công khai trong `MSG_RX`. (R2.1, R2.5, R2.6)
+  - Xong: `paperOrders`, `makeProfile`, `MSG_RX.paper` (dấu in, biến thể chữ ký, sender id đã mã hóa); sự thật nằm ở `Truth.paperTells`.
+- [x] **T2.2** `verifyTells` mở rộng; test bất biến D8 trên 1000 seed, dấu giả y hệt không là tell. (R2.3, R2.4)
+  - Xong: `verifyPaper`/`Watch.assessPaper`; `test/paper-tells.test.ts` (300 seed cho hồ sơ, 400 seed cho bất biến D8; dấu giả y hệt không bao giờ là tell).
 - [x] **T2.3** Hạn giờ theo sim-time, sự kiện/lệnh `timeout`, một lần mỗi bức điện, tắt khi không bật đồng hồ. (R4)
   - Xong: hạn 120 s sim-time từ lần `MSG_RX` đầu, chỉ khi lệnh `timer` bật, một lần mỗi bức điện, giao bức điện thì dừng; bật muộn thì tính ngay các tin quá hạn.
-- [ ] **T2.4** Lệnh `dispose` và lệnh lưu/hủy theo ngày. (R5)
+- [x] **T2.4** Lệnh `dispose` và lệnh lưu/hủy theo ngày. (R5)
+  - Xong: lệnh `dispose` (chỉ sau khi giao), ba lệnh theo ngày `burnInput`/`archiveOutput`/`keepNothing` từ seed, lỗi `orderBreach`.
 
 ## Stage 3 — Sim-core: plugboard
-- [ ] **T3.1** `decipherCopy(..., plugboard?)`, validate cặp, mặc định không đổi; test hồi quy P5. (R6.2, R6.3)
-- [ ] **T3.2** Test `senderId` mã hóa giải được bằng khóa ngày và plugboard đúng. (R2.5, R6.4)
+- [x] **T3.1** `decipherCopy(..., plugboard?)`, validate cặp, mặc định không đổi; test hồi quy P5. (R6.2, R6.3)
+  - Xong: `decipherCopy(..., plugboard?)`, `Watch.decipher(..., plugboard?)`, `validPlugboard`; plugboard không hợp lệ bị bỏ qua (dùng khóa ngày).
+- [x] **T3.2** Test `senderId` mã hóa giải được bằng khóa ngày và plugboard đúng. (R2.5, R6.4)
+  - Xong: `encipherSenderId`/`decipherSenderId`; test giải được bằng khóa ngày, sai plugboard hoặc indicator ra từ khác.
 
 ## Stage 4 — Desk UI (sau Stage 1–3)
 - [ ] **T4.1** Bảng cắm plugboard trong nắp rotor; `replayCopy` nhận plugboard; property test với plugboard bất kỳ. (R6.1, R6.2)

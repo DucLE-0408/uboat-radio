@@ -57,6 +57,8 @@ export interface Truth {
   readonly intelLevel: number | null;
   readonly tells: readonly Tell[];
   readonly surfaceFlaws: readonly ("format" | "callsign")[];
+  /** G3: tells carried by the paper (printed stamp, signature, sender id). Set by the Watch; absent in bare generator output. */
+  readonly paperTells?: readonly string[];
 }
 export interface Generated { readonly msg: Message; readonly truth: Truth }
 

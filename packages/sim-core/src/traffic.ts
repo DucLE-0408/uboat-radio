@@ -85,8 +85,9 @@ export interface Deciphered {
  * Ta đặt lại rotor ở đầu mỗi Vierergruppe (điểm đồng bộ lại) nên lỗi chỉ lan trong nhóm hỏng.
  * Nhóm >4 ký tự (khoảng trống bị nuốt) bị cắt thành các nhóm 4 và chiếm thêm chỉ số nhóm => lệch tiếp.
  */
-export function decipherCopy(seed: number | string, day: number, indicator: string, copy: string): Deciphered {
-  const base = dayEnigma(seed, day);
+export function decipherCopy(seed: number | string, day: number, indicator: string, copy: string, plugboard?: readonly string[]): Deciphered {
+  const day0 = dayEnigma(seed, day);
+  const base = plugboard === undefined ? day0 : { ...day0, plugboard }; // G3: the player wires the plugboard; omitted = the day key (P5/classic)
   const words = copy.trim().split(/\s+/).filter((w) => w.length > 0);
   let checkLetter: string | null = null;
   const last = words[words.length - 1];
