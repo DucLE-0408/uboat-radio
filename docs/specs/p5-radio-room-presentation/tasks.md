@@ -1,10 +1,10 @@
 # P5 Radio Room Presentation — Tasks
 
-Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, kiểm chứng được. `R#` là yêu cầu trong `requirements.md`. Commit **cục bộ** ở cuối mỗi stage; không push/tag/publish khi chưa được cho phép. Branch: `p5-radio-room-presentation` (xếp chồng trên PR #8).
+Trạng thái: **Đã duyệt; Stage 1-6 hoàn tất (commit cục bộ, chưa push)**. Mỗi nhiệm vụ nhỏ, kiểm chứng được. `R#` là yêu cầu trong `requirements.md`. Commit **cục bộ** ở cuối mỗi stage; không push/tag/publish khi chưa được cho phép. Branch: `p5-radio-room-presentation` (xếp chồng trên PR #8).
 
 ## Stage 1 — Spec (đang làm)
 - [x] **S1.1** Ba file spec P5, đổi đánh số (Bridge → P6, save slot → P7), ghi chú vào spec P4.
-- **Cổng duyệt:** dừng, chờ người dùng.
+- **Cổng duyệt:** đã được duyệt.
 
 ## Stage 2 — Lát cắt hình ảnh đại diện (xong, chờ duyệt; xem `evidence/stage2-slice-*.png`, mở bằng `?ui=p5`)
 - [x] **S2.1** `assets/` + `manifest.json` + font OFL + `tools/art/generate.mjs`; test manifest (kích thước, hash, license, TEMPORARY). (R10)
@@ -33,10 +33,10 @@ Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, ki�
 - [x] **S5.4** `?ui=classic` giữ P4 làm dự phòng.
 
 ## Stage 6 — Kiểm chứng, tài liệu, báo cáo
-- [ ] **S6.1** `tsc` strict cả hai gói; `vitest` sim-core (70) + radio-ui; invariants (grep `truthOf`, barrel-only, không Intel/hazard, không `innerHTML`); `git diff --stat packages/sim-core` rỗng; `python3 -I scripts/validate_repo.py`.
-- [ ] **S6.2** Chromium: chơi trọn ca trực (receive, copy, decipher, challenge, repeat, lệnh bị từ chối, khẩn cấp, pause/resume, reload, tổng kết); ảnh ở 320–480, 768–1024, 1280+; console sạch; đọc số đo `?diag=1`.
-- [ ] **S6.3** `docs/architecture.md`, ADR alias linking, nâng cấp/hoàn tác; cập nhật task record; hoàn tất task bằng `scripts/complete-task.ps1` tương đương (không có PowerShell trong cloud).
-- [ ] **S6.4** Báo cáo cuối: liên kết kiến trúc, file đổi, bất biến gameplay, nguồn gốc asset (TEMPORARY), bảo mật/quan sát, kết quả kiểm chứng chính xác, giới hạn còn lại, các bước hoàn tác.
+- [x] **S6.1** `tsc` strict cả hai gói; `vitest` sim-core (70) + radio-ui; invariants (grep `truthOf`, barrel-only, không Intel/hazard, không `innerHTML`); `git diff --stat packages/sim-core` rỗng; `python3 -I scripts/validate_repo.py`.
+- [x] **S6.2** Chromium: chơi trọn ca trực (receive, copy, decipher, challenge, repeat, lệnh bị từ chối, khẩn cấp, pause/resume, reload, tổng kết); ảnh ở 320–480, 768–1024, 1280+; console sạch; đọc số đo `?diag=1`.
+- [x] **S6.3** `docs/architecture.md`, ADR alias linking, nâng cấp/hoàn tác; cập nhật task record; hoàn tất task bằng `scripts/complete-task.ps1` tương đương (không có PowerShell trong cloud).
+- [x] **S6.4** Báo cáo cuối: liên kết kiến trúc, file đổi, bất biến gameplay, nguồn gốc asset (TEMPORARY), bảo mật/quan sát, kết quả kiểm chứng chính xác, giới hạn còn lại, các bước hoàn tác.
 
 ## Thứ tự
 S1 → (duyệt) → S2 → (duyệt) → S3 → S4 → S5 → S6.

@@ -1,6 +1,6 @@
 # P5 Radio Room Presentation — Design
 
-Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Đi kèm `requirements.md`.
+Trạng thái: **Đã duyệt và triển khai (Stage 1-6)**. Đi kèm `requirements.md`.
 
 ## 1. Kiến trúc
 

@@ -1,6 +1,6 @@
 # P5 Radio Room Presentation — Requirements
 
-Trạng thái: **DRAFT, chờ người dùng duyệt (Stage 1)**. Chưa có code P5.
+Trạng thái: **Đã duyệt; Stage 1-6 hoàn tất (commit cục bộ, chưa push)**.
 
 Nguồn hình ảnh: ảnh tham chiếu người dùng gửi (cutaway tàu ngầm trên cùng, chân dung operator bên trái, điện tín ở giữa, máy mật mã bên phải; tông tím/navy trầm, giấy hồng-xám, máy cũ, đèn xanh tiết chế). Ảnh chỉ là **tham chiếu bố cục và phong cách**; không dùng lại sprite của nó (xem R10).
 
