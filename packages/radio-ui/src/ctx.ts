@@ -2,6 +2,8 @@
 import type { Watch } from "@uboat/sim-core";
 import type { AudioEngine } from "./audio/engine";
 import type { MorsePlayer } from "./audio/morse";
+import type { Diag } from "./diag";
+import type { Action } from "./input/keymap";
 import type { Store } from "./store";
 
 export type BoatOrder = "surface" | "periscope" | "dive";
@@ -25,6 +27,10 @@ export interface Actions {
   toggleLookup(): void;
   lookupCell(row: string, col: string): void;
   dismissEmergency(): void;
+  openAuthTable(): void;
+  openDrawer(d: "sonar" | "log"): void;
+  closeDrawer(): void;
+  showView(v: "copy" | "plain"): void;
   newGame(sameSeed: boolean): void;
 }
 
@@ -35,7 +41,12 @@ export interface Ctx {
   readonly audio: AudioEngine;
   readonly morse: MorsePlayer;
   readonly actions: Actions;
+  /** Routes resolved key actions (typing, lookup, ...) into the controller. */
+  readonly input: { handle(a: Action): void };
+  readonly diag: Diag;
   readonly seed: number;
+  /** Seed of the purely cosmetic RNG streams (audio jitter, blinks, flicker); never the simulation seed. */
+  readonly cosmeticSeed: number;
   readonly flags: { showMorse: boolean; simSpeed: number };
 }
 

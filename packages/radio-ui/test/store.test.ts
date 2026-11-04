@@ -114,3 +114,72 @@ describe("rebuildStore (restore path)", () => {
     expect(restored.state.rx.get(1)?.challenge?.result).not.toBeNull();
   });
 });
+
+describe("AUTH_RESULT correlation (events carry no rxId)", () => {
+  const ev = (t: number, extra: Partial<Record<string, unknown>> = {}): SimEvent[] => [
+    rxEv(1, 0, 10), rxEv(2, 0, 11),
+    { type: "CHALLENGE_SENT", tSec: 20, rxId: 1, row: "A", col: "B" }, { type: "CHALLENGE_SENT", tSec: 21, rxId: 2, row: "C", col: "D" },
+    { type: "CHALLENGE_REPLY", tSec: 30, rxId: 1, reply: "X" },
+    ...(extra["both"] ? [{ type: "CHALLENGE_REPLY", tSec: 31, rxId: 2, reply: "Y" } as SimEvent] : []),
+    ...((extra["results"] as SimEvent[] | undefined) ?? [{ type: "AUTH_RESULT", tSec: t, ok: true, reason: "ok" } as SimEvent]),
+  ];
+  const res = (s: Store, id: number): string | null => s.state.rx.get(id)?.challenge?.result ?? null;
+  const cmd = (tick: number, rxId: number) => ({ tick, cmd: { kind: "check", rxId } as const });
+
+  it("attributes the verdict to the accepted check even when a refused check came first in the same tick", () => {
+    const s = new Store();
+    rebuildStore(s, ev(50), [cmd(50, 2), cmd(50, 1)]);   // rx2 has no reply yet => refused by the sim
+    expect([res(s, 1), res(s, 2)]).toEqual(["ok", null]);
+  });
+
+  it("works when the accepted check came first", () => {
+    const s = new Store();
+    rebuildStore(s, ev(50), [cmd(50, 1), cmd(50, 2)]);
+    expect([res(s, 1), res(s, 2)]).toEqual(["ok", null]);
+  });
+
+  it("a duplicate check of the same message in the same tick yields one verdict", () => {
+    const s = new Store();
+    rebuildStore(s, ev(50), [cmd(50, 1), cmd(50, 1)]);
+    expect([res(s, 1), res(s, 2)]).toEqual(["ok", null]);
+  });
+
+  it("two accepted checks in one tick map one-to-one in command order", () => {
+    const s = new Store();
+    const results: SimEvent[] = [{ type: "AUTH_RESULT", tSec: 50, ok: true, reason: "ok" }, { type: "AUTH_RESULT", tSec: 50, ok: false, reason: "wrong" }];
+    rebuildStore(s, ev(50, { both: true, results }), [cmd(50, 2), cmd(50, 1)]);
+    expect([res(s, 2), res(s, 1)]).toEqual(["ok", "wrong"]);
+  });
+
+  it("ignores checks from other ticks", () => {
+    const s = new Store();
+    rebuildStore(s, ev(50), [cmd(49, 1)]);
+    expect([res(s, 1), res(s, 2)]).toEqual([null, null]);
+  });
+});
+
+describe("silent rebuild", () => {
+  const alert = (t: number): SimEvent => ({ type: "BRIDGE_ALERT", tSec: t, reason: "asdic" });
+
+  it("a historical alert does not re-trigger the emergency layout", () => {
+    const s = new Store();
+    rebuildStore(s, [rxEv(1), alert(100)], [], 200);
+    expect(s.state.emergency.reason).toBeNull();
+    expect(s.state.replaying).toBe(false);
+    expect(s.state.notice).toBeNull();
+  });
+
+  it("an alert whose window is still open at the restored tick stays in force", () => {
+    const s = new Store();
+    rebuildStore(s, [rxEv(1), alert(100)], [], 110);
+    expect(s.state.emergency.reason).toBe("asdic");
+  });
+
+  it("restored log lines exist but no pending check or notice is carried over", () => {
+    const s = new Store();
+    s.noteCheck(1); s.notify("old");
+    rebuildStore(s, [rxEv(1)], [], 5);
+    expect(s.state.pendingCheck).toBeNull();
+    expect(s.state.log.length).toBeGreaterThan(0);
+  });
+});

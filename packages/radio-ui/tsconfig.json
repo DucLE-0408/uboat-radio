@@ -11,8 +11,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": { "@uboat/sim-core": ["../sim-core/src/index.ts"] }
   },
-  "include": ["src", "test", "vite.config.ts"]
+  "include": ["src", "test", "tools", "vite.config.ts"]
 }

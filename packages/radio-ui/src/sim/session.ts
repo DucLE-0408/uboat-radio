@@ -1,4 +1,4 @@
-// Session = Watch + save file. Vietnamese: save/load CHỈ là seed + commandLog (+ tick hiện tại); khôi phục bằng replay().
+// Session = Watch + save file. Vietnamese: save/load CHỈ là seed + commandLog + untilTick; khôi phục bằng replay(). Bản chép dở lưu RIÊNG (transcripts.ts).
 import { replay, Watch, type Command, type LoggedCommand } from "@uboat/sim-core";
 
 export interface StorageLike {
@@ -8,14 +8,17 @@ export interface StorageLike {
 }
 
 export interface SaveFile {
-  readonly v: 1;
+  readonly v: 2;
   readonly seed: number;
-  readonly tick: number;
+  readonly untilTick: number;
   readonly commands: readonly LoggedCommand[];
 }
 
-export const SAVE_KEY = "uboat-radio.save.v1";
+export const SAVE_KEY = "uboat-radio.save.v2";
+export const LEGACY_SAVE_KEY = "uboat-radio.save.v1"; // P4 format {v:1, seed, tick, commands}, read once and migrated
 const MAX_COMMANDS = 5000; // a 30-minute watch cannot legitimately exceed this; bounds untrusted input
+const MAX_TICK = 20_000;   // bounds replay work: replay() steps the sim untilTick times (watch is 1800 ticks)
+const MAX_BYTES = 2_000_000;
 
 const isInt = (x: unknown): x is number => typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 1_000_000;
 const isNum = (x: unknown, lo: number, hi: number): x is number => typeof x === "number" && Number.isFinite(x) && x >= lo && x <= hi;
@@ -40,13 +43,16 @@ export function parseCommand(x: unknown): Command | null {
   }
 }
 
+/** Parses v2, or migrates a legacy v1 save (P4: `tick` is renamed `untilTick`). Returns null for anything invalid. */
 export function parseSave(raw: string | null): SaveFile | null {
-  if (raw === null || raw.length > 2_000_000) return null;
+  if (raw === null || raw.length > MAX_BYTES) return null;
   let j: unknown;
   try { j = JSON.parse(raw); } catch { return null; }
   if (typeof j !== "object" || j === null) return null;
   const o = j as Record<string, unknown>;
-  if (o["v"] !== 1 || !isInt(o["seed"]) || !isInt(o["tick"]) || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
+  const ver = o["v"];
+  const until = ver === 2 ? o["untilTick"] : ver === 1 ? o["tick"] : undefined;
+  if ((ver !== 1 && ver !== 2) || !isInt(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
   const commands: LoggedCommand[] = [];
   let prev = 0;
   for (const e of o["commands"] as unknown[]) {
@@ -57,8 +63,8 @@ export function parseSave(raw: string | null): SaveFile | null {
     prev = r["tick"];
     commands.push({ tick: r["tick"], cmd });
   }
-  if (prev > o["tick"]) return null;
-  return { v: 1, seed: o["seed"], tick: o["tick"], commands };
+  if (prev > until) return null;
+  return { v: 2, seed: o["seed"], untilTick: until, commands };
 }
 
 export class Session {
@@ -79,11 +85,14 @@ export class Session {
 
   /** Returns a restored session when a valid save exists (and matches `wantedSeed` if given), else null. */
   static restore(storage: StorageLike | null, wantedSeed: number | null, onStorageError: (e: unknown) => void = () => {}): Session | null {
-    let raw: string | null = null;
-    try { raw = storage?.getItem(SAVE_KEY) ?? null; } catch (e) { onStorageError(e); return null; }
-    const save = parseSave(raw);
+    let save: SaveFile | null = null;
+    try {
+      save = parseSave(storage?.getItem(SAVE_KEY) ?? null) ?? parseSave(storage?.getItem(LEGACY_SAVE_KEY) ?? null);
+    } catch (e) { onStorageError(e); return null; }
     if (save === null || (wantedSeed !== null && save.seed !== wantedSeed)) return null;
-    return new Session(save.seed, replay(save.seed, save.commands, save.tick), storage, onStorageError);
+    const s = new Session(save.seed, replay(save.seed, save.commands, save.untilTick), storage, onStorageError);
+    s.save(); // persists in v2 form (migrates a legacy save) and drops the v1 key
+    return s;
   }
 
   /** Apply a player command (logged by the Watch itself) and persist. */
@@ -99,19 +108,20 @@ export class Session {
   }
 
   toSave(): SaveFile {
-    return { v: 1, seed: this.seed, tick: this.watch.tickCount, commands: this.watch.commandLog() };
+    return { v: 2, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() };
   }
 
   save(): void {
     if (this.storage === null) return;
     try {
       this.storage.setItem(SAVE_KEY, JSON.stringify(this.toSave()));
+      this.storage.removeItem(LEGACY_SAVE_KEY);
     } catch (e) {
       if (!this.storageFailed) { this.storageFailed = true; this.onStorageError(e); } // report once (design s9)
     }
   }
 
   static clear(storage: StorageLike | null): void {
-    try { storage?.removeItem(SAVE_KEY); } catch { /* nothing to clear */ }
+    try { storage?.removeItem(SAVE_KEY); storage?.removeItem(LEGACY_SAVE_KEY); } catch { /* nothing to clear */ }
   }
 }

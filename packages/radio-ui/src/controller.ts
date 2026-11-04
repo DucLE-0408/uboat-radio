@@ -8,6 +8,7 @@ import type { Action } from "./input/keymap";
 import { explainRefusal, needsRx } from "./refusal";
 import type { FixedStepLoop } from "./sim/loop";
 import { Session } from "./sim/session";
+import { clearCopies } from "./sim/transcripts";
 import type { Analysis, Store, WordView } from "./store";
 
 export interface ControllerEnv {
@@ -67,8 +68,12 @@ export class Controller implements Actions {
     }
   }
 
+  /** Stop every scheduled sound (Morse + hydrophone). Safe to call repeatedly. */
+  silenceAudio(): void { this.morse.stop(); this.hydro.stop(); this.store.state.hydrophone = null; }
+
   private onEvent(e: SimEvent): void {
     this.store.apply(e);
+    if (e.type === "WATCH_END") { this.queue.length = 0; this.silenceAudio(); }
     if (e.type === "MSG_RX") {
       this.queue.push({ rxId: e.rxId, attempt: e.attempt });
       while (this.queue.length > QUEUE_MAX) this.queue.shift();
@@ -170,9 +175,22 @@ export class Controller implements Actions {
   }
 
   toggleLookup(): void {
-    const lk = this.store.state.lookup;
-    this.store.setLookup({ active: !lk.active, row: null, col: null });
+    const wasActive = this.store.state.lookup.active; // lookup is mutated in place, so read it BEFORE setLookup
+    this.store.setLookup({ active: !wasActive, row: null, col: null });
+    if (!wasActive) this.store.openDrawer("auth"); else this.store.closeDrawer(); // the table lives in a drawer in the P5 scene
   }
+
+  /** Esc: close the drawer first (leaving lookup), otherwise pause/resume. */
+  private escape(): void {
+    const s = this.store.state;
+    if (s.drawer !== null) { this.store.closeDrawer(); if (s.lookup.active) this.store.setLookup({ active: false, row: null, col: null }); return; }
+    this.togglePause();
+  }
+
+  openAuthTable(): void { this.store.setLookup({ active: true, row: null, col: null }); this.store.openDrawer("auth"); }
+  openDrawer(d: "sonar" | "log"): void { this.store.openDrawer(d); }
+  closeDrawer(): void { this.store.closeDrawer(); if (this.store.state.lookup.active) this.store.setLookup({ active: false, row: null, col: null }); }
+  showView(v: "copy" | "plain"): void { this.store.setView(v); }
   lookupCell(row: string, col: string): void { this.store.setLookup({ row, col }); }
 
   private lookupLetter(ch: string): void {
@@ -205,6 +223,7 @@ export class Controller implements Actions {
   }
 
   private applyPause(p: boolean): void {
+    if (p) this.silenceAudio(); // paused watch => no scheduled tones or hydrophone left running (R2.5)
     if (p) this.loop.pause(); else this.loop.resume();
     this.store.state.paused = p;
     this.store.mark("ui");
@@ -218,6 +237,7 @@ export class Controller implements Actions {
 
   newGame(sameSeed: boolean): void {
     Session.clear(this.env.storage);
+    clearCopies(this.env.storage);
     this.env.navigate(sameSeed ? `?seed=${this.session.seed}` : "");
   }
 
@@ -240,7 +260,7 @@ export class Controller implements Actions {
       case "prevRx": this.store.cycleRx(-1); break;
       case "nextAttempt": this.store.cycleAttempt(1); break;
       case "prevAttempt": this.store.cycleAttempt(-1); break;
-      case "pause": this.togglePause(); break;
+      case "pause": this.escape(); break;
       case "toggleLookup": this.toggleLookup(); break;
       case "toggleHydrophone": this.toggleHydrophone(); break;
       case "dismissEmergency": this.dismissEmergency(); break;

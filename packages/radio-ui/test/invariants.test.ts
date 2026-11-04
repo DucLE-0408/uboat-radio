@@ -26,6 +26,10 @@ describe("architecture invariants", () => {
     }
   });
 
+  it("never reads or shows a contact range (sonar shows bearing, blade rate and class only)", () => {
+    for (const [f, src] of Object.entries(sources)) expect(src, f).not.toMatch(/rangeM|\.range\b/);
+  });
+
   it("uses no innerHTML / eval (no injection path)", () => {
     for (const [f, src] of Object.entries(sources)) expect(src, f).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|\beval\(|new Function/);
   });

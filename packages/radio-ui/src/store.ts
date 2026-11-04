@@ -2,7 +2,7 @@
 // Vietnamese: không trường nào ở đây đến từ ground truth của sim; hazard/Intel không bao giờ được lưu hay hiển thị.
 import type { Fist, LoggedCommand, SimEvent, Tell } from "@uboat/sim-core";
 
-export type Topic = "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
+export type Topic = "drawer" | "view" | "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
 
 export interface AttemptView { readonly attempt: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly tSec: number }
 export interface WordView { readonly copy: string; readonly plain: string; readonly ok: boolean }
@@ -47,7 +47,13 @@ export interface UiState {
   activeRx: number | null;
   activeAttempt: number;
   sonar: Map<number, SonarView>;
-  tx: { totalSec: number; keyedUntilSec: number; locatedAtSec: number | null; escortAtSec: number | null };
+  tx: { totalSec: number; keyedUntilSec: number; locatedAtSec: number | null; escortAtSec: number | null; depthChargeAtSec: number | null };
+  /** Which text the SECRET paper shows: the player's own copy or the deciphered plain text. */
+  view: "copy" | "plain";
+  drawer: Drawer | null;
+  /** Increments on every decode (drives the lamp reveal animation) and on every live alert (drives the flash). Never advanced by a silent rebuild. */
+  decodeSeq: number;
+  alertSeq: number;
   boat: BoatView;
   emergency: { untilSec: number; reason: "asdic" | "depth_charge" | null };
   log: LogLine[];
@@ -55,10 +61,14 @@ export interface UiState {
   ended: "time" | "sunk" | null;
   notice: { text: string; seq: number } | null;
   pendingCheck: number | null;
+  /** True while a restored event log is being re-applied (silent: no alarms survive unless still in force). */
+  replaying: boolean;
   lookup: { row: string | null; col: string | null; active: boolean };
   hydrophone: number | null; // contactId being listened to
   paused: boolean;
 }
+
+export type Drawer = "auth" | "sonar" | "log";
 
 export const EMERGENCY_SEC = 25; // UI-only duration of the "all hands" layout after a BRIDGE_ALERT
 export const COPY_MAX = 400;
@@ -67,9 +77,9 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null },
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0,
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
-    emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null,
+    emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
   };
 }
@@ -129,17 +139,21 @@ export class Store {
         break;
       case "HFDF_FIX":
         st.tx.locatedAtSec = e.tSec;
+        if (!st.replaying) st.alertSeq++;
         this.log(e.tSec, "alert", "!! HF/DF FIX — the enemy has a bearing on us");
         this.mark("tx", "alert");
         break;
       case "ESCORT_DISPATCHED":
         st.tx.escortAtSec = e.tSec;
+        if (!st.replaying) st.alertSeq++;
         this.log(e.tSec, "alert", "!! Escort dispatched toward our position");
         this.mark("tx", "alert");
         break;
       case "DEPTH_CHARGE":
+        st.tx.depthChargeAtSec = e.tSec;
+        if (!st.replaying) st.alertSeq++;
         this.log(e.tSec, "alert", "!! DEPTH CHARGES");
-        this.mark("alert");
+        this.mark("alert", "tx");
         break;
       case "ASDIC_PING":
         this.log(e.tSec, "alert", "!! ASDIC lock — we are being pinged"); // deliberately no range/bearing
@@ -262,6 +276,7 @@ export class Store {
     if (cur.length >= COPY_MAX) return;
     if (ch === " " && (cur.length === 0 || cur.endsWith(" "))) return;
     rx.copy.set(this.state.activeAttempt, cur + ch);
+    this.showCopy();
     this.mark("copy");
   }
 
@@ -271,13 +286,52 @@ export class Store {
     const cur = rx.copy.get(this.state.activeAttempt) ?? "";
     if (cur.length === 0) return;
     rx.copy.set(this.state.activeAttempt, cur.slice(0, -1));
+    this.showCopy();
+    this.mark("copy");
+  }
+
+  /**
+   * End of a silent rebuild. Historical alerts must not re-trigger: the emergency layout survives only if its window
+   * is still open at the restored tick, and no pending notice is carried over. Audio is never involved: the controller
+   * subscribes to the bus only after the replay, so no historical MSG_RX is queued for playback.
+   */
+  finishReplay(tSec: number): void {
+    const st = this.state;
+    st.replaying = false;
+    st.tSec = tSec;
+    if (st.emergency.reason !== null && tSec >= st.emergency.untilSec) st.emergency = { untilSec: 0, reason: null };
+    st.notice = null;
+    st.pendingCheck = null;
+    this.mark("ui", "alert", "clock");
+  }
+
+  /** Non-empty copies as plain entries (for separate persistence). */
+  exportCopies(): { rxId: number; attempt: number; text: string }[] {
+    const out: { rxId: number; attempt: number; text: string }[] = [];
+    for (const rx of this.state.rx.values()) for (const [attempt, text] of rx.copy) if (text.length > 0) out.push({ rxId: rx.rxId, attempt, text });
+    return out;
+  }
+
+  /** Restore unfinished copies for messages that exist; unknown messages/attempts are ignored. */
+  importCopies(entries: readonly { rxId: number; attempt: number; text: string }[]): void {
+    for (const e of entries) {
+      const rx = this.state.rx.get(e.rxId);
+      if (!rx || !rx.attempts.some((a) => a.attempt === e.attempt) || rx.resolved) continue;
+      rx.copy.set(e.attempt, e.text);
+    }
     this.mark("copy");
   }
 
   setAnalysis(rxId: number, attempt: number, a: Analysis): void {
     this.state.rx.get(rxId)?.analysis.set(attempt, a);
+    if (rxId === this.state.activeRx && attempt === this.state.activeAttempt) { this.state.view = "plain"; this.state.decodeSeq++; this.mark("view"); }
     this.mark("analysis");
   }
+
+  showCopy(): void { if (this.state.view !== "copy") { this.state.view = "copy"; this.mark("view"); } }
+  setView(v: "copy" | "plain"): void { if (this.state.view !== v) { this.state.view = v; this.mark("view", "copy"); } }
+  openDrawer(d: Drawer): void { if (this.state.drawer !== d) { this.state.drawer = d; this.mark("drawer"); } }
+  closeDrawer(): void { if (this.state.drawer !== null) { this.state.drawer = null; this.mark("drawer"); } }
 
   selectRx(rxId: number): void {
     const rx = this.state.rx.get(rxId);
@@ -285,7 +339,8 @@ export class Store {
     this.state.activeRx = rxId;
     this.state.activeAttempt = (rx.attempts[rx.attempts.length - 1] as AttemptView).attempt;
     rx.unread = false;
-    this.mark("rx", "copy", "analysis", "challenge");
+    this.state.view = "copy";
+    this.mark("rx", "copy", "analysis", "challenge", "view");
   }
 
   cycleRx(dir: 1 | -1): void {
@@ -301,7 +356,8 @@ export class Store {
     const nums = rx.attempts.map((a) => a.attempt);
     const i = Math.max(0, nums.indexOf(this.state.activeAttempt));
     this.state.activeAttempt = nums[(i + dir + nums.length) % nums.length] as number;
-    this.mark("copy", "analysis", "rx");
+    this.state.view = "copy";
+    this.mark("copy", "analysis", "rx", "view");
   }
 
   notify(text: string): void {
@@ -320,8 +376,9 @@ export class Store {
  * command that caused it (events carry no rxId). A check is accepted by the sim exactly when the challenge has
  * a reply and no verdict yet, which the store mirrors, so the match is deterministic.
  */
-export function rebuildStore(store: Store, events: readonly SimEvent[], commands: readonly LoggedCommand[]): void {
+export function rebuildStore(store: Store, events: readonly SimEvent[], commands: readonly LoggedCommand[], restoredAtSec?: number): void {
   const used = new Set<number>();
+  store.state.replaying = true;
   for (const ev of events) {
     if (ev.type === "AUTH_RESULT") {
       const idx = commands.findIndex((c, i) => {
@@ -337,4 +394,5 @@ export function rebuildStore(store: Store, events: readonly SimEvent[], commands
     }
     store.apply(ev);
   }
+  store.finishReplay(restoredAtSec ?? store.state.tSec);
 }

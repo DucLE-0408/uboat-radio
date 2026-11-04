@@ -2,6 +2,8 @@
 export class AudioEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
+  /** Diagnostics hook: receives short error codes only (never messages). */
+  onError: (code: string) => void = () => {};
 
   /** False when the browser has no Web Audio at all (UI falls back to visual Morse, design s9). */
   get supported(): boolean { return typeof AudioContext !== "undefined"; }
@@ -14,12 +16,14 @@ export class AudioEngine {
   unlock(): void {
     if (!this.supported) return;
     if (this.context === null) {
-      this.context = new AudioContext({ latencyHint: "interactive" });
-      this.master = this.context.createGain();
-      this.master.gain.value = 0.6;
-      this.master.connect(this.context.destination);
+      try {
+        this.context = new AudioContext({ latencyHint: "interactive" });
+        this.master = this.context.createGain();
+        this.master.gain.value = 0.6;
+        this.master.connect(this.context.destination);
+      } catch { this.context = null; this.onError("AUDIO_INIT_FAILED"); return; }
     }
-    if (this.context.state !== "running") void this.context.resume().catch(() => { /* still blocked; prompt stays visible */ });
+    if (this.context.state !== "running") void this.context.resume().catch(() => { this.onError("AUDIO_RESUME_FAILED"); /* prompt stays visible */ });
   }
 
   get now(): number { return this.context?.currentTime ?? 0; }
