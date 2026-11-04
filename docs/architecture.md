@@ -91,7 +91,7 @@ Verified in Chromium against the production build: worker activates and controls
 
 `packages/desktop` is a Tauri 2 shell (Rust `tauri =2.12.5`, `tauri-build =2.7.4`, CLI `@tauri-apps/cli 2.12.4`, all exact-pinned with `Cargo.lock` and `package-lock.json`). It contains no game logic: it opens one WebView2 window on `packages/radio-ui/dist`, built with `vite build --mode tauri` (that mode omits the service worker, which the shell does not need). Trust boundary: no plugins, no IPC commands, no capabilities file, no shell/fs/http access, no remote URL; the CSP in `tauri.conf.json` allows only the app's own origin. The NSIS installer is per-user (`currentUser`, no elevation) and embeds the WebView2 bootstrapper.
 
-Build: `.github/workflows/desktop-windows.yml` (`windows-latest`) installs from lockfiles, typechecks and tests radio-ui, runs `tauri build -- --locked`, records a SHA-256 and uploads the unsigned `.exe` as a 14-day artifact. Nothing is published or released; `VERSION` is unchanged.
+Build: `.github/workflows/desktop-windows.yml` (`windows-latest`) installs from lockfiles, typechecks and tests radio-ui, runs `tauri build -- --locked` (invoked via `node node_modules/@tauri-apps/cli/tauri.js`, because `npx` swallows the `--` separator), records a SHA-256 and uploads the unsigned `.exe` as a 14-day artifact. Nothing is published or released; `VERSION` is unchanged.
 
 Web: `vercel.json` at the repository root builds radio-ui (`npm run build --prefix packages/radio-ui`), serves `packages/radio-ui/dist` and adds CSP, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, COOP, a restrictive `Permissions-Policy`, `no-cache` for `sw.js` and immutable caching for hashed `/assets/`. No environment variables or secrets.
 

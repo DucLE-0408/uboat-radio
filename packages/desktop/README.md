@@ -11,7 +11,7 @@ CI builds it: GitHub Actions → **Desktop installer (Windows)** → run → art
 ```bash
 npm ci --prefix ../radio-ui --ignore-scripts
 npm ci --ignore-scripts
-npx tauri build -- --locked      # installer: src-tauri/target/release/bundle/nsis/*.exe
+node node_modules/@tauri-apps/cli/tauri.js build -- --locked   # installer: src-tauri/target/release/bundle/nsis/*.exe
 ```
 
 Run without bundling: `npx tauri build --no-bundle`. On Linux you additionally need `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev`.

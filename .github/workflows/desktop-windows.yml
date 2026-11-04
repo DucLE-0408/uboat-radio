@@ -49,7 +49,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build the NSIS installer (Cargo.lock enforced)
         working-directory: packages/desktop
-        run: npx tauri build -- --locked
+        run: node node_modules/@tauri-apps/cli/tauri.js build -- --locked
       - name: Record installer checksum
         shell: pwsh
         run: |
