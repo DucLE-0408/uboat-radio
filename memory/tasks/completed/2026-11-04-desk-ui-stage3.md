@@ -42,6 +42,7 @@ Desk calls only existing Actions (resolve, repeat) and the store's UI selection 
 - PR #21 review (Codex): focus no longer selects a sheet; selection follows explicit actions only (click, Enter/Space, flip, tools), so Tab past the Output and Mission keeps the chosen Input for the stamper. Checked in headless Edge: TRUE ECHO, 1 resolve.
 - PR #21 review (Codex): a watch that has not started (time 0, no traffic) ignores a desk layout saved under the same seed, so a new same-seed watch starts clean; a decoded Output keeps its groups in desk.v1 (validated) and shows them after a reload once the message is decided (the store keeps neither analysis nor copy then). Edge: reload after the Echo stamp shows XDSR,YKHV and the decoded tick; a stale handed layout is ignored by a fresh watch.
 - PR #21 review (Codex): decoded Output text uses the copy editor bounds (400 characters, one long word allowed when a group space was missed); malformed text drops only the text, never the sheet with its stamps and clip.
+- PR #21 review (Codex): the Output snapshot always equals what the sheet shows (plain text after a decode, the copy once it was edited), so a stamped record reloads unchanged; Edge: decode XDSR,YKHV -> Backspace -> stamp -> reload shows TPRD,OQW.
 - Saved Output sheets are recreated on reload even without copy text (stamped/handed sheets must not vanish).
 
 ## Verification

@@ -293,6 +293,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     view.front.append(label("strip", title, 4, 5, 88, 9), label("ink fld", t("desk.paper.from"), 6, 22, 42, 7), label("ink fld", t("desk.paper.indicator"), 6, 34, 42, 7),
       fv.from, fv.ind, grid.el, status, flipButton(host, p, view, 94, 4));
     let lastAn: unknown = undefined, decodedCopy: string | null = null;
+    /** The snapshot always equals what the sheet shows, so a reload after the decision restores exactly that. */
+    const keep = (snap: Paper["decoded"]): void => { if (JSON.stringify(snap) !== JSON.stringify(p.decoded)) { p.decoded = snap; host.changed(); } };
     const phRed = label("faint center", t("desk.paper.stampRed"), 8, 50, 96, 9);
     view.back.append(label("ink", t("desk.paper.back"), 4, 4, 88, 7), phRed, label("ink", t("desk.paper.sign"), 10, 131, 60, 7),
       flipButton(host, p, view, 94, 2));
@@ -309,16 +311,16 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         if (an && text === decodedCopy) {
           grid.set(an.words.map((w) => ({ text: w.plain, bad: !w.ok })), t("desk.out.plainLabel"));
           setText(status, t("desk.out.damaged", { n: an.damagedGroups }));
-          const snap = { words: an.words.map((w) => w.plain), bad: an.words.map((w) => !w.ok), damaged: an.damagedGroups };
-          if (JSON.stringify(snap) !== JSON.stringify(p.decoded)) { p.decoded = snap; host.changed(); } // kept for a reload after the decision
-        } else if (!an && p.decoded && rx.resolved !== null) { // restored after the decision: the store has neither analysis nor copy
+          keep({ mode: "plain", words: an.words.map((w) => w.plain), bad: an.words.map((w) => !w.ok), damaged: an.damagedGroups });
+        } else if (!an && p.decoded && rx.resolved !== null && text.length === 0) { // restored after the decision: the store has neither analysis nor copy
           const d = p.decoded;
-          grid.set(d.words.map((w, k) => ({ text: w, bad: d.bad[k] === true })), t("desk.out.plainLabel"));
-          setText(status, t("desk.out.damaged", { n: d.damaged }));
+          grid.set(d.words.map((w, k) => ({ text: w, bad: d.bad[k] === true })), t(d.mode === "plain" ? "desk.out.plainLabel" : "desk.out.copyLabel"));
+          setText(status, d.mode === "plain" ? t("desk.out.damaged", { n: d.damaged }) : "");
         } else {
           const ws = groupsOf(text), typing = text.length > 0 && !text.endsWith(" "); // no decode yet, or the copy was edited after it
           grid.set(ws.map((w, i) => ({ text: w, cur: typing && i === ws.length - 1 })), t("desk.out.copyLabel"));
           setText(status, t("desk.out.hint"));
+          keep(ws.length === 0 ? null : { mode: "copy", words: ws, bad: ws.map(() => false), damaged: 0 }); // the sheet now shows the copy, so does the record
         }
         setClass(view.el, "active", store.state.activeRx === rxId && store.state.activeAttempt === attempt);
       },

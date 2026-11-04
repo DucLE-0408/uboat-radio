@@ -29,7 +29,8 @@ export interface Paper {
   decoded: Decoded | null;
 }
 
-export interface Decoded { readonly words: readonly string[]; readonly bad: readonly boolean[]; readonly damaged: number }
+/** What the Output last showed: the plain text of a decode, or the player's copy when it was edited after (or without) one. */
+export interface Decoded { readonly mode: "plain" | "copy"; readonly words: readonly string[]; readonly bad: readonly boolean[]; readonly damaged: number }
 
 /** Outcome of a stamp/sign/clip attempt; the UI turns a refusal into a short explanation. */
 export type MarkResult = "ok" | "front" | "full" | "already" | "notAllowed" | "otherMessage" | "none";
@@ -217,7 +218,9 @@ function parseDecoded(x: unknown): Decoded | null {
   if (!Array.isArray(w) || !Array.isArray(b) || w.length > COPY_CHARS || b.length !== w.length || d === null) return null;
   if (!w.every((s) => typeof s === "string" && WORD_RE.test(s)) || !b.every((v) => typeof v === "boolean")) return null;
   if ((w as string[]).reduce((n, s) => n + s.length, 0) > COPY_CHARS) return null; // a missed group space gives one long word: allowed
-  return { words: w as string[], bad: b as boolean[], damaged: d };
+  const mode = o["mode"] === undefined || o["mode"] === "plain" ? "plain" : o["mode"] === "copy" ? "copy" : null;
+  if (mode === null) return null;
+  return { mode, words: w as string[], bad: b as boolean[], damaged: d };
 }
 
 /** Validates a stored layout (untrusted). Wrong seed, bad JSON or oversize => empty; bad entries are dropped one by one. */
