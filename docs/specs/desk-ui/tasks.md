@@ -69,7 +69,7 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
 - [x] **T6.5** Kiểm chứng G2 như T5.
   - Playwright/Chromium: tắt máy gõ không ghi; nắp mở không bật được; đặt YAKM bằng gõ chữ, lăn chuột, mũi tên; bật máy, gõ, đèn/cửa sổ chạy; Ration +1/−1 xanh/đỏ; Enter ra bản rõ đúng (seed 12) và sai khi đặt sai; reload giữ máy; timer; trang Obscura (vi); console sạch. Evidence: `evidence/g2-*.png`.
 
-## G3 — Cần spec sim-core riêng (chưa làm)
+## G3 — Cần spec sim-core riêng (spec đã duyệt 2026-11-04: `docs/specs/desk-ui-g3/`)
 - Citation và hậu quả (3 lần: nguy hiểm, lộ vị trí; 5 lần: bị xử tử); lỗi đóng sai màu, vứt sai giấy, hết giờ thành lệnh có log.
 - Tell dạng giấy tờ: dấu xác thực in sẵn (không có / thật / giả y hệt), chữ ký so mẫu, người gửi được duyệt, Sender ID mã hóa; giữ bất biến "tin giả luôn có ít nhất một tell".
 - Plugboard cắm dây; lưu trữ hoặc hủy giấy theo lệnh; tin tức dùng để soát nội dung.
