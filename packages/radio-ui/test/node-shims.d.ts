@@ -6,4 +6,7 @@ declare module "node:fs" {
   export function writeFileSync(p: string, d: Uint8Array | string): void;
   export function readFileSync(p: string): Uint8Array;
   export function existsSync(p: string): boolean;
+  export function readFileSync(p: string, enc: "utf8"): string;
+  export function readdirSync(p: string, o?: { recursive?: boolean }): string[];
+  export function statSync(p: string): { isFile(): boolean };
 }
