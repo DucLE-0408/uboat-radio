@@ -47,3 +47,4 @@ sbom*.json
 # Tauri desktop shell build output
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/
+packages/site/dist/
