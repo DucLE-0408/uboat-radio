@@ -51,3 +51,27 @@
 .deskui .dkey:disabled { color: #69636f; cursor: not-allowed; }
 .deskui .dkey:focus-visible { outline: calc(1px * var(--px)) solid #c6f2d6; outline-offset: calc(1px * var(--px)); }
 .deskui .toast { z-index: 8; }
+/* ---- Stage 3: machine, stamper, drawer tools, bin, door, ink marks */
+.deskui .dmachwrap { z-index: 3; pointer-events: none; }
+.deskui .dmachwrap > * { pointer-events: auto; }
+.deskui .dtray { z-index: 4; }
+.deskui .dtool { position: absolute; margin: 0; padding: 0; cursor: pointer; background: transparent; border: calc(1px * var(--px)) solid transparent; }
+.deskui .dtool:hover { border-color: #775a47; }
+.deskui .dtool.on { border-color: #f0b85a; background: rgba(240, 184, 90, .12); }
+.deskui .dtool:focus-visible, .deskui .dsw:focus-visible, .deskui .dhandle:focus-visible, .deskui .dbin:focus-visible { outline: calc(1px * var(--px)) solid #c6f2d6; outline-offset: calc(1px * var(--px)); }
+.deskui .dsw, .deskui .dbin { position: absolute; margin: 0; padding: 0; border: 0; cursor: pointer; background-color: transparent; }
+.deskui .dhandle { position: absolute; margin: 0; padding: 0; border: 0; cursor: pointer; background: transparent; z-index: 1; }
+.deskui .dhandle:hover { background: rgba(217, 184, 120, .18); }
+.deskui .darm { color: #f3dfe1; }
+.deskui .dpull, .deskui .dgive { color: #d9b878; }
+.deskui .dpush { color: #d9b878; background: #1f2423; border: calc(1px * var(--px)) solid #4a5251; }
+.deskui[data-tool] .dlayer > .dpaper { cursor: crosshair; }
+.deskui .dpaper.sel { outline: calc(1px * var(--px)) dotted #f0b85a; outline-offset: calc(1px * var(--px)); }
+.deskui .dmark { pointer-events: none; mix-blend-mode: multiply; }
+.deskui .dmark .echo { color: #2f7a4c; font-family: var(--f-label); font-size: calc(9px * var(--px)); letter-spacing: .08em; }
+.deskui .dmark .echo.false { color: #a3303a; }
+.deskui:lang(vi) .dmark .echo { font-size: calc(11px * var(--px)); }
+.deskui .dclip { pointer-events: none; z-index: 1; }
+.deskui .dlbl.tick { color: #2f7a4c; font-family: var(--f-type); font-size: calc(9px * var(--px)); }
+.deskui .dlbl.small.done { color: #7d505b; text-decoration: line-through; }
+.deskui .dpaper.dmis.complete { outline: calc(1px * var(--px)) solid #3f8f62; }

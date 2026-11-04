@@ -30,10 +30,15 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
   - Evidence: `evidence/stage2-*.png`.
 
 ### Stage 3 — Máy, đóng dấu, giao
-- [ ] **T3.1** Máy Enigma G1: gõ phím ghi copy, lampboard, kéo ra/vào. (R4.1)
-- [ ] **T3.2** Echo Stamper: công tắc, đèn, tay đóng → đúng một `resolve`; dựng lại dấu từ `MSG_RESOLVED`; test. (R6.1–R6.3)
-- [ ] **T3.3** Dấu thường hai màu, bút ký, ghim, giao cho người ở cửa, thùng rác + luật. (R6.4–R6.6)
-- [ ] **T3.4** Mission tự tick. (R7)
+- [x] **T3.1** Máy Enigma G1: gõ phím ghi copy, lampboard, kéo ra/vào. (R4.1)
+  - Dùng lại nguyên `scene/machine.ts` của P5, dịch sang trái 208 px để trượt phủ phần phải mặt bàn; nút Kéo ra/Đẩy vào. Phím vật lý vẫn gõ copy khi máy đẩy vào. Đèn lampboard chạy theo bản rõ sau mỗi lần giải (Reveal như P5). Bấm một tờ Input/Output sẽ chọn bức điện và attempt đó để gõ/giải.
+- [x] **T3.2** Echo Stamper: công tắc, đèn, tay đóng → đúng một `resolve`; dựng lại dấu từ `MSG_RESOLVED`; test. (R6.1–R6.3)
+  - `src/desk/echo.ts`: mỗi bức điện gửi `resolve` tối đa một lần (bấm lại báo "mực không xóa được"; bị sim từ chối thì không có dấu và bấm lại được). Đèn READY sáng khi tờ đang chọn là Input chưa quyết, mặt sau lên. Dấu TRUE/FALSE ECHO vẽ từ `rx.resolved` (dựng lại từ log), không lưu trong `desk.v1`. Edge: bấm hai lần, save chỉ có 1 lệnh resolve.
+- [x] **T3.3** Dấu thường hai màu, bút ký, ghim, giao cho người ở cửa, thùng rác + luật. (R6.4–R6.6)
+  - Ngăn kéo ở mép trái mặt bàn: dấu xanh, dấu đỏ, bút, ghim (cầm dụng cụ rồi bấm tờ giấy; Esc để cất). Dấu và chữ ký chỉ ở mặt sau, hai ô dấu, mực không xóa. Ghim gộp thành xấp, kéo xấp đi cùng nhau. Giao: thả xấp vào cửa hoặc nút Giao; cần tờ Input đã có dấu Echo và một bức điện mỗi xấp; vi phạm khác chỉ được liệt kê (G1 chưa phạt, phạt ở G3). Luật G1 (`src/desk/rules.ts`): Input = Echo + chữ ký, không dấu thường; Output = một dấu đỏ. Thùng rác từ chối mọi giấy nhiệm vụ. Người ở cửa và phản ứng ở T4.1.
+- [x] **T3.4** Mission tự tick. (R7)
+  - 7 bước cho bức điện đang chọn: in xong Input, giải mã, dấu Echo, dấu đỏ Output, ký Input, ghim Input với Output, giao. Tick từ trạng thái thật, không tick tay. Bước "đặt máy" ở G2, "soát" (challenge/check) ở T4.2.
+  - Evidence: `evidence/stage3-*.png`.
 
 ### Stage 4 — Người, thoại, tàu, tài liệu
 - [ ] **T4.1** Chân dung người ra vào + Transcript + bảng thoại `en`/`vi` theo sự kiện. (R8)

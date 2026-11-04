@@ -81,4 +81,6 @@ export class Printer {
     return k;
   }
   busy(): boolean { return this.jobs.size > 0; }
+  /** True once `id` has nothing left to print (or never had a job). */
+  done(id: string): boolean { return !this.jobs.has(id); }
 }
