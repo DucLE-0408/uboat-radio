@@ -20,7 +20,7 @@ export function mountBoat(ctx: SceneCtx, root: HTMLElement, decor: Decor): { fra
   const hull = layer("hullimg", "banner-boat", 0, 0, BOAT_W, BOAT_H);
   const cracks = layer("cracks", "boat-cracks", 0, 0, BOAT_W, BOAT_H);
   const alarm = layer("alarm", "boat-alarm", 0, 0, BOAT_W, BOAT_H);
-  const prop = layer("prop", "prop", 462, 52, 16, 16);
+  const prop = layer("prop", "prop", 478, 42, 16, 16); // hub at the stern shaft of the boat sprite
   bob.append(hull, cracks, alarm, prop); boat.append(bob);
   const water = layer("water", "banner-water", 0, 0, 624, 92);
   const frame = layer("bframe", "banner-frame", 0, 0, 624, 92);

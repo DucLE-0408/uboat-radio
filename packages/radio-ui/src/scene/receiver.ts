@@ -69,8 +69,8 @@ export function mountReceiver(ctx: SceneCtx, root: HTMLElement): { frame(now: nu
       else if (audio.needsGesture) t = coarse ? "TAP ANYWHERE FOR SOUND" : "PRESS ANY KEY FOR SOUND";
       if (t !== lastTxt) { lastTxt = t; setText(txt, t); setClass(txt, "prompt", !flags.showMorse); }
       if (!g) return;
-      g.fillStyle = "#0c0a18"; g.fillRect(0, 0, 80, 14);
-      g.fillStyle = on ? "#6fe39a" : "#535c82";
+      g.fillStyle = "#101312"; g.fillRect(0, 0, 80, 14);
+      g.fillStyle = on ? "#7fd3a0" : "#4a5251";
       for (let i = 0; i < 80; i++) { const v = ring[(head + i) % 80] as number; if (v) g.fillRect(i, 3, 1, 8); else g.fillRect(i, 7, 1, 1); }
     },
   };

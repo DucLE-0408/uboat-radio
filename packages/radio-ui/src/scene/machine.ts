@@ -12,12 +12,13 @@ const codeOf = (ch: string): string => (/[0-9]/.test(ch) ? `Digit${ch}` : `Key${
 export function mountMachine(ctx: SceneCtx, root: HTMLElement): { frame(now: number): void; dispose(): void } {
   const { store, input, reveal } = ctx;
   const m = mk("section", "sc mach"); m.setAttribute("aria-label", "Cipher machine"); place(m, 424, 108, 208, 244); paint(m, "machine");
-  const plate = mk("div", "plate lbl"); plate.textContent = "Funk-M4"; place(plate, 8, 4, 192, 14); m.append(plate);
+  const plate = mk("div", "plate lbl"); plate.textContent = "Funk-M4"; place(plate, 142, 5, 58, 11); m.append(plate); // on the green enamel label
 
   const winsBox = mk("div", "wins"); m.append(winsBox); // display: contents on desktop, a flex row in the touch layouts
-  const wins = [45, 77, 109, 141].map((x) => { const w = mk("div", "win"); place(w, x, 22, 22, 28); w.textContent = "·"; winsBox.append(w); return w; });
+  // the cream window plates are drawn in the casing sprite; only the live letters sit on top
+  const wins = [30, 58, 86, 114].map((x) => { const w = mk("div", "win"); place(w, x, 26, 14, 16); w.textContent = "·"; winsBox.append(w); return w; });
   const winGroup = mk("span", "sr-only"); winsBox.append(winGroup);
-  const status = mk("span", "sc"); place(status, 180, 26, 16, 22); paint(status, "status-lamp", 1); winsBox.append(status);
+  const status = mk("span", "sc"); place(status, 174, 26, 16, 22); paint(status, "status-lamp", 1); winsBox.append(status);
   const statusTxt = mk("span", "sr-only"); winsBox.append(statusTxt);
 
   // lampboard (decorative here; lit sequentially by decode in stage 4)

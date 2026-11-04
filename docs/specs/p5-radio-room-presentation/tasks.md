@@ -38,5 +38,14 @@ Trạng thái: **Đã duyệt; Stage 1-6 hoàn tất (commit cục bộ, chưa p
 - [x] **S6.3** `docs/architecture.md`, ADR alias linking, nâng cấp/hoàn tác; cập nhật task record; hoàn tất task bằng `scripts/complete-task.ps1` tương đương (không có PowerShell trong cloud).
 - [x] **S6.4** Báo cáo cuối: liên kết kiến trúc, file đổi, bất biến gameplay, nguồn gốc asset (TEMPORARY), bảo mật/quan sát, kết quả kiểm chứng chính xác, giới hạn còn lại, các bước hoàn tác.
 
+## Stage 7: Art pass theo ảnh tham chiếu (lát cắt, chờ duyệt; xem `evidence/artpass-*.png`)
+- [x] **A7.1** Audit: noise/checkerboard do `wear()`/`dither()`/`vgrad()` phủ toàn bề mặt (`sprites.ts`, `sprites2.ts`); mắt tròn trắng do kính tô `P.s4/P.pa3`; tàu là hình chữ nhật + 7 khoang lặp `k*58`; nút tím `P.p1/P.p2`.
+- [x] **A7.2** Palette mới `tools/art/tone.ts` (bulkhead slate, giấy hồng-bụi, vỏ máy xanh-đen, thân tàu xanh ánh trăng, xanh lá chỉ làm điểm nhấn). Helper sạch trong `pix.ts`: `stamp`, `shade` (đổ bóng theo dải, không dither), `tint`, `rrect`, `outline`.
+- [x] **A7.3** Lát cắt: `portrait.ts` (tỷ lệ mặt, kính gọng mảnh, mũ garrison, tai nghe, cổ áo, 6 pose), `boat.ts` (silhouette mũi/đuôi/tháp, 7 khoang khác nhau, đèn cục bộ, alarm/cracks dạng phủ phẳng), `machine.ts` (ray đỏ, cửa sổ kem + bánh xe, mặt số đèn trạng thái, phím vòng kim loại, đèn hổ phách).
+- [x] **A7.4** Giấy, nút, gauges, nền, token CSS (bỏ tím); vị trí cửa sổ/nhãn máy và chân vịt khớp art mới.
+- [x] **A7.5** Kiểm tra: test radio-ui 108/108, sim-core 70/70, `tsc`, build; 1280/1920/1024/390/320 không cuộn ngang, tablet/mobile không nút < 44 px; trạng thái thường, nhập điện tín, báo động.
+- [x] **A7.6** (sau khi duyệt hướng) Drawer desktop có dải tiêu đề tối trên giấy; thẻ tổng kết có dải tiêu đề; banner tablet cắt lại để thấy trọn tháp chỉ huy; reduced-motion xác nhận không còn animation (`bob`, `prop`, con trỏ copy, `scene`).
+- **Còn lại:** asset vẫn `TEMPORARY`; chưa có animation mới; chi tiết portrait/tàu có thể thêm khi có họa sĩ hoặc công cụ tạo ảnh.
+
 ## Thứ tự
 S1 → (duyệt) → S2 → (duyệt) → S3 → S4 → S5 → S6.
