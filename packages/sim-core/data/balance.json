@@ -5,14 +5,31 @@
     "snrScale": 6,
     "pJam": 0.4,
     "pMax": 0.5,
-    "errorRatios": { "flip": 0.35, "drop": 0.25, "crash": 0.2, "spuriousGap": 0.2 },
+    "errorRatios": {
+      "flip": 0.35,
+      "drop": 0.25,
+      "crash": 0.2,
+      "spuriousGap": 0.2
+    },
     "gapVanishFactor": 0.5,
-    "wpmRange": { "min": 12, "max": 28 }
+    "wpmRange": {
+      "min": 12,
+      "max": 28
+    }
   },
   "fist": {
-    "dahRatio": { "min": 2.6, "max": 3.4 },
-    "gapStretch": { "min": 0.9, "max": 1.4 },
-    "jitter": { "min": 0.02, "max": 0.12 },
+    "dahRatio": {
+      "min": 2.6,
+      "max": 3.4
+    },
+    "gapStretch": {
+      "min": 0.9,
+      "max": 1.4
+    },
+    "jitter": {
+      "min": 0.02,
+      "max": 0.12
+    },
     "measureNoise": 0.02,
     "mismatchThreshold": 0.25,
     "forgedMinDistance": 0.45
@@ -21,7 +38,11 @@
     "cols": 26,
     "rows": 26,
     "cellKm": 90,
-    "landCols": [23, 24, 25],
+    "landCols": [
+      23,
+      24,
+      25
+    ],
     "maxMessageAgeMin": 180
   },
   "df": {
@@ -31,13 +52,21 @@
     "minRangeKm": 60
   },
   "intel": {
-    "thresholds": [15, 40, 80, 140],
+    "thresholds": [
+      15,
+      40,
+      80,
+      140
+    ],
     "perTxSecond": 0.1,
     "repeatedPattern": 8,
     "reusedIndicator": 12,
     "lostCodebook": 45,
     "decayPerMin": 0.02,
-    "level3KnownFraction": { "min": 0.2, "max": 0.9 }
+    "level3KnownFraction": {
+      "min": 0.2,
+      "max": 0.9
+    }
   },
   "detection": {
     "windowSec": 600,
@@ -45,8 +74,91 @@
     "hazardPerSecAtRef": 0.01,
     "intelHazardStep": 0.25,
     "cooldownSec": 300,
-    "reactionSec": { "min": 60, "max": 240 },
-    "escortDistanceKm": { "min": 20, "max": 80 },
+    "reactionSec": {
+      "min": 60,
+      "max": 240
+    },
+    "escortDistanceKm": {
+      "min": 20,
+      "max": 80
+    },
     "escortSpeedKmh": 45
+  },
+  "sonar": {
+    "alphaDbPerKm": 0.05,
+    "seaNoiseBase": 55,
+    "seaNoisePerState": 4,
+    "selfNoiseBase": 45,
+    "selfNoisePerKnot": 1.5,
+    "cavitationSpeedKn": 7,
+    "cavitationDb": 12,
+    "detectThresholdDb": 0,
+    "bearingErrorK": 30,
+    "bearingErrorMinDeg": 0.5,
+    "bearingErrorMaxDeg": 30,
+    "asdicRangeM": 2500,
+    "asdicLockPerSec": 0.08,
+    "asdicSpeedFactorKn": 10,
+    "kinds": {
+      "merchant": {
+        "shaftRps": {
+          "min": 1.0,
+          "max": 1.8
+        },
+        "blades": 4,
+        "srcLevelDb": {
+          "min": 145,
+          "max": 155
+        }
+      },
+      "escort": {
+        "shaftRps": {
+          "min": 3.0,
+          "max": 4.5
+        },
+        "blades": 3,
+        "srcLevelDb": {
+          "min": 150,
+          "max": 160
+        }
+      },
+      "uboat": {
+        "shaftRps": {
+          "min": 2.0,
+          "max": 3.0
+        },
+        "blades": 2,
+        "srcLevelDb": {
+          "min": 120,
+          "max": 135
+        }
+      }
+    },
+    "classBands": {
+      "merchantMaxHz": 8,
+      "escortMinHz": 9
+    }
+  },
+  "boat": {
+    "maxSpeedSurfaceKn": 17,
+    "maxSpeedDivedKn": 7,
+    "turnRateDegPerSec": 1.5,
+    "accelKnPerSec": 0.2,
+    "periscopeDepthM": 12,
+    "diveDepthM": 60,
+    "maxDepthM": 200,
+    "descentMps": 2.0,
+    "ascentMps": 1.0,
+    "antennaExposure": {
+      "surface": 1.0,
+      "periscope": 0.6,
+      "dive": 0.0
+    },
+    "hull": 100,
+    "depthChargeDamage": 60,
+    "depthChargeLethalRadiusM": 30,
+    "depthChargeDropDepthM": 100,
+    "torpedoes": 14,
+    "radioSelfNoisePerKnotDb": 0.4
   }
 }

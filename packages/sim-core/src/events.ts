@@ -7,6 +7,11 @@ export type SimEvent =
   | { readonly type: "DEPTH_CHARGE"; readonly tSec: number }
   | { readonly type: "INTEL_LEVEL"; readonly tSec: number; readonly level: number }
   | { readonly type: "KEYBOOK_LOST"; readonly tSec: number; readonly net: string; readonly day: number }
+  | { readonly type: "ASDIC_PING"; readonly tSec: number; readonly contactId: number; readonly bearingDeg: number; readonly rangeM: number }
+  | { readonly type: "BRIDGE_ALERT"; readonly tSec: number; readonly reason: "asdic" | "depth_charge" }
+  | { readonly type: "BOAT_MODE"; readonly tSec: number; readonly mode: "surface" | "periscope" | "dive" }
+  | { readonly type: "BOAT_DAMAGED"; readonly tSec: number; readonly hull: number }
+  | { readonly type: "BOAT_SUNK"; readonly tSec: number }
   | { readonly type: "AUTH_RESULT"; readonly tSec: number; readonly ok: boolean; readonly reason: "ok" | "wrong" | "replay" };
 
 export type Handler = (e: SimEvent) => void;

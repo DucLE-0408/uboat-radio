@@ -7,3 +7,5 @@ export * from "./intel";
 export * from "./detection";
 export * from "./events";
 export { BALANCE, type Balance } from "./balance";
+export * from "./sonar";
+export * from "./boat";

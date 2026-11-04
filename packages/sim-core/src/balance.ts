@@ -31,6 +31,27 @@ export interface Balance {
     readonly intelHazardStep: number; readonly cooldownSec: number; readonly reactionSec: Range;
     readonly escortDistanceKm: Range; readonly escortSpeedKmh: number;
   };
+  readonly sonar: {
+    readonly alphaDbPerKm: number; readonly seaNoiseBase: number; readonly seaNoisePerState: number;
+    readonly selfNoiseBase: number; readonly selfNoisePerKnot: number;
+    readonly cavitationSpeedKn: number; readonly cavitationDb: number;
+    readonly detectThresholdDb: number; readonly bearingErrorK: number;
+    readonly bearingErrorMinDeg: number; readonly bearingErrorMaxDeg: number;
+    readonly asdicRangeM: number; readonly asdicLockPerSec: number; readonly asdicSpeedFactorKn: number;
+    readonly kinds: Readonly<Record<"merchant" | "escort" | "uboat", {
+      readonly shaftRps: Range; readonly blades: number; readonly srcLevelDb: Range;
+    }>>;
+    readonly classBands: { readonly merchantMaxHz: number; readonly escortMinHz: number };
+  };
+  readonly boat: {
+    readonly maxSpeedSurfaceKn: number; readonly maxSpeedDivedKn: number; readonly turnRateDegPerSec: number;
+    readonly accelKnPerSec: number; readonly periscopeDepthM: number; readonly diveDepthM: number;
+    readonly maxDepthM: number; readonly descentMps: number; readonly ascentMps: number;
+    readonly antennaExposure: { readonly surface: number; readonly periscope: number; readonly dive: number };
+    readonly hull: number; readonly depthChargeDamage: number; readonly depthChargeLethalRadiusM: number;
+    readonly depthChargeDropDepthM: number; readonly torpedoes: number;
+    readonly radioSelfNoisePerKnotDb: number;
+  };
 }
 
 // Vietnamese: data-driven balance — mọi tunable nằm trong data/balance.json, không hard-code trong logic.
