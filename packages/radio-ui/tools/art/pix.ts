@@ -89,6 +89,46 @@ export class Img {
   scratches(rng: () => number, x: number, y: number, w: number, h: number, c: RGBA, n: number): void {
     for (let k = 0; k < n; k++) { const sx = x + Math.floor(rng() * w), sy = y + Math.floor(rng() * h); this.hline(sx, sy, 2 + Math.floor(rng() * 5), c); }
   }
+  /** Hand-authored stamp: one char per pixel, looked up in `map`; '.' and ' ' stay transparent. */
+  stamp(x: number, y: number, rows: readonly string[], map: Readonly<Record<string, RGBA>>): void {
+    rows.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const c = map[row[i] as string]; if (c) this.set(x + i, y + j, c); } });
+  }
+  /** Mirror of stamp(): same rows flipped left-right (symmetric parts drawn once). */
+  stampFlip(x: number, y: number, rows: readonly string[], map: Readonly<Record<string, RGBA>>): void {
+    this.stamp(x, y, rows.map((r) => [...r].reverse().join("")), map);
+  }
+  /**
+   * Banded form shading: `light(x,y)` returns null (outside the shape) or a value in 0..1, quantised onto `ramp`
+   * (dark -> light). No dither: flat clusters, the way hand-placed pixel art reads.
+   */
+  shade(x0: number, y0: number, w: number, h: number, light: (x: number, y: number) => number | null, ramp: readonly RGBA[]): void {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      const v = light(x, y);
+      if (v === null) continue;
+      const k = Math.max(0, Math.min(ramp.length - 1, Math.floor(v * ramp.length)));
+      this.set(x, y, ramp[k] as RGBA);
+    }
+  }
+  /** Alpha-composite `c` over the existing pixel (used for tinted light and translucent overlays). */
+  tint(x: number, y: number, c: RGBA): void {
+    const o = this.get(x, y), a = c[3] / 255;
+    if (o[3] === 0) { this.set(x, y, c); return; }
+    this.set(x, y, [Math.round(o[0] + (c[0] - o[0]) * a), Math.round(o[1] + (c[1] - o[1]) * a), Math.round(o[2] + (c[2] - o[2]) * a), o[3]]);
+  }
+  /** Rounded rectangle (corner radius in px, 1-3 look right at this scale). */
+  rrect(x: number, y: number, w: number, h: number, r: number, c: RGBA): void {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const cx = i < r ? r - i : i >= w - r ? i - (w - r - 1) : 0, cy = j < r ? r - j : j >= h - r ? j - (h - r - 1) : 0;
+      if (cx * cx + cy * cy <= r * r + 0.5) this.set(x + i, y + j, c);
+    }
+  }
+  /** 1px outline in `c` around every opaque pixel, drawn only on transparent pixels. */
+  outline(c: RGBA): void {
+    const solid = (x: number, y: number): boolean => this.get(x, y)[3] > 0;
+    const pts: [number, number][] = [];
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (!solid(x, y) && (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) pts.push([x, y]);
+    for (const [x, y] of pts) this.set(x, y, c);
+  }
   pixelBytes(): Uint8Array { return this.d; }
 }
 
