@@ -2,8 +2,8 @@
 @font-face { font-family: "VT323"; src: url("./assets/vt323-latin-400-normal.woff2") format("woff2"); font-display: swap; }
 
 :root {
-  --ink: #0c0a18; --n0: #14122b; --n1: #1d1a41; --n2: #2a2658; --n3: #3a3475; --p1: #4c4390; --lav: #938acb;
-  --s1: #38405f; --s2: #535c82; --s4: #a5aecb; --paper: #ebdde0; --amber: #e9b96a; --amber-d: #9a7b45;
+  --ink: #0e0d12; --n0: #1e1c24; --n1: #27252e; --n2: #322f39; --n3: #3f3b47; --p1: #514c59; --lav: #9a93a3;
+  --s1: #3f3b47; --s2: #514c59; --s4: #c9cfdf; --paper: #e8cacc; --amber: #f0b85a; --amber-d: #8a6634;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
