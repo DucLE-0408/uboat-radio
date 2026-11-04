@@ -1,11 +1,11 @@
 ---
 schema_version: 1
 id: task-2026-11-04-desktop-tauri-vercel
-status: in-progress
+status: completed
 owner: claude
 goal_confirmed_at: 2026-11-04T04:50:00.0000000Z
 started_at: 2026-11-04T04:50:00.0000000Z
-updated_at: 2026-11-04T04:50:00.0000000Z
+updated_at: 2026-11-04T07:45:00.0000000Z
 base_commit: 2c75f4440b5693123aec910a9399d23f264a8ce0
 owned_paths:
   - packages/desktop
@@ -16,7 +16,7 @@ owned_paths:
   - packages/radio-ui/README.md
   - .github/workflows/desktop-windows.yml
   - docs/architecture.md
-  - memory/tasks/active/2026-11-04-desktop-tauri-vercel.md
+  - memory/tasks/completed/2026-11-04-desktop-tauri-vercel.md
 plan: null
 handoff: null
 ---
@@ -40,6 +40,8 @@ Player -> Tauri window (WebView2) -> radio-ui static bundle (custom protocol, no
 - radio-ui: `--mode tauri` build omits the service worker plugin and registration. Found and fixed an existing bug from PR 11: a duplicate registerServiceWorker call sat inside the frame() loop and ran every animation frame; removed.
 - Workflow desktop-windows.yml (windows-latest, lockfile installs, typecheck+tests, tauri build --locked, SHA-256, artifact 14 days). Actions pinned by SHA.
 - vercel.json at repo root (build radio-ui, output dist, security headers, no-cache sw.js). Vercel: project uboat-radio created in the user's team after the user granted the GitHub App access; deployment dpl_ARNpEYziFdox4Deph3fZ42iMbQAw (commit c3a741c, Node 22.x) READY, but with target production because the project was not git-linked at creation; Vercel Authentication stays ON. Headers on / and /sw.js were checked against the live response.
+
+- Closed after merge: PR 12 merged as c20bed7 (all 7 checks green incl. the Windows installer job and Trivy). Still not verified: launching the installed exe on real Windows/WebView2, SmartScreen behaviour, PWA install from the hosted URL. The pre-release is handled by task-2026-11-04-desktop-prerelease.
 
 ## Verification
 
