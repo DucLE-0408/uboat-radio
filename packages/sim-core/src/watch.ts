@@ -8,7 +8,10 @@ import { Boat, type BoatMode } from "./boat";
 import { HfdfDetector } from "./detection";
 import { EventBus, type SimEvent } from "./events";
 import { Intel } from "./intel";
-import { judge, lossOrder, orderItems, validAction, type OrderItem, type PaperAction, type PaperFault } from "./paper";
+import {
+  dayOrder, encipherSenderId, judge, judgeDispose, lossOrder, makeProfile, orderItems, paperOrders, validAction, validPlugboard, verifyPaper,
+  type DayOrder, type DisposeHow, type OrderItem, type PaperAction, type PaperFault, type PaperObservable, type PaperOrders, type PaperTell, type PaperTruth,
+} from "./paper";
 import {
   generateForgery, generateGenuine, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
 } from "./messages";
@@ -42,7 +45,9 @@ export type Command =
   /** G3 (desk UI): what the player did with a sheet; the sim judges it (see paper.ts) and may issue a citation. */
   | { readonly kind: "paperwork"; readonly rxId: number | null; readonly action: PaperAction }
   /** G3: the optional per-message deadline (Settings). Off unless the UI sends it, so P5/classic never get timeout citations. */
-  | { readonly kind: "timer"; readonly on: boolean };
+  | { readonly kind: "timer"; readonly on: boolean }
+  /** G3: archive or burn a sheet after the hand-over; judged against the day's standing order. */
+  | { readonly kind: "dispose"; readonly rxId: number; readonly sheet: "input" | "output"; readonly how: DisposeHow };
 
 export type EndReason = "time" | "sunk" | "executed";
 
@@ -61,6 +66,7 @@ export interface WatchSummary {
 
 interface RxState {
   readonly gen: Generated;
+  readonly paper: PaperTruth;
   readonly checkLetter: string; // what goes on the air (true letter, or a forger's guess)
   attempts: number;
   deadlineAt: number | null; // sim-time second by which the Input must be handed over (G3 timer)
@@ -99,6 +105,7 @@ export class Watch {
   private citations = 0;
   private readonly cited = new Set<string>();
   private readonly items: readonly OrderItem[];
+  private readonly orders: PaperOrders;
   private readonly lossQueue: string[];
   private readonly lost = new Set<string>();
   private ambushes = 0;
@@ -115,6 +122,7 @@ export class Watch {
     this.knownFists = makeKnownFists(seed, this.callsigns, b);
     this.asdicRng = derive(seed, "asdic");
     this.challengeRng = derive(seed, "challenge");
+    this.orders = paperOrders(seed, this.callsigns);
     this.items = orderItems(seed, b);
     this.lossQueue = lossOrder(seed, this.items);
 
@@ -155,7 +163,15 @@ export class Watch {
   }
 
   /** The operator's Enigma machine: day key + the message indicator sent in the clear. */
-  decipher(indicator: string, copy: string): Deciphered { return decipherCopy(this.seed, DAY, indicator, copy); }
+  decipher(indicator: string, copy: string, plugboard?: readonly string[]): Deciphered {
+    return decipherCopy(this.seed, DAY, indicator, copy, plugboard !== undefined && validPlugboard(plugboard) ? plugboard : undefined);
+  }
+  /** G3: specimen signatures and approved senders printed on the Daily Orders. */
+  paperOrders(): PaperOrders { return this.orders; }
+  /** G3: the day this watch plays (for the desk's own machine maths; the sim has one day). */
+  get day(): number { return DAY; }
+  /** G3: what a careful operator finds on the sheet, given the sender id they deciphered (null = not read yet). */
+  assessPaper(from: string, paper: PaperObservable, senderId: string | null): PaperTell[] { return verifyPaper(paper, senderId, from, this.orders); }
   copy(tokens: string): string { return copyFromTokens(tokens); }
   /** Check letter vs. the day's auth table. False means garble OR forgery; it never says which. */
   checkMatches(from: string, d: Deciphered): boolean { return checkLetterMatches(this.table, from, d); }
@@ -200,6 +216,7 @@ export class Watch {
       case "resolve": return this.resolve(cmd.rxId, cmd.decision);
       case "paperwork": return this.paperwork(cmd.rxId, cmd.action);
       case "timer": return this.setTimer(cmd.on);
+      case "dispose": return this.dispose(cmd.rxId, cmd.sheet, cmd.how);
     }
   }
 
@@ -293,9 +310,11 @@ export class Watch {
 
   private inject(id: number, forged: boolean): void {
     const ctx = this.worldCtx();
-    const gen = forged
+    const gen0 = forged
       ? generateForgery(this.seed, id, "ORDER", this.intel.level, ctx, this.b)
       : generateGenuine(this.seed, id, "ORDER", ctx, this.b);
+    const paper = makeProfile(this.seed, id, gen0.msg.from, forged, forged ? this.intel.level : 0, this.orders);
+    const gen: Generated = { msg: gen0.msg, truth: { ...gen0.truth, paperTells: paper.tells } };
     const real = trueCheckLetter(this.table, gen.msg.from, gen.msg.plain);
     let letter = real;
     if (forged) {
@@ -303,7 +322,7 @@ export class Watch {
       const r = derive(this.seed, "forgeauth", id);
       if (!r.chance(this.intel.forgeryPassProbability())) letter = L((idx(real) + 1 + r.int(25)) % 26);
     }
-    this.rx.set(id, { gen, checkLetter: letter, attempts: 0, deadlineAt: null, handed: false, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
+    this.rx.set(id, { gen, paper, checkLetter: letter, attempts: 0, deadlineAt: null, handed: false, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
     this.deliver(id);
   }
 
@@ -321,6 +340,7 @@ export class Watch {
     this.emit({
       type: "MSG_RX", tSec: this.tSec, rxId, attempt: rx.attempts, from: msg.from, net: msg.net, sentAtMin: msg.sentAtMin,
       indicator, tokens, snrDb: snr, txFist: msg.txFist, dfBearingDeg: msg.dfBearingDeg,
+      paper: { authMark: rx.paper.authMark, signatureVariant: rx.paper.signatureVariant, senderIdCipher: encipherSenderId(this.seed, DAY, indicator, rx.paper.senderId) },
     });
     if (rx.attempts === 0) { // the clock for this message starts when it first reaches the desk
       rx.deadlineAt = this.tSec + this.b.paper.deadlineSec;
@@ -342,6 +362,16 @@ export class Watch {
     for (const f of judge(action)) this.cite(rxId, f);
     return true;
   }
+
+  private dispose(rxId: number, sheet: "input" | "output", how: DisposeHow): boolean {
+    const rx = this.rx.get(rxId);
+    if (!rx || !rx.handed || (sheet !== "input" && sheet !== "output") || (how !== "archive" && how !== "burn")) return false; // only handed-over sheets are disposed of
+    for (const f of judgeDispose(dayOrder(this.seed, DAY), sheet, how)) this.cite(rxId, f);
+    return true;
+  }
+
+  /** G3: today's standing order on records (printed on the Daily Orders). */
+  standingOrder(): DayOrder { return dayOrder(this.seed, DAY); }
 
   private setTimer(on: boolean): boolean {
     this.timerOn = on;

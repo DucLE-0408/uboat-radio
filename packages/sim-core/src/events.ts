@@ -1,5 +1,6 @@
 // Event Bus: the only channel between sim modules and (later) presentation / network layer.
 import type { Fist } from "./morse";
+import type { PaperObservable } from "./paper";
 
 // Events are plain, serialization-friendly data so the log can be replayed or sent over a wire.
 
@@ -16,12 +17,12 @@ export type SimEvent =
   | { readonly type: "BOAT_SUNK"; readonly tSec: number }
   | { readonly type: "AUTH_RESULT"; readonly tSec: number; readonly ok: boolean; readonly reason: "ok" | "wrong" | "replay" }
   | { readonly type: "SONAR_CONTACT"; readonly tSec: number; readonly contactId: number; readonly bearingDeg: number; readonly snrDb: number; readonly bladeRateHz: number; readonly guess: "escort" | "slow" }
-  | { readonly type: "MSG_RX"; readonly tSec: number; readonly rxId: number; readonly attempt: number; readonly from: string; readonly net: string; readonly sentAtMin: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly txFist: Fist; readonly dfBearingDeg: number }
+  | { readonly type: "MSG_RX"; readonly tSec: number; readonly rxId: number; readonly attempt: number; readonly from: string; readonly net: string; readonly sentAtMin: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly txFist: Fist; readonly dfBearingDeg: number; readonly paper?: PaperObservable }
   | { readonly type: "TX"; readonly tSec: number; readonly seconds: number; readonly purpose: "report" | "repeat" | "challenge" | "ack" }
   | { readonly type: "CHALLENGE_SENT"; readonly tSec: number; readonly rxId: number; readonly row: string; readonly col: string }
   | { readonly type: "CHALLENGE_REPLY"; readonly tSec: number; readonly rxId: number; readonly reply: string }
   | { readonly type: "MSG_RESOLVED"; readonly tSec: number; readonly rxId: number; readonly decision: "accept" | "reject"; readonly forged: boolean; readonly correct: boolean }
-  | { readonly type: "CITATION"; readonly tSec: number; readonly rxId: number | null; readonly reason: "wrongStamp" | "wrongBin" | "badHandover" | "timeout"; readonly count: number; readonly lostItem: string | null }
+  | { readonly type: "CITATION"; readonly tSec: number; readonly rxId: number | null; readonly reason: "wrongStamp" | "wrongBin" | "badHandover" | "timeout" | "orderBreach"; readonly count: number; readonly lostItem: string | null }
   | { readonly type: "CONSEQUENCE"; readonly tSec: number; readonly level: "warning" | "located" | "severe" | "executed"; readonly count: number; readonly positionKnown: number | null }
   | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" };
 

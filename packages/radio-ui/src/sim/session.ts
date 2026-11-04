@@ -41,6 +41,9 @@ export function parseCommand(x: unknown): Command | null {
     case "resolve":
       return isInt(c["rxId"]) && (c["decision"] === "accept" || c["decision"] === "reject")
         ? { kind: "resolve", rxId: c["rxId"], decision: c["decision"] } : null;
+    case "dispose":
+      return isInt(c["rxId"]) && (c["sheet"] === "input" || c["sheet"] === "output") && (c["how"] === "archive" || c["how"] === "burn")
+        ? { kind: "dispose", rxId: c["rxId"], sheet: c["sheet"], how: c["how"] } : null;
     case "timer": return typeof c["on"] === "boolean" ? { kind: "timer", on: c["on"] } : null;
     case "paperwork": {
       const rx = c["rxId"] === null ? null : isInt(c["rxId"]) ? c["rxId"] : undefined;
