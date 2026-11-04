@@ -20,7 +20,7 @@ handoff: null
 
 - Confirmation reference: user: 'mở PR riêng sửa Trivy' (after the assistant offered it)
 - Outcome and acceptance criteria: Make the Supply-chain security workflow's Trivy scans run again: filesystem-and-sbom and example-image must get past the Trivy installation that fails with exit code 6
-- In scope / out of scope: In scope: replace the two aquasecurity/trivy-action steps in .github/workflows/supply-chain.yml with docker run of the official Trivy image pinned by digest, same flags (scanners vuln,secret,misconfig; HIGH,CRITICAL; ignore-unfixed; exit-code 1). Out of scope: changing what is scanned or the severity policy, the SBOM step, dependency updates, any application code.
+- In scope / out of scope: In scope (extended by the user after the first CI run): bump the example image's pinned Python base image digest in examples/fastapi/Dockerfile; replace the two aquasecurity/trivy-action steps in .github/workflows/supply-chain.yml with docker run of the official Trivy image pinned by digest, same flags (scanners vuln,secret,misconfig; HIGH,CRITICAL; ignore-unfixed; exit-code 1). Out of scope: changing what is scanned or the severity policy, the SBOM step, dependency updates, any application code.
 - Material assumptions and risks: root cause is inferred, not reproduced. The job log shows install.sh dying with exit 6 about 0.1 s after 'found version', and the script's next action is a curl download of the release tarball (curl exit 6 = could not resolve host). The same jobs' Docker Hub pulls succeed (the example image build step passed), so the fix moves Trivy to a registry the runners already reach. Trivy then downloads its vulnerability DB at run time from its own hosts; whether the runners can reach them is unverified until CI runs. anchore/sbom-action also downloads syft from GitHub releases and may hit the same problem; it was skipped in the failing runs, so unknown.
 
 ## Architecture linkage
@@ -30,6 +30,7 @@ Client/input → API/handler → service → DB/cache/queue/external dependency 
 ## Progress and decisions
 
 - Evidence: runs 41769995116 (#9), the #8 runs and the last three pushes to main all fail at the Trivy installation (`bash ./trivy/contrib/install.sh -b ... -c setup-trivy v0.70.0` exit 6). trivy-action v0.36.0 is the newest tag and pins setup-trivy v0.2.6, whose newer v0.3.1 uses the same install.sh ref, so bumping actions would not change the download.
+- Base image bump (user-approved dependency change, 'nâng digest ảnh nền trong #10 luôn'): examples/fastapi/Dockerfile `PYTHON_IMAGE` from `python:3.13-slim@sha256:9662417a...` to `python:3.13-slim@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1` (Docker Hub index digest for the 3.13-slim tag, last_updated 2026-11-02; same Python 3.13 line, same Debian 13 slim variant, publisher: Docker Official Images). Whether it clears the findings is verified only by this PR's CI scan.
 - Digest: Docker Hub `aquasec/trivy:0.70.0` index `sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e` (read from the Docker Hub tags API, last_updated 2026-04-17).
 
 ## Verification
