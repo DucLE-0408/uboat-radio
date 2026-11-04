@@ -38,6 +38,7 @@ export const en = {
   "desk.paper.indicator": "Indicator",
   "desk.paper.groups": "Groups",
   "desk.paper.none": "Waiting for traffic",
+  "desk.paper.groupsCount": "Groups received: {n}",
   "desk.paper.back": "Back",
   "desk.paper.echo": "Echo stamp",
   "desk.paper.stamp": "Stamp",

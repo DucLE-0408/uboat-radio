@@ -212,8 +212,7 @@ function paperInput(): Sprite {
   sheet(0);
   i.rect(2, 3, W - 4, 13, c(T.hb, 1)); i.hline(2, 16, W - 4, c(T.hb, 0));
   for (let y = 22; y <= 46; y += 12) i.hline(48, y + 8, W - 56, c(T.pa, 2));      // FROM / TIME / INDICATOR fields
-  i.frame(6, 60, W - 12, 80, c(T.pa, 2));                                           // group grid
-  for (let r = 0; r < 5; r++) for (let k = 0; k < 4; k++) i.frame(10 + k * 24, 64 + r * 15, 22, 13, c(T.pa, 3));
+  i.frame(6, 60, W - 12, 80, c(T.pa, 2));                                           // group area (cells are live DOM so long traffic can scroll)
   // back
   const ox = W;
   sheet(ox);

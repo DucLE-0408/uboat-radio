@@ -42,6 +42,7 @@ main.ts picks the view (classic / P5 scene / desk). Desk reads the P5 store and 
 - Spec approved and committed (dccfcce). Art-pass task record brought over closed from PR #18 (identical file) so tools/art is not double-claimed.
 - Silkscreen has no Vietnamese subset (@fontsource/silkscreen@5.3.0 ships latin and latin-ext only); added vt323-vietnamese-400-normal.woff2 from @fontsource/vt323@5.3.0 (sha256 84b335a5...). Desk switches its label font to VT323 in lang=vi; Silkscreen's Vietnamese-only code points borrow VT323 glyphs elsewhere.
 - Mission sheet rotation removed (non-integer transform blurred the pixel art).
+- PR #19 review (Codex P2): the Input sheet cut traffic after 20 groups (seed 12 has 22, losing GZVO and the check letter K). Group cells are now created per received group and the area scrolls; verified in headless Edge with seed 12 (22 cells, last GZVO, K).
 
 ## Verification
 

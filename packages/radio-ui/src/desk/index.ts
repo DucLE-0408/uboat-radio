@@ -26,6 +26,7 @@ const G = {
 } as const;
 const PAPER = { x: 262, y: 150, w: 112, h: 148 };
 const MIN_W = 1280, MIN_H = 720;
+const GRID_MIN = 20; // 4 x 5 cells fill the group area; more groups scroll
 
 const box = (cls: string, x: number, y: number, w: number, hh: number, sprite?: string): HTMLElement => {
   const e = h("div", { class: `sc ${cls}` }); place(e, x, y, w, hh); if (sprite) paint(e, sprite); return e;
@@ -105,10 +106,20 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const paper = h("section", { class: "sc dpaper", attrs: { "aria-label": t("desk.paper.input") } }); place(paper, PAPER.x, PAPER.y, PAPER.w, PAPER.h); paint(paper, "paper-input");
   const front = h("div", { class: "face" }), back = h("div", { class: "face" });
   const fv = { from: label("ink typ", "", 50, 21, 54, 9), time: label("ink typ", "", 50, 33, 54, 9), ind: label("ink typ", "", 50, 45, 54, 9) };
-  const groups = [...Array(20).keys()].map((n) => label("ink typ center grp", "", 10 + (n % 4) * 24, 64 + Math.floor(n / 4) * 15, 22, 13));
+  // Group cells are created per received group: traffic longer than the 20 visible cells scrolls instead of being cut (the check letter is the last group).
+  const grid = h("div", { class: "dgrid", attrs: { role: "list", tabindex: "0" } }); place(grid, 7, 61, 98, 78);
+  const cells: HTMLElement[] = [];
+  const setGroups = (toks: readonly string[]): void => {
+    const n = Math.max(GRID_MIN, toks.length);
+    while (cells.length < n) { const c = h("div", { class: "dcell typ", attrs: { role: "listitem" } }); cells.push(c); grid.append(c); }
+    while (cells.length > n) cells.pop()?.remove();
+    cells.forEach((c, k) => setText(c, toks[k] ?? ""));
+    grid.setAttribute("aria-label", t("desk.paper.groupsCount", { n: toks.length }));
+    setClass(grid, "over", toks.length > GRID_MIN);
+  };
   const empty = label("dim center", t("desk.paper.none"), 8, 96, 96, 9);
   front.append(label("strip", t("desk.paper.input"), 4, 5, 104, 9), label("ink fld", t("desk.paper.from"), 6, 22, 42, 7), label("ink fld", t("desk.paper.time"), 6, 34, 42, 7),
-    label("ink fld", t("desk.paper.indicator"), 6, 46, 42, 7), fv.from, fv.time, fv.ind, ...groups, empty);
+    label("ink fld", t("desk.paper.indicator"), 6, 46, 42, 7), fv.from, fv.time, fv.ind, grid, empty);
   back.append(label("ink", t("desk.paper.back"), 4, 4, 104, 7), label("faint center", t("desk.paper.echo"), 8, 40, 96, 9),
     label("faint center", t("desk.paper.stamp"), 8, 89, 44, 7), label("faint center", t("desk.paper.stamp"), 60, 89, 44, 7), label("ink", t("desk.paper.sign"), 10, 131, 60, 7));
   const flip = h("button", { class: "dflip", attrs: { type: "button", "aria-label": t("desk.paper.flip"), title: t("desk.paper.flip") }, text: "⟲" }); place(flip, PAPER.w - 18, 4, 14, 11);
@@ -132,7 +143,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     setFrame(ready, "desk-st-lamp", live ? 1 : 0);
     setText(fv.from, rx?.from ?? ""); setText(fv.time, rx ? formatDtg(rx.sentAtMin) : ""); setText(fv.ind, at?.indicator ?? "");
     const toks = at ? ctx.watch.copy(at.tokens).split(" ").filter((x) => x.length > 0) : []; // what the line printed: letters, ? where noise ate a symbol
-    groups.forEach((g, n) => setText(g, toks[n] ?? ""));
+    setGroups(toks);
     empty.hidden = rx !== null;
     wins.forEach((w, k) => setText(w, at?.indicator[k] ?? ""));
     setText(txClock, `${t("desk.ctl.tx")} ${formatClock(s.tx.totalSec)}`);

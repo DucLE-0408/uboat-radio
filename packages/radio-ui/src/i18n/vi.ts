@@ -40,6 +40,7 @@ export const vi: Readonly<Record<MsgKey, string>> = {
   "desk.paper.indicator": "Chỉ báo",
   "desk.paper.groups": "Nhóm",
   "desk.paper.none": "Đang chờ điện",
+  "desk.paper.groupsCount": "Số nhóm đã nhận: {n}",
   "desk.paper.back": "Mặt sau",
   "desk.paper.echo": "Dấu Echo",
   "desk.paper.stamp": "Dấu",

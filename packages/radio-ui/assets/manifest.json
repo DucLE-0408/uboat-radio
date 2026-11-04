@@ -613,8 +613,8 @@
       "license": "project license (original work, no third-party pixels)",
       "status": "TEMPORARY",
       "note": "desk: Input sheet, front (header, fields, group grid) and back (Echo box, two stamp boxes, signature)",
-      "sha256": "a18e70756572fd11b21904fee8b09776b2aed786301245cca790d319164c4d80",
-      "pixelSha256": "f6043904fce25d3d96126402d0131e6d31650fc410ee6ed7cca9e2c545ef5ba0"
+      "sha256": "a04cdebad1cc31ba682290bc521d4c79f57c11cda526e73e30fa993f0541b8de",
+      "pixelSha256": "85c403ae60622b0c16b4e0ffbce485f85100e28525bc74fb62bc5271850737b7"
     },
     {
       "id": "desk-mission",
