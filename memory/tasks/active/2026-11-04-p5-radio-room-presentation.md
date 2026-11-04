@@ -1,0 +1,57 @@
+---
+schema_version: 1
+id: task-2026-11-04-p5-radio-room-presentation
+status: in-progress
+owner: claude
+goal_confirmed_at: 2026-11-04T02:43:33.0000000Z
+started_at: 2026-11-04T02:43:33.0000000Z
+updated_at: 2026-11-04T02:43:33.0000000Z
+base_commit: fde3170e50a4c8316e175c3c6d58ba234201c42f
+owned_paths:
+  - packages/radio-ui
+  - docs/specs/p5-radio-room-presentation
+  - docs/specs/p4-radio-ui
+  - docs/architecture.md
+plan: null
+handoff: null
+---
+
+# Task: p5-radio-room-presentation
+
+## User-confirmed goal
+
+- Confirmation reference: user: answers 1-7 to the P5 scope proposal (scope as proposed; local commits allowed; placeholder art by assistant; verify fonts; no VERSION bump; classic UI fallback then remove; CodeGraph init requested)
+- Outcome and acceptance criteria: P5 pixel-art presentation of the radio room per the user reference screenshot; stage 1 = three spec files for review; later stages per docs/specs/p5-radio-room-presentation/tasks.md; gameplay and sim-core unchanged
+- In scope / out of scope: In scope: P5 spec (3 files), presentation layer in packages/radio-ui, placeholder pixel assets + manifest, tests, docs. Out of scope: packages/sim-core changes, new runtime dependencies, VERSION bump, push/tag/publish without authorization, final commissioned art.
+- Material assumptions and risks: branch p5-radio-room-presentation stacked on PR #8 (unmerged); local commits allowed, no push until authorized; art is assistant-made placeholder and visual completion is not claimed; CodeGraph install was blocked by the permission classifier so structural queries fall back to text search; Supply-chain CI (Trivy setup) is red on main independent of this work.
+
+## Architecture linkage
+
+Client/input → API/handler → service → DB/cache/queue/external dependency → logs/metrics/traces.
+
+## Progress and decisions
+
+- Recon: PR #8 open draft (head fde3170), VERSION v0.0.0.0, no tags or releases, vite 8.3.5 MIT / typescript 7.0.2 Apache-2.0 / vitest 5.1.0 MIT (needs Node >= 22.12).
+- Fonts verified from registry tarballs (not dependencies): @fontsource/silkscreen 5.3.0 and @fontsource/vt323 5.3.0, OFL-1.1; sha256 silkscreen-latin-400 e6c72ea4702249202bcdd79d3343057e4e25ef1f04e3fcffd8602ab53b40b4cc, vt323-latin-400 8ddbebcc1048154132e1d78eb9b1f7850bca1b7d857035ccf1cb4318ebc615b6.
+- Stage 1 in progress: write docs/specs/p5-radio-room-presentation/{requirements,design,tasks}.md and stop for user review.
+
+## Verification
+
+- Command/check:
+- Result: `passed | failed | not verified`
+- Evidence/reason:
+
+## Runtime and codebase-health verification
+
+- Runtime/user-flow exercise:
+- Health/readiness/log/error inspection:
+- Integration/dependency/config/migration check:
+- Remaining issue or reason not verified:
+
+## Security, observability, risk, and rollback
+
+- Security impact:
+- Observability impact:
+- Residual risk:
+- Rollback:
+- Next safe action:

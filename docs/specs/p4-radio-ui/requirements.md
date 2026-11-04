@@ -2,6 +2,8 @@
 
 Trạng thái: **DRAFT, chờ người dùng duyệt**. Chưa có dòng code UI nào.
 
+> **Cập nhật:** lớp trình bày của P4 được thay bằng P5 (`docs/specs/p5-radio-room-presentation/`). Gameplay, controller, store, session, loop và audio của P4 được giữ nguyên. Mục R9.3 (chỉ desktop) được thay bởi R9 của P5 (desktop/tablet/mobile). Màn Bridge đầy đủ nay là P6.
+
 ## Giới thiệu
 
 Người chơi là Funkmaat của một U-boat. P4 xây Radio Room chạy trên trình duyệt để chơi trọn một ca trực của `Watch` (vertical slice đã có trong `packages/sim-core`). UI chỉ **đọc Event Bus** và **gửi `Command`**; mọi quy tắc game nằm trong sim-core.
