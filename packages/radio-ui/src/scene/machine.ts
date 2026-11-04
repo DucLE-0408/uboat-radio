@@ -9,7 +9,11 @@ const ROWS = ["QWERTZUIO", "ASDFGHJK", "PYXCVBNML"] as const; // Enigma keyboard
 const codeOf = (ch: string): string => (/[0-9]/.test(ch) ? `Digit${ch}` : `Key${ch}`);
 
 /** Cipher machine: nameplate, 4 rotor windows (M4 indicator), lampboard (lit by decode in stage 4), working keyboard. */
-export function mountMachine(ctx: SceneCtx, root: HTMLElement): { frame(now: number): void; dispose(): void } {
+export interface MachineOpts {
+  /** Desk G2: the 4 letters the windows show (the live rotor positions); null/undefined = the message indicator (P5 behaviour). */
+  readonly windows?: () => string | null;
+}
+export function mountMachine(ctx: SceneCtx, root: HTMLElement, opts: MachineOpts = {}): { frame(now: number): void; dispose(): void; refresh(): void; flash(ch: string, now: number): void } {
   const { store, input, reveal } = ctx;
   const m = mk("section", "sc mach"); m.setAttribute("aria-label", "Cipher machine"); place(m, 424, 108, 208, 244); paint(m, "machine");
   const plate = mk("div", "plate lbl"); plate.textContent = "Funk-M4"; place(plate, 142, 5, 58, 11); m.append(plate); // on the green enamel label
@@ -64,9 +68,10 @@ export function mountMachine(ctx: SceneCtx, root: HTMLElement): { frame(now: num
   const refresh = (): void => {
     const s = store.state, rx = store.activeView();
     const att = rx?.attempts.find((a) => a.attempt === s.activeAttempt);
-    const ind = att ? att.indicator : "";
+    const live = opts.windows?.() ?? null;
+    const ind = live ?? (att ? att.indicator : "");
     wins.forEach((w, i) => setText(w, ind[i] ?? "·"));
-    setText(winGroup, ind ? `Message indicator ${ind.split("").join(" ")}` : "No indicator yet");
+    setText(winGroup, live !== null ? `Rotor windows ${ind.split("").join(" ")}` : ind ? `Message indicator ${ind.split("").join(" ")}` : "No indicator yet");
     const cp = s.activeRx === null ? "" : store.copyText(s.activeRx, s.activeAttempt);
     setText(mini, cp.length === 0 ? "copy: (empty)" : `copy: ${cp.length > 28 ? "…" + cp.slice(-27) : cp}`);
     const ok = s.boat.canTransmit;
@@ -78,8 +83,14 @@ export function mountMachine(ctx: SceneCtx, root: HTMLElement): { frame(now: num
   refresh();
   root.append(m);
   const plainLetters = (): string => { const a = store.activeView()?.analysis.get(store.state.activeAttempt); return a ? a.words.map((w) => w.plain).join("") : ""; };
+  let flashCh: string | null = null, flashUntil = 0;
   return {
-    frame: (now) => { const i = reveal.lit(now); light(i >= 0 ? plainLetters()[i] ?? null : null); },
+    refresh,
+    flash: (ch, now) => { flashCh = ch; flashUntil = now + 280; light(ch); }, // the lamp of the key just pressed (desk G2)
+    frame: (now) => {
+      if (flashCh !== null) { if (now < flashUntil) return; flashCh = null; light(null); }
+      const i = reveal.lit(now); light(i >= 0 ? plainLetters()[i] ?? null : null);
+    },
     dispose: () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); light(null); },
   };
 }

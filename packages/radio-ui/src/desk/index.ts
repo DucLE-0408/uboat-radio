@@ -5,7 +5,7 @@ import { h, setAttr, setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { formatClock, formatDtg, type RxView } from "../store";
 import { cosmeticRng } from "../audio/morse";
-import { schedule } from "@uboat/sim-core";
+import { dayEnigma, schedule } from "@uboat/sim-core";
 import { assetErrors, preloadSprites } from "../scene/assets";
 import { mountBoat } from "../scene/boat";
 import { makeDecor } from "../scene/decor";
@@ -22,7 +22,9 @@ import { getLang } from "../i18n";
 import { CREW, crewName, crewRole, pickScene, triggersBetween, YOU, type Observed, type Scene, type Trigger } from "./dialogue";
 import { MANUAL, ordersPages, pickNews, type DocPage } from "./docs";
 import { EchoPress, type EchoDecision } from "./echo";
-import { DESK_KEY, PaperModel, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
+import { DESK_KEY, PaperModel, parseExtra, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
+import { DeskMachine, replayCopy, type MachineView } from "./machine";
+import { awardSteps, copyMarks, MISSION_STEPS, RATION_EMPTY, scoreCopy, type RationState } from "./ration";
 import { canTrash, checkHandOver } from "./rules";
 import { Printer, tokenEnds } from "./printer";
 import { flipButton, groupGrid, mountSheet, type SheetHost, type SheetView } from "./sheets";
@@ -145,24 +147,32 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
 
   // ---- cipher machine: pushed in it shows the rotor windows; pulled out the P5 machine slides over the desk (R4.1)
   const mach = h("section", { class: "sc dmach", attrs: { "aria-label": t("desk.machine") } }); place(mach, G.machine.x, G.machine.y, G.machine.w, G.machine.h); paint(mach, "desk-machine-tab");
-  const wins = [0, 1, 2, 3].map((k) => label("win typ center", "", 24 + k * 22, 15, 14, 14));
-  const pull = h("button", { class: "dkey dpull", attrs: { type: "button", "aria-expanded": "false" }, text: t("desk.mach.pull") }); place(pull, 136, 12, 56, 22);
-  mach.append(...wins, label("dim center", t("desk.machine"), 16, 37, 96, 7), pull);
+  // G2 (R4.3–R4.5): power switch, rotor cover and 4 rotor windows. With the cover open (machine off) the wheels are set by mouse wheel,
+  // arrow keys or by typing a letter; the windows then follow the keys like the real machine.
+  const wins = [0, 1, 2, 3].map((k) => {
+    const b = h("button", { class: "dkey dwin typ", attrs: { type: "button", tabindex: "-1" } }); place(b, 24 + k * 22, 15, 14, 14); return b;
+  });
+  const pwr = h("button", { class: "dkey dpwr", attrs: { type: "button", "aria-pressed": "false" }, text: t("desk.mach.pwr") }); place(pwr, 108, 9, 26, 14);
+  const cov = h("button", { class: "dkey dcov", attrs: { type: "button", "aria-pressed": "false" }, text: t("desk.mach.cover") }); place(cov, 108, 26, 26, 14);
+  const pull = h("button", { class: "dkey dpull", attrs: { type: "button", "aria-expanded": "false" }, text: t("desk.mach.pull") }); place(pull, 140, 12, 52, 22);
+  mach.append(...wins, label("dim center", t("desk.machine"), 16, 37, 96, 7), pwr, cov, pull);
   scene.append(mach);
   const machWrap = h("div", { class: "sc dmachwrap" }); place(machWrap, MACHINE_SHIFT, 0, 640, 360); machWrap.hidden = true;
   scene.append(machWrap);
-  const machine = mountMachine(ctx, machWrap);
   const push = h("button", { class: "dkey dpush", attrs: { type: "button" }, text: t("desk.mach.push") }); place(push, 424 + 76, 108 + 224, 56, 14);
   machWrap.append(push);
   const setMachine = (out: boolean): void => { machWrap.hidden = !out; pull.setAttribute("aria-expanded", String(out)); setText(pull, out ? t("desk.mach.push") : t("desk.mach.pull")); };
   pull.addEventListener("click", () => setMachine(machWrap.hidden === true));
   push.addEventListener("click", () => setMachine(false));
 
-  const ration = h("div", { class: "sc dration", attrs: { role: "status" } }); place(ration, 352, 112, 64, 18);
-  const rationV = h("span", { class: "typ", text: "0" }); // the counter is wired in G2 (R10)
-  ration.append(h("span", { class: "dlbl", text: t("desk.score") }), rationV);
-  scene.append(ration);
-  scene.append(label("note typ", t("desk.preview"), G.top.x + 36, G.top.y + G.top.h - 26, G.top.w - 46, 18)); // clear of the bin
+  const rationBox = h("div", { class: "sc dration", attrs: { role: "status" } }); place(rationBox, 352, 112, 64, 18);
+  const rationV = h("span", { class: "typ", text: "0" });
+  rationBox.append(h("span", { class: "dlbl", text: t("desk.score") }), rationV);
+  scene.append(rationBox);
+  const timerV = h("span", { class: "typ", text: "2:00" });
+  const timerBox = h("div", { class: "sc dration dtimer", attrs: { role: "timer" } }); place(timerBox, 352, 132, 64, 14); timerBox.hidden = true;
+  timerBox.append(h("span", { class: "dlbl", text: t("desk.timer") }), timerV);
+  scene.append(timerBox);
 
   // ---------------------------------------------------------------- papers (R2)
   const layer = h("div", { class: "sc dlayer" }); place(layer, 0, 0, 640, 360);
@@ -175,11 +185,89 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   // A watch that has not started yet (time 0, no traffic) is a new watch: a layout saved for an earlier watch with the same
   // seed must not carry its stamps and hand-overs onto it.
   const freshWatch = store.state.tSec === 0 && store.state.order.length === 0;
-  try { if (!freshWatch) model.restore(parseLayout(storage?.getItem(DESK_KEY) ?? null, ctx.seed)); } catch { /* unreadable storage: default layout */ }
+  let rawDesk: string | null = null;
+  try { rawDesk = freshWatch ? null : storage?.getItem(DESK_KEY) ?? null; } catch { rawDesk = null; }
+  try { if (!freshWatch) model.restore(parseLayout(rawDesk, ctx.seed)); } catch { /* unreadable storage: default layout */ }
+  const extra0 = parseExtra(rawDesk, ctx.seed);
+  const dm = new DeskMachine(extra0.mach);
+  let ration: RationState = extra0.ration;
   let saveTimer: ReturnType<typeof setTimeout> | null = null, saveWarned = false;
   const saveNow = (): void => {
     saveTimer = null;
-    try { storage?.setItem(DESK_KEY, model.serialize(ctx.seed)); } catch { if (!saveWarned) { saveWarned = true; ctx.diag.err("save", "DESK_SAVE_FAILED"); } }
+    try { storage?.setItem(DESK_KEY, model.serialize(ctx.seed, { mach: dm.state(), ration })); } catch { if (!saveWarned) { saveWarned = true; ctx.diag.err("save", "DESK_SAVE_FAILED"); } }
+  };
+  const scheduleSave = (): void => { if (saveTimer === null) saveTimer = setTimeout(saveNow, SAVE_DELAY_MS); };
+
+  // ---------------------------------------------------------------- G2: machine logic (R4.3–R4.7) and rations (R10)
+  const DAY = 1; // the sim's day number (Watch decipher uses the same constant; desk-machine.test.ts pins the equality)
+  const activeCopy = (): { key: string; copy: string } => { const s = store.state; return { key: `${s.activeRx}:${s.activeAttempt}`, copy: s.activeRx === null ? "" : store.copyText(s.activeRx, s.activeAttempt) }; };
+  const machineView = (): MachineView => replayCopy(ctx.seed, DAY, dm.positions, activeCopy().copy);
+  const shownWindows = (): string => (dm.keysLive ? machineView().window : dm.positions);
+  const machine = mountMachine(ctx, machWrap, { windows: shownWindows });
+  machWrap.append(push); // keep the push-in button above the machine sprite
+  const renderMachine = (): void => {
+    const shown = shownWindows();
+    wins.forEach((w, k) => {
+      setText(w, shown[k] ?? "");
+      w.tabIndex = dm.cover ? 0 : -1;
+      setClass(w, "open", dm.cover);
+      w.setAttribute("aria-label", t("desk.mach.wheel", { n: k + 1, v: shown[k] ?? "" }));
+    });
+    setClass(pwr, "on", dm.power); pwr.setAttribute("aria-pressed", String(dm.power)); pwr.setAttribute("aria-label", t(dm.power ? "desk.mach.powerOn" : "desk.mach.powerOff")); pwr.title = pwr.getAttribute("aria-label") ?? "";
+    setClass(cov, "on", dm.cover); cov.setAttribute("aria-pressed", String(dm.cover)); cov.setAttribute("aria-label", t(dm.cover ? "desk.mach.coverOpen" : "desk.mach.coverShut")); cov.title = cov.getAttribute("aria-label") ?? "";
+    machine.refresh();
+  };
+  const machineChanged = (): void => { scheduleSave(); renderMachine(); };
+  pwr.addEventListener("click", () => { if (!dm.setPower(!dm.power)) store.notify(t("desk.mach.interlock")); machineChanged(); });
+  cov.addEventListener("click", () => { if (dm.cover) dm.closeCover(); else if (!dm.openCover()) store.notify(t("desk.mach.coverNeedsOff")); machineChanged(); });
+  wins.forEach((w, k) => {
+    w.addEventListener("wheel", (ev) => { if (!dm.cover) return; ev.preventDefault(); if (dm.rotate(k, ev.deltaY < 0 ? 1 : -1)) machineChanged(); }, { passive: false });
+    w.addEventListener("keydown", (ev) => {
+      if (!dm.cover || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      let handled = true;
+      if (ev.key === "ArrowUp") dm.rotate(k, 1);
+      else if (ev.key === "ArrowDown") dm.rotate(k, -1);
+      else if (ev.key === "ArrowLeft") wins[Math.max(0, k - 1)]?.focus();
+      else if (ev.key === "ArrowRight") wins[Math.min(3, k + 1)]?.focus();
+      else if (/^[a-zA-Z]$/.test(ev.key)) { dm.setLetter(k, ev.key.toUpperCase()); wins[Math.min(3, k + 1)]?.focus(); }
+      else handled = false;
+      if (handled) { ev.preventDefault(); ev.stopPropagation(); machineChanged(); } // a letter here dials the wheel; it never reaches the copy
+    });
+  });
+  let deniedAt = -1e9;
+  if (ctx.hooks) {
+    ctx.hooks.typingGate = () => dm.keysLive;
+    ctx.hooks.decodeSetting = () => dm.positions;
+    ctx.hooks.denied = () => { const now = performance.now(); if (now - deniedAt < 1500) return; deniedAt = now; store.notify(t(dm.cover ? "desk.mach.keysCover" : "desk.mach.keysOff")); };
+  }
+
+  const rationFlash = { timer: null as ReturnType<typeof setTimeout> | null };
+  const renderRation = (delta: number): void => {
+    setText(rationV, String(ration.score));
+    setClass(rationBox, "neg", ration.score < 0);
+    if (delta !== 0) {
+      setClass(rationBox, "up", delta > 0); setClass(rationBox, "down", delta < 0);
+      if (rationFlash.timer !== null) clearTimeout(rationFlash.timer);
+      rationFlash.timer = setTimeout(() => { setClass(rationBox, "up", false); setClass(rationBox, "down", false); rationFlash.timer = null; }, 350);
+    }
+  };
+  const addRation = (next: RationState): void => { if (next === ration) return; const d = next.score - ration.score; ration = next; scheduleSave(); renderRation(d); };
+  /** The Input sheet of an attempt as the player sees it now: its full text and how many characters the teletyper has printed. */
+  const visibleInput = (rxId: number, attempt: number, now: number): { text: string; printed: number } | null => {
+    const a = store.state.rx.get(rxId)?.attempts.find((x) => x.attempt === attempt);
+    if (!a) return null;
+    const text = watch.copy(a.tokens);
+    return { text, printed: printer.visible(`in:${rxId}:${attempt}`, text, now) };
+  };
+  let lastCopyKey = "", lastCopyLen = -1;
+  const onCopy = (): void => {
+    const s = store.state, { key, copy } = activeCopy();
+    if (s.activeRx !== null) {
+      const vi = visibleInput(s.activeRx, s.activeAttempt, performance.now());
+      if (vi) addRation(scoreCopy(ration, key, vi.text, vi.printed, copy));
+    }
+    if (key === lastCopyKey && copy.length === lastCopyLen + 1 && dm.keysLive) { const lamp = machineView().lamp; if (lamp !== null) machine.flash(lamp, performance.now()); }
+    lastCopyKey = key; lastCopyLen = copy.length;
   };
   const views = new Map<string, Live>();
   const host: SheetHost = {
@@ -219,7 +307,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   };
 
   // Mission sheet (R7): steps tick from real actions on the selected (or active) message; no manual ticks
-  const STEPS = ["printed", "decoded", "echo", "outStamp", "signed", "clipped", "handed"] as const;
+  const STEPS = MISSION_STEPS;
   type Step = (typeof STEPS)[number];
   const missionMsg = (): number | null => { const p = selected ? model.get(selected) : undefined; return p?.rxId ?? store.state.activeRx; };
   const stepDone = (rxId: number): Readonly<Record<Step, boolean>> => {
@@ -250,6 +338,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         const rxId = missionMsg();
         setText(title, rxId === null ? t("desk.mission") : t("desk.m.title", { rx: rxId }));
         const done = rxId === null ? null : stepDone(rxId);
+        if (rxId !== null && done !== null) addRation(awardSteps(ration, rxId, done)); // pays each step once per message (R10.1)
         rows.forEach((row, r) => { const on = done?.[STEPS[r] as Step] === true; setText(row.tick, on ? "✓" : ""); setClass(row.txt, "done", on); });
         setClass(view.el, "complete", done !== null && STEPS.every((k) => done[k]));
       },
@@ -333,7 +422,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const mk = marks(p, view, null, [[12, 36], [60, 36]], [12, 117], { echo: null, stamps: [phRed] });
     return {
       view,
-      refresh: () => {
+      refresh: (now) => {
         const rx = store.state.rx.get(rxId), a = rx?.attempts.find((x) => x.attempt === attempt);
         if (!rx || !a) return;
         mk();
@@ -350,13 +439,37 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
           setText(status, d.mode === "plain" ? t("desk.out.damaged", { n: d.damaged }) : "");
         } else {
           const ws = groupsOf(text), typing = text.length > 0 && !text.endsWith(" "); // no decode yet, or the copy was edited after it
-          grid.set(ws.map((w, i) => ({ text: w, cur: typing && i === ws.length - 1 })), t("desk.out.copyLabel"));
+          const vi = visibleInput(rxId, attempt, now), mk2 = vi ? copyMarks(vi.text, vi.printed, text) : "";
+          let off = 0;
+          grid.set(ws.map((w, i) => { const m = mk2.slice(off, off + w.length); off += w.length + 1; return { text: w, cur: typing && i === ws.length - 1, marks: m }; }), t("desk.out.copyLabel"));
           setText(status, t("desk.out.hint"));
           keep(ws.length === 0 ? null : { mode: "copy", words: ws, bad: ws.map(() => false), damaged: 0 }); // the sheet now shows the copy, so does the record
         }
         setClass(view.el, "active", store.state.activeRx === rxId && store.state.activeAttempt === attempt);
       },
     };
+  };
+
+  // ---- optional 2-minute timer per message (R10.3, G2: indicator only; running late is not penalised before G3)
+  const TIMER_MS = 120_000, timers = new Map<number, number>(), warned = new Set<number>();
+  let lastTick = performance.now(), lastShown = "";
+  const timerTick = (now: number): void => {
+    const dt = Math.min(now - lastTick, 1000); lastTick = now; // a stalled tab must not burn the clock
+    const on = ctx.flags.timer === true;
+    if (timerBox.hidden === on) timerBox.hidden = !on;
+    if (!on) return;
+    const s = store.state, run = !s.paused && s.ended === null;
+    for (const id of s.order) {
+      if (!timers.has(id)) timers.set(id, 0);
+      if (run && (timers.get(id) as number) < TIMER_MS && !stepDone(id).handed) {
+        const ms = Math.min(TIMER_MS, (timers.get(id) as number) + dt); timers.set(id, ms);
+        if (ms >= TIMER_MS && !warned.has(id)) { warned.add(id); store.notify(t("desk.timer.up", { rx: id })); }
+      }
+    }
+    const id = missionMsg(), left = id === null ? TIMER_MS : Math.max(0, TIMER_MS - (timers.get(id) ?? 0));
+    const txt = `${Math.floor(Math.ceil(left / 1000) / 60)}:${String(Math.ceil(left / 1000) % 60).padStart(2, "0")}`;
+    if (txt !== lastShown) { lastShown = txt; setText(timerV, txt); }
+    setClass(timerBox, "late", id !== null && left === 0);
   };
 
   add(model.ensure("mission"), mission);
@@ -482,7 +595,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const docPages = (kind: "orders" | "manual"): { head: string; pages: readonly DocPage[] } => {
     if (kind === "manual") return MANUAL[getLang()];
     const w = watch.worldCtx();
-    return ordersPages(getLang(), w.callsigns.map((cs) => ({ callsign: cs, wpm: w.knownFists[cs] ? Math.round((w.knownFists[cs] as { wpm: number }).wpm) : null })), newsIdx);
+    return ordersPages(getLang(), w.callsigns.map((cs) => ({ callsign: cs, wpm: w.knownFists[cs] ? Math.round((w.knownFists[cs] as { wpm: number }).wpm) : null })), newsIdx, dayEnigma(ctx.seed, DAY));
   };
   const doc = (p: Paper): Live => {
     const kind = p.kind as "orders" | "manual";
@@ -601,7 +714,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       const an = rx?.analysis.get(s.activeAttempt);
       reveal.start(an ? an.words.reduce((n, w) => n + w.plain.length, 0) : 0, now, ctx.flags.reduceMotion === true);
     }
-    wins.forEach((w, k) => setText(w, at?.indicator[k] ?? ""));
+    renderMachine();
     setText(txClock, `${t("desk.ctl.tx")} ${formatClock(s.tx.totalSec)} · ${t("desk.ctl.hdg", { n: String(Math.round(s.boat.headingDeg)).padStart(3, "0") })}`);
     const mi = MODES.findIndex(([m]) => m === s.boat.mode);
     place(leverHandle, 8, (MODES[Math.max(0, mi)] as readonly [string, number])[1] + 5, 14, 6);
@@ -613,9 +726,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     antenna.setAttribute("aria-label", t(s.boat.antennaUp ? "desk.ctl.antennaUp" : "desk.ctl.antennaDown"));
     setClass(scene, "silent", s.boat.silence);
   };
+  scope.on(["copy"], onCopy);
   scope.on(["rx", "copy", "analysis", "clock", "boat", "tx", "ui"], () => { syncPapers(); stations(performance.now()); });
   scope.on(["rx", "challenge", "ended", "alert", "ui", "clock"], watchTalk);
-  syncPapers(); stations(performance.now());
+  syncPapers(); stations(performance.now()); renderRation(0);
   const onHide = (): void => { if (saveTimer !== null) { clearTimeout(saveTimer); saveNow(); } };
   window.addEventListener("pagehide", onHide);
   void preloadSprites().then((fails) => { for (const code of assetErrors) ctx.diag.err("asset", code); if (fails > 0) scene.classList.add("no-sprites"); });
@@ -623,7 +737,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   return {
     frame: () => {
       const now = performance.now();
-      boat.frame(now); toast.frame(); machine.frame(now);
+      boat.frame(now); toast.frame(); machine.frame(now); timerTick(now);
       if (printer.busy()) { for (const v of views.values()) v.refresh(now); stations(now); }
       else if (blink) { blink = false; stations(now); }
     },
@@ -632,6 +746,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       window.removeEventListener("keydown", onTalkKey, true); window.removeEventListener("keyup", onTalkUp, true);
       if (leaveTimer) clearTimeout(leaveTimer); if (spaceTimer) clearTimeout(spaceTimer);
       machine.dispose();
+      if (ctx.hooks) { ctx.hooks.typingGate = null; ctx.hooks.decodeSetting = null; ctx.hooks.denied = null; }
+      if (rationFlash.timer !== null) clearTimeout(rationFlash.timer);
       onHide();
       ctx.morse.stop(); scope.dispose();
       app.classList.remove("p5"); document.body.classList.remove("p5");

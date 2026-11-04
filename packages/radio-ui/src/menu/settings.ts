@@ -10,13 +10,14 @@ export interface Settings {
   readonly reduceMotion: boolean;
   readonly ui: "p5" | "classic" | "desk";
   readonly lang: Lang;
+  readonly timer: boolean;       // desk G2: 2-minute indicator per message (R10.3); off by default
 }
 
 export const SETTINGS_KEY = "uboat-radio.settings.v1";
 const MAX_BYTES = 4096;
 
 export function defaultSettings(prefersReducedMotion: boolean): Settings {
-  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "desk", lang: "en" }; // Desk UI is the default since desk-ui Stage 5 (D7); P5 stays a Settings choice
+  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "desk", lang: "en", timer: false }; // Desk UI is the default since desk-ui Stage 5 (D7); P5 stays a Settings choice
 }
 
 const level = (x: unknown, d: number): number => (typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, Math.round(x * 20) / 20)) : d);
@@ -34,6 +35,7 @@ export function parseSettings(raw: string | null, d: Settings): Settings {
     sound: flag(o["sound"], d.sound), reduceMotion: flag(o["reduceMotion"], d.reduceMotion),
     ui: o["ui"] === "classic" || o["ui"] === "p5" || o["ui"] === "desk" ? o["ui"] : d.ui,
     lang: parseLang(o["lang"]) ?? d.lang,
+    timer: flag(o["timer"], d.timer),
   };
 }
 

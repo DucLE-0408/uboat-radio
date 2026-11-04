@@ -1,6 +1,9 @@
 // Paper layout model for the desk (R2). Pure: no DOM, no sim. Vietnamese: chỉ là trạng thái trình bày (vị trí, mặt, thứ tự);
 // nội dung giấy luôn dẫn xuất từ store, quyết định luôn đi qua Actions.
 
+import { isPositions, MACHINE_DEFAULT, type MachineState } from "./machine";
+import { parseRation, RATION_EMPTY, type RationState } from "./ration";
+
 export type PaperKind = "input" | "output" | "mission" | "orders" | "manual";
 /** Desk furniture: no rxId, never stamped, signed, clipped, handed over or binned. */
 export const isReference = (k: PaperKind): boolean => k === "mission" || k === "orders" || k === "manual";
@@ -185,8 +188,8 @@ export class PaperModel {
 
   // ---------------------------------------------------------------- persistence (desk.v1)
 
-  serialize(seed: number): string {
-    return JSON.stringify({ v: 1, seed, papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed, ...(p.decoded ? { decoded: p.decoded } : {}) })) });
+  serialize(seed: number, extra?: DeskExtra): string {
+    return JSON.stringify({ v: 1, seed, ...(extra ? { mach: extra.mach, ration: extra.ration } : {}), papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed, ...(p.decoded ? { decoded: p.decoded } : {}) })) });
   }
 
   /** Applies a stored layout to sheets that exist now or appear later (positions are kept until the sheet is created). */
@@ -215,6 +218,26 @@ export interface StoredPaper {
 export type StoredLayout = readonly StoredPaper[];
 
 export const DESK_KEY = "uboat-radio.desk.v1";
+
+/** G2 additions to desk.v1 (optional fields: a v1 blob without them still loads, an older build ignores them). */
+export interface DeskExtra { readonly mach: MachineState; readonly ration: RationState }
+/** Validates the machine and ration parts of a stored blob (untrusted); wrong seed or any malformation gives the defaults. */
+export function parseExtra(raw: string | null, seed: number): DeskExtra {
+  const none: DeskExtra = { mach: MACHINE_DEFAULT, ration: RATION_EMPTY };
+  if (raw === null || raw.length > 32_768) return none;
+  let j: unknown;
+  try { j = JSON.parse(raw); } catch { return none; }
+  if (typeof j !== "object" || j === null || Array.isArray(j)) return none;
+  const o = j as Record<string, unknown>;
+  if (o["v"] !== 1 || o["seed"] !== seed) return none;
+  let mach = MACHINE_DEFAULT;
+  const m = o["mach"];
+  if (typeof m === "object" && m !== null && !Array.isArray(m)) {
+    const r = m as Record<string, unknown>;
+    if (typeof r["power"] === "boolean" && typeof r["cover"] === "boolean" && isPositions(r["pos"])) mach = { power: r["power"] && !r["cover"], cover: r["cover"], pos: r["pos"] };
+  }
+  return { mach, ration: parseRation(o["ration"]) };
+}
 const MAX_BYTES = 32_768, MAX_PAPERS = 400;
 const ID_RE = /^(?:mission|orders|manual|(?:in|out):\d{1,6}:\d{1,3})$/;
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
