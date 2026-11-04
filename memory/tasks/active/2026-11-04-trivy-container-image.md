@@ -43,15 +43,15 @@ Client/input → API/handler → service → DB/cache/queue/external dependency 
 
 ## Runtime and codebase-health verification
 
-- Runtime/user-flow exercise: not verified: the pull request's own CI run is the first execution of the new steps.
-- Health/readiness/log/error inspection: not verified: to be read from the Supply-chain security run on this pull request.
+- Runtime/user-flow exercise: passed for the goal: the pull request's CI run (run 41770942639) executed the new steps. `filesystem-and-sbom` succeeded end to end (Trivy filesystem scan, SPDX SBOM, artifact upload). `example-image` now runs the Trivy image scan (the vulnerability DB downloaded fine) and exits 1 because of real HIGH/CRITICAL findings in the pinned base image.
+- Health/readiness/log/error inspection: example-image log lists fixable HIGH/CRITICAL CVEs in Debian 13 packages of `python:3.13-slim@sha256:9662417a...` (util-linux/mount/login CVE-2026-5361x, openssl CVE-2026-14456/84782, perl-base CVE-2026-13221 and others, with fixed versions available). That is a genuine finding, not a tooling failure.
 - Integration/dependency/config/migration check: the image digest was read from Docker Hub; no new GitHub Action is introduced and one pinned action (aquasecurity/trivy-action) is removed.
-- Remaining issue or reason not verified: whether the Trivy vulnerability DB can be downloaded on the runners, whether anchore/sbom-action can download syft, and whether the scans themselves pass (findings, if any, are a separate matter).
+- Remaining issue or reason not verified: example-image stays red until the example image's base image digest is bumped to a build with those fixes; that is a dependency change outside this task's scope and needs the user's approval (AGENTS.md section 2.4). Suppressing or relaxing the scan to get green is not done.
 
 ## Security, observability, risk, and rollback
 
 - Security impact: scanner image is pinned by immutable digest from the official aquasec namespace; the workspace is mounted read-only for the filesystem scan; the image scan mounts the Docker socket into the Trivy container on an ephemeral runner (same trust as the previous action running on the host); no secrets are used.
 - Observability impact: scan output now comes from `docker run` step logs instead of the action wrapper; exit code semantics are unchanged (exit-code 1 on HIGH/CRITICAL).
-- Residual risk: the new steps are unproven until CI runs; digest needs manual bumping (documented in the workflow comment).
+- Residual risk: digest needs manual bumping (documented in the workflow comment); example-image is red because of real findings in the example image's base layer.
 - Rollback: revert this commit to restore the aquasecurity/trivy-action steps.
-- Next safe action: read the CI result of this pull request; if the DB download or syft download fails, record the blocked host and adjust or report.
+- Next safe action: with the user's approval, bump `PYTHON_IMAGE` in examples/fastapi/Dockerfile to a newer digest-pinned python:3.13-slim and re-run the scan.
