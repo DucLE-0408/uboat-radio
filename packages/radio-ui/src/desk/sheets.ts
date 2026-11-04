@@ -133,7 +133,7 @@ export function flipButton(host: SheetHost, paper: Paper, view: { sync(): void }
 }
 
 /** Group cells: one per group; longer traffic scrolls instead of being cut. */
-export function groupGrid(x: number, y: number, w: number, hh: number, min: number): { el: HTMLElement; set(groups: readonly { text: string; bad?: boolean; cur?: boolean }[], label: string): void } {
+export function groupGrid(x: number, y: number, w: number, hh: number, min: number): { el: HTMLElement; set(groups: readonly { text: string; bad?: boolean; cur?: boolean; marks?: string }[], label: string): void } {
   const el = h("div", { class: "dgrid", attrs: { role: "list", tabindex: "0" } }); place(el, x, y, w, hh);
   const cells: HTMLElement[] = [];
   return {
@@ -142,7 +142,16 @@ export function groupGrid(x: number, y: number, w: number, hh: number, min: numb
       const n = Math.max(min, groups.length);
       while (cells.length < n) { const c = h("div", { class: "dcell typ", attrs: { role: "listitem" } }); cells.push(c); el.append(c); }
       while (cells.length > n) cells.pop()?.remove();
-      cells.forEach((c, k) => { const g = groups[k]; setText(c, g?.text ?? ""); setClass(c, "bad", g?.bad === true); setClass(c, "cur", g?.cur === true); });
+      cells.forEach((c, k) => {
+        const g = groups[k], text = g?.text ?? "", marks = g?.marks ?? "";
+        if (marks.length === 0) setText(c, text);
+        else if (c.dataset["k"] !== `${text}|${marks}`) { // per-character feedback: green = matches the printed Input, red = does not (R10.2)
+          c.textContent = "";
+          [...text].forEach((ch, i) => c.append(h("span", { class: marks[i] === "g" ? "mg" : "mr", text: ch })));
+        }
+        c.dataset["k"] = marks.length === 0 ? "" : `${text}|${marks}`;
+        setClass(c, "bad", g?.bad === true); setClass(c, "cur", g?.cur === true);
+      });
       el.setAttribute("aria-label", label);
     },
   };

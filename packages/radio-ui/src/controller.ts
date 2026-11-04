@@ -251,7 +251,7 @@ export class Controller implements Actions {
 
   handle(a: Action): void {
     const s = this.store.state;
-    if ((a.t === "char" || a.t === "space" || a.t === "backspace") && !s.lookup.active && this.env.ctxRef.hooks?.typingGate?.() === false) return; // machine off / cover open
+    if ((a.t === "char" || a.t === "space" || a.t === "backspace" || a.t === "confirm") && !s.lookup.active && this.env.ctxRef.hooks?.typingGate?.() === false) { this.env.ctxRef.hooks.denied?.(); return; } // machine off / cover open
     switch (a.t) {
       case "char":
         if (s.lookup.active) this.lookupLetter(a.ch); else if (s.ended === null) this.store.typeChar(a.ch);

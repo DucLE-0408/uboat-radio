@@ -7,7 +7,7 @@ import { Session } from "../src/sim/session";
 import { rebuildStore, Store } from "../src/store";
 
 /** Controller wired to a real Session/Store with inert audio (no AudioContext in node). */
-export function harness(seed: number, restoreFrom?: Session): { session: Session; store: Store; ctl: Controller; played: string[]; flags: { showMorse: boolean; simSpeed: number } } {
+export function harness(seed: number, restoreFrom?: Session): { session: Session; store: Store; ctl: Controller; played: string[]; flags: { showMorse: boolean; simSpeed: number }; hooks: { typingGate: (() => boolean) | null; decodeSetting: (() => string | null) | null; denied: (() => void) | null } } {
   const store = new Store();
   const session = restoreFrom ?? Session.fresh(seed, null);
   if (restoreFrom) rebuildStore(store, restoreFrom.watch.bus.getLog(), restoreFrom.watch.commandLog(), restoreFrom.watch.tSec);
@@ -16,8 +16,9 @@ export function harness(seed: number, restoreFrom?: Session): { session: Session
   const played: string[] = [];
   morse.play = (plan) => { played.push(`play:${plan.endSec.toFixed(2)}`); return true; };
   const flags = { showMorse: false, simSpeed: 1 };
-  const ctl = new Controller(session, store, audio, morse, new Hydrophone(audio), new FixedStepLoop(), { storage: null, navigate: () => {}, cosmeticSeed: 1, ctxRef: { flags } });
-  return { session, store, ctl, played, flags };
+  const hooks: { typingGate: (() => boolean) | null; decodeSetting: (() => string | null) | null; denied: (() => void) | null } = { typingGate: null, decodeSetting: null, denied: null };
+  const ctl = new Controller(session, store, audio, morse, new Hydrophone(audio), new FixedStepLoop(), { storage: null, navigate: () => {}, cosmeticSeed: 1, ctxRef: { flags, hooks } });
+  return { session, store, ctl, played, flags, hooks };
 }
 
 export function runTo(h: { ctl: Controller; session: Session }, tSec: number): void {

@@ -113,12 +113,14 @@ The default UI since desk-ui Stage 5 (D7). It is presentation only: it reads the
 | `printer.ts` | token-by-token Input printing from received copy |
 | `echo.ts` | `EchoPress`: at most one `resolve` per message; the TRUE/FALSE ECHO mark is rebuilt from `rx.resolved` (the sim log), never from `desk.v1` |
 | `rules.ts` | G1 hand-over rules (Input = Echo + signature, no ordinary stamp; Output = one red stamp; trash refuses mission papers); violations are listed, not penalised before G3 |
-| `docs.ts` | Daily Orders (5 pages) and Manual (7 pages), en/vi |
+| `docs.ts` | Daily Orders (6 pages, incl. the "Obscura Setup" day key from `dayEnigma`) and Manual (7 pages), en/vi |
+| `machine.ts` | G2 cipher machine (pure): `replayCopy` (windows/lamp from day key + dialled letters + copy, same group-resync rules as `decipherCopy`), `DeskMachine` (power, rotor cover interlock, wheel setting) |
+| `ration.ts` | G2 Ration score: +1/-1 per key against the printed Input, once per position, one-off step bonuses, validated storage |
 | `dialogue.ts` | crew portraits' lines per event, en/vi, chosen with the cosmetic RNG (never reveals whether a decision was right, D4) |
 
-**Storage.** `uboat-radio.desk.v1`: `{v:1, seed, papers:[...]}`, 32 KB / 400-paper cap, field-wise validated (ids by allowlist regex, bounded ints, decode strings allowlisted `[A-Z0-9?]`); an invalid or seed-mismatched blob is dropped. It holds layout only. Save/load of the watch stays seed + event log; reload rebuilds the desk silently and does not replay old dialogue.
+**Storage.** `uboat-radio.desk.v1`: `{v:1, seed, papers:[...]}`, 32 KB / 400-paper cap, field-wise validated (ids by allowlist regex, bounded ints, decode strings allowlisted `[A-Z0-9?]`); an invalid or seed-mismatched blob is dropped. It holds layout, plus (G2) the machine switches/dialled letters (`mach`) and the Ration score (`ration`) as optional validated fields; none of it enters the save or the event log. Save/load of the watch stays seed + event log; reload rebuilds the desk silently and does not replay old dialogue.
 
-**Actions used.** `resolve`, `repeat`, `setMode`, `steerSpeed`, `toggleSilence`, `report`, `openAuthTable`, `openDrawer`. No new sim command was added.
+**Actions used.** `resolve`, `repeat`, `setMode`, `steerSpeed`, `toggleSilence`, `report`, `openAuthTable`, `openDrawer`. No new sim command was added. G2 adds two presentation hooks (`Ctx.hooks.typingGate`, `decodeSetting`, `denied`): with the machine off or the cover open the controller drops typing and Enter; decode runs `Watch.decipher(dialledLetters, copy)` instead of using the sent indicator, so a wrong setting silently yields wrong text. The optional per-message 2-minute timer is a Settings flag (`timer`) and is an indicator only until G3.
 
 **i18n and fonts.** Strings in `src/i18n/{en,vi}.ts` (`?lang=` allowlisted, otherwise Settings). Silkscreen has no Vietnamese glyphs, so `:lang(vi)` switches labels to VT323 one step larger.
 

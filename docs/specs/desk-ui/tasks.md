@@ -58,11 +58,16 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
 - [x] **T5.3** Cập nhật `docs/architecture.md`, task record, báo cáo.
 
 ## G2 — Máy thật, khóa ngày, điểm
-- [ ] **T6.1** Máy giả lập bằng `Enigma` + `dayEnigma`; công tắc nguồn; nắp rotor; lăn chuột đặt 4 vòng; odometer + double-step; đồng bộ lại theo nhóm. Property test so với `decipherCopy`. (R4.3–R4.7)
-- [ ] **T6.2** Daily Orders in khóa ngày (Obscura Setup). (R5.2)
-- [ ] **T6.3** Điểm +1/−1, màu xanh/đỏ, thưởng hoàn thành, lưu `desk.v1`. (R10.1, R10.2, R10.4)
-- [ ] **T6.4** Đồng hồ 2 phút tùy chọn (chỉ báo). (R10.3)
-- [ ] **T6.5** Kiểm chứng G2 như T5.
+- [x] **T6.1** Máy giả lập bằng `Enigma` + `dayEnigma`; công tắc nguồn; nắp rotor; lăn chuột đặt 4 vòng; odometer + double-step; đồng bộ lại theo nhóm. Property test so với `decipherCopy`. (R4.3–R4.7)
+  - `src/desk/machine.ts` (thuần): `replayCopy` dựng cửa sổ/đèn từ (khóa ngày, 4 chữ người chơi đặt, bản chép) theo đúng luật `decipherCopy` (đặt lại ở đầu mỗi nhóm, nhóm ngắn/dài chỉ hỏng chính nó); `DeskMachine`: nguồn, nắp (chỉ mở khi tắt, không bật khi nắp mở), lăn chuột/mũi tên/gõ chữ đặt 4 vòng. Odometer + double-step + Greek không bước do `Enigma` của sim-core. Controller có `hooks.typingGate` (máy tắt thì phím và Enter bị chặn, báo bằng toast) và `hooks.decodeSetting` (decode dùng vị trí người chơi đặt qua `Watch.decipher`, không thêm lệnh sim). Property test 300 ca so với `decipherCopy` (`test/desk-machine.test.ts`). Máy trở về vị trí đã đặt khi tắt (đơn giản hóa có chủ đích).
+- [x] **T6.2** Daily Orders in khóa ngày (Obscura Setup). (R5.2)
+  - Trang "Obscura Setup" (phản xạ, rotor, vòng, dây cắm từ `dayEnigma(seed, 1)`) trong Daily Orders; khóa không hiện ở chỗ nào khác (R4.7). Manual mục 3 viết lại cho G2.
+- [x] **T6.3** Điểm +1/−1, màu xanh/đỏ, thưởng hoàn thành, lưu `desk.v1`. (R10.1, R10.2, R10.4)
+  - `src/desk/ration.ts`: +1/−1 mỗi phím so với tờ Input đã in (mỗi vị trí chỉ tính một lần, backspace + gõ lại không cày điểm), thưởng một lần cho mỗi bước nhiệm vụ mỗi bức điện + thưởng hoàn thành; chữ xanh/đỏ từng ký tự trên Output; lưu `desk.v1` (`mach`, `ration`, validate từng trường, bản cũ vẫn nạp).
+- [x] **T6.4** Đồng hồ 2 phút tùy chọn (chỉ báo). (R10.3)
+  - Settings `timer` (mặc định tắt): chỉ báo 2 phút thời gian thực cho bức điện đang chọn, dừng khi pause/đã giao, toast một lần khi hết giờ; chưa phạt (G3).
+- [x] **T6.5** Kiểm chứng G2 như T5.
+  - Playwright/Chromium: tắt máy gõ không ghi; nắp mở không bật được; đặt YAKM bằng gõ chữ, lăn chuột, mũi tên; bật máy, gõ, đèn/cửa sổ chạy; Ration +1/−1 xanh/đỏ; Enter ra bản rõ đúng (seed 12) và sai khi đặt sai; reload giữ máy; timer; trang Obscura (vi); console sạch. Evidence: `evidence/g2-*.png`.
 
 ## G3 — Cần spec sim-core riêng (chưa làm)
 - Citation và hậu quả (3 lần: nguy hiểm, lộ vị trí; 5 lần: bị xử tử); lỗi đóng sai màu, vứt sai giấy, hết giờ thành lệnh có log.

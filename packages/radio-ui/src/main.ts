@@ -57,6 +57,7 @@ const applySettings = (s: Settings): void => {
   audio.setMix({ master: s.master, morse: s.morse, hydro: s.hydro, sound: s.sound });
   document.documentElement.classList.toggle("reduce-motion", s.reduceMotion);
   flags.reduceMotion = s.reduceMotion;
+  flags.timer = s.timer;
   setLang(parseLang(params.get("lang")) ?? s.lang); // ?lang= (allowlisted) wins over the saved setting
 };
 applySettings(settings);
@@ -105,7 +106,7 @@ const loop = new FixedStepLoop();
 loop.setSpeed(initialSpeed);
 
 const cosmeticSeed = randomSeed();
-const hooks: NonNullable<Ctx["hooks"]> = { typingGate: null, decodeSetting: null }; // set by the desk UI only (G2); null = classic/P5 behaviour
+const hooks: NonNullable<Ctx["hooks"]> = { typingGate: null, decodeSetting: null, denied: null }; // set by the desk UI only (G2); null = classic/P5 behaviour
 const controller = new Controller(session, store, audio, morse, hydro, loop, {
   storage,
   navigate: (q) => { location.assign(`${location.pathname}${q}`); },

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { decipherCopy, derive, Enigma, dayEnigma } from "@uboat/sim-core";
 import { DeskMachine, isPositions, replayCopy } from "../src/desk/machine";
+import { parseExtra, PaperModel } from "../src/desk/papers";
+import { ordersPages } from "../src/desk/docs";
+import { defaultSettings, parseSettings } from "../src/menu/settings";
+import { harness, runTo } from "./harness";
 
 const L = (i: number): string => String.fromCharCode(65 + i);
 const randWord = (r: ReturnType<typeof derive>, n: number): string => Array.from({ length: n }, () => L(r.int(26))).join("");
@@ -79,5 +83,64 @@ describe("machine switches", () => {
     expect(isPositions("ABCD") && !isPositions("ABC") && !isPositions("abcd") && !isPositions(5)).toBe(true);
     const bad = new DeskMachine({ power: true, cover: true, pos: "nope" });
     expect(bad.power).toBe(false); expect(bad.positions).toBe("AAAA");
+  });
+});
+
+describe("desk hooks in the controller", () => {
+  it("a dead machine swallows typing and decode and calls denied; a live one types", () => {
+    const h = harness(12); runTo(h, 70);
+    let denied = 0;
+    h.hooks.typingGate = () => false; h.hooks.denied = () => { denied++; };
+    h.ctl.handle({ t: "char", ch: "A" }); h.ctl.handle({ t: "space" }); h.ctl.handle({ t: "backspace" }); h.ctl.handle({ t: "confirm" });
+    expect(h.store.copyText(h.store.state.activeRx as number, h.store.state.activeAttempt)).toBe("");
+    expect(denied).toBe(4);
+    h.hooks.typingGate = () => true;
+    h.ctl.handle({ t: "char", ch: "A" });
+    expect(h.store.copyText(h.store.state.activeRx as number, h.store.state.activeAttempt)).toBe("A");
+  });
+  it("decode uses the rotor setting the player dialled; the day, indicator and seed pin the maths to Watch.decipher", () => {
+    const h = harness(12); runTo(h, 70);
+    const rx = h.store.activeView(); expect(rx).toBeDefined();
+    const att = (rx as NonNullable<typeof rx>).attempts[0] as { attempt: number; indicator: string };
+    for (const ch of "ABCD") h.ctl.handle({ t: "char", ch });
+    h.hooks.decodeSetting = () => att.indicator;
+    h.ctl.handle({ t: "confirm" });
+    const right = h.store.activeView()?.analysis.get(h.store.state.activeAttempt)?.plain;
+    expect(right).toBe(h.session.watch.decipher(att.indicator, "ABCD").plain);
+    expect(right).toBe(replayCopy(12, 1, att.indicator, "ABCD", true).plain); // DAY = 1 in the desk equals the sim's day
+    h.hooks.decodeSetting = () => "AAAA" === att.indicator ? "ZZZZ" : "AAAA";
+    h.ctl.handle({ t: "confirm" });
+    expect(h.store.activeView()?.analysis.get(h.store.state.activeAttempt)?.plain).not.toBe(right); // wrong setting: wrong text, no message
+  });
+});
+
+describe("desk.v1 G2 fields, Obscura page, timer setting", () => {
+  it("round-trips the machine and ration and rejects bad data", () => {
+    const m = new PaperModel();
+    const raw = m.serialize(5, { mach: { power: true, cover: false, pos: "QWER" }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
+    expect(parseExtra(raw, 5)).toEqual({ mach: { power: true, cover: false, pos: "QWER" }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
+    expect(parseExtra(raw, 6).mach.pos).toBe("AAAA");                      // another watch
+    expect(parseExtra(raw.replace("QWER", "qwer"), 5).mach.pos).toBe("AAAA");
+    expect(parseExtra(raw.replace('"power":true,"cover":false', '"power":true,"cover":true'), 5).mach.power).toBe(false); // interlock survives storage
+    expect(parseExtra(m.serialize(5), 5).ration.score).toBe(0);            // a layout without the new fields still loads
+    expect(parseExtra("{oops", 5).mach.pos).toBe("AAAA");
+  });
+  it("prints the day key only when given, in both languages", () => {
+    const key = { reflector: "B", rotors: ["Beta", "II", "V", "I"], rings: "AKQD", plugboard: ["AB", "CD"] };
+    for (const lang of ["en", "vi"] as const) {
+      const without = ordersPages(lang, [], [0, 1, 2]), withKey = ordersPages(lang, [], [0, 1, 2], key);
+      expect(withKey.pages.length).toBe(without.pages.length + 1);
+      const page = withKey.pages.find((p) => p.title === "Obscura Setup");
+      expect(page?.body).toContain("Beta II V I");
+      expect(page?.body).toContain("A K Q D");
+      expect(page?.body).toContain("AB CD");
+      expect(JSON.stringify(without)).not.toContain("Beta II V I");
+    }
+  });
+  it("timer setting defaults off and validates", () => {
+    const d = defaultSettings(false);
+    expect(d.timer).toBe(false);
+    expect(parseSettings(JSON.stringify({ timer: true }), d).timer).toBe(true);
+    expect(parseSettings(JSON.stringify({ timer: "yes" }), d).timer).toBe(false);
   });
 });

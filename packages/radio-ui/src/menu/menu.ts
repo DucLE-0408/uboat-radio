@@ -156,7 +156,7 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
         inp.addEventListener("input", () => { const v = Number(inp.value); out.textContent = pct(v); apply({ ...settings, [key]: v }); });
         return h("div", { class: "mc-field" }, h("label", { attrs: { for: id }, text: label }), inp, out);
       };
-      const check = (id: string, label: string, key: "sound" | "reduceMotion"): HTMLElement => {
+      const check = (id: string, label: string, key: "sound" | "reduceMotion" | "timer"): HTMLElement => {
         const inp = h("input", { attrs: { id, type: "checkbox" } });
         inp.checked = settings[key];
         inp.addEventListener("change", () => apply({ ...settings, [key]: inp.checked }));
@@ -179,7 +179,7 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
       card.replaceChildren(
         h("h2", { attrs: { id: "mc-title" }, text: "Settings" }),
         first, slider("mc-morse", "Morse and static", "morse"), slider("mc-hydro", "Hydrophone", "hydro"),
-        check("mc-sound", "Sound on", "sound"), check("mc-motion", "Reduce motion", "reduceMotion"),
+        check("mc-sound", "Sound on", "sound"), check("mc-motion", "Reduce motion", "reduceMotion"), check("mc-timer", translate(settings.lang, "settings.timer"), "timer"),
         h("fieldset", { class: "mc-set" }, h("legend", { text: "Interface (next watch)" }), radio("desk", translate(settings.lang, "settings.ui.desk")), radio("p5", "Pixel-art radio room"), radio("classic", "Classic panels")),
         h("fieldset", { class: "mc-set" }, h("legend", { text: `${translate("en", "settings.language")} / ${translate("vi", "settings.language")}` }), ...LANGS.map(langRadio)),
         h("p", { class: "mc-hint", text: "Saved in this browser only." }),
