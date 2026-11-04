@@ -116,7 +116,14 @@ describe("desk paper model", () => {
     const o2 = n.ensure("output", 3, 0); n.applyPending(o2);
     expect(o2.decoded).toEqual(o.decoded);
     const raw = (d: unknown, id = "out:3:0"): string => JSON.stringify({ v: 1, seed: 9, papers: [{ id, x: 200, y: 150, z: 1, face: "front", decoded: d }] });
-    for (const bad of [{ words: ["<b>"], bad: [false], damaged: 0 }, { words: ["AB"], bad: [], damaged: 0 }, { words: ["AB"], bad: [false], damaged: -1 }, "x"]) expect(parseLayout(raw(bad), 9)).toEqual([]);
-    expect(parseLayout(raw({ words: ["AB"], bad: [false], damaged: 0 }, "in:3:0"), 9)).toEqual([]); // only Outputs carry decoded text
+    // malformed text drops only the text: the sheet, its stamps and its clip survive
+    for (const bad of [{ words: ["<b>"], bad: [false], damaged: 0 }, { words: ["AB"], bad: [], damaged: 0 }, { words: ["AB"], bad: [false], damaged: -1 }, { words: ["A".repeat(401)], bad: [false], damaged: 0 }, "x"]) {
+      const got = parseLayout(raw(bad), 9);
+      expect(got.map((e) => [e.id, e.decoded])).toEqual([["out:3:0", null]]);
+    }
+    expect(parseLayout(raw({ words: ["AB"], bad: [false], damaged: 0 }, "in:3:0"), 9).map((e) => e.decoded)).toEqual([null]); // only Outputs carry decoded text
+    // a missed group space decodes as one long word; it must survive a reload
+    const long = { words: ["ABCDEFGHIJKLMNOPQ", "XY"], bad: [true, false], damaged: 1 };
+    expect(parseLayout(raw(long), 9)[0]?.decoded).toEqual(long);
   });
 });
