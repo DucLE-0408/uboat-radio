@@ -2,8 +2,8 @@
 @font-face { font-family: "VT323"; src: url("./assets/vt323-latin-400-normal.woff2") format("woff2"); font-display: swap; }
 
 :root {
-  --ink: #0c0a18; --n0: #14122b; --n1: #1d1a41; --n2: #2a2658; --n3: #3a3475; --p1: #4c4390; --lav: #938acb;
-  --s1: #38405f; --s2: #535c82; --s4: #a5aecb; --paper: #ebdde0; --amber: #e9b96a; --amber-d: #9a7b45;
+  --ink: #0e0d12; --n0: #1e1c24; --n1: #27252e; --n2: #322f39; --n3: #3f3b47; --p1: #514c59; --lav: #9a93a3;
+  --s1: #3f3b47; --s2: #514c59; --s4: #c9cfdf; --paper: #e8cacc; --amber: #f0b85a; --amber-d: #8a6634;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -64,3 +64,14 @@ main { max-width: 1040px; margin: 0 auto; padding: 0 16px 40px; }
   .btn { width: 100%; }
   .cta { flex-direction: column; }
 }
+
+/* art: showcase screenshot and card icons (pixel sprites, integer-scaled, nearest-neighbour) */
+.showcase { padding-top: 28px; }
+.desk { margin: 0; }
+.desk img { display: block; width: 100%; height: auto; image-rendering: pixelated; border: 4px solid var(--n3); background: var(--n1); }
+.desk figcaption { margin-top: 8px; color: var(--s4); font-size: 19px; }
+.ico { display: inline-block; width: 32px; height: 32px; margin-right: 10px; vertical-align: middle; background: url("./assets/site-icons.png") 0 0 / 224px 32px no-repeat; image-rendering: pixelated; }
+.i0 { background-position: 0 0; } .i1 { background-position: -32px 0; } .i2 { background-position: -64px 0; } .i3 { background-position: -96px 0; }
+.i4 { background-position: -128px 0; } .i5 { background-position: -160px 0; } .i6 { background-position: -192px 0; }
+.card h3 { display: flex; align-items: center; }
+.card { border-top-color: var(--p1); }
