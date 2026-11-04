@@ -10,10 +10,14 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
 ## G1 — Bàn làm việc chơi được (chỉ trình bày, sim-core không đổi)
 
 ### Stage 1 — Khung và lát cắt hình ảnh (chờ duyệt hình)
-- [ ] **T1.1** `src/i18n/` (`en`, `vi`, `t()`), test đủ khóa; chọn ngôn ngữ trong Settings; thêm subset font tiếng Việt (hash + OFL). (R11)
-- [ ] **T1.2** `src/desk/` mount theo `?ui=desk`; khung 640×360 scale nguyên; cutaway P5 tái dùng. (R1, R9.1)
-- [ ] **T1.3** Art lát cắt: mặt bàn, cột trái, bảng điều khiển, Teletyper, Echo Stamper, một tờ Input hai mặt. (R1.2)
-- [ ] **T1.4** Ảnh chụp lát cắt; so với tham chiếu; ghi `unverified` cho thẩm mỹ.
+- [x] **T1.1** `src/i18n/` (`en`, `vi`, `t()`), test đủ khóa; chọn ngôn ngữ trong Settings; thêm subset font tiếng Việt (hash + OFL). (R11)
+  - Silkscreen **không có** subset tiếng Việt (@fontsource/silkscreen@5.3.0 chỉ có latin, latin-ext). Thêm `vt323-vietnamese-400-normal.woff2` từ @fontsource/vt323@5.3.0 (sha256 84b335a5…, cùng OFL). Desk ở `vi` dùng VT323 cho nhãn; các điểm mã tiếng Việt của Silkscreen mượn glyph VT323. Menu chính mới có mục chọn ngôn ngữ, chưa dịch toàn bộ.
+- [x] **T1.2** `src/desk/` mount theo `?ui=desk`; khung 640×360 scale nguyên; cutaway P5 tái dùng. (R1, R9.1)
+  - Dưới 1280×720 hiện thông báo kèm liên kết sang phòng điện đài. `?lang=en|vi` ghi đè Settings. Settings có thêm `ui: "desk"`, `lang`.
+- [x] **T1.3** Art lát cắt: mặt bàn, cột trái, bảng điều khiển, Teletyper, Echo Stamper, một tờ Input hai mặt. (R1.2)
+  - `tools/art/desk.ts`: 11 sprite TEMPORARY (desk-bg, desk-door, desk-controls, desk-tty, desk-tty-lamp, desk-stamper, desk-st-switch, desk-st-lamp, desk-machine-tab, paper-input 2 mặt, desk-mission). Tờ Input mặt trước đọc tin hiện tại từ store (`watch.copy(tokens)`), nút lật là trạng thái trình bày.
+- [x] **T1.4** Ảnh chụp lát cắt; so với tham chiếu; ghi `unverified` cho thẩm mỹ.
+  - `evidence/stage1-*.png` (en/vi, 1280/1920, mặt sau, cửa sổ 1024). Thẩm mỹ so với tham chiếu: `unverified`, chờ người dùng.
 - **Cổng duyệt:** người dùng xem lát cắt trước khi nhân rộng.
 
 ### Stage 2 — Giấy và Teletyper

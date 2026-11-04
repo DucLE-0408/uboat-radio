@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { encodePng } from "./pix.ts";
+import { deskSprites } from "./desk.ts";
 import { iconSprites } from "./icons.ts";
 import { menuSprites } from "./menu.ts";
 import { buildSprites } from "./sprites.ts";
@@ -19,6 +20,7 @@ export function buildManifest(): { entries: ManifestEntry[]; files: Map<string, 
   const entries: ManifestEntry[] = [];
   const files = new Map<string, Uint8Array>();
   const all = [...buildSprites().concat(menuSprites()).map((s) => ({ s, path: `sprites/${s.id}.png` })), ...iconSprites().map((i) => ({ s: i.sprite, path: i.path }))];
+  all.push(...deskSprites().map((s) => ({ s, path: `sprites/${s.id}.png` })));
   for (const { s, path } of all) {
     const png = encodePng(s.img);
     files.set(path, png);
@@ -35,6 +37,7 @@ export function buildManifest(): { entries: ManifestEntry[]; files: Map<string, 
 export const FONTS = [
   { id: "silkscreen-latin-400", path: "fonts/silkscreen-latin-400-normal.woff2", license: "OFL-1.1", licenseFile: "fonts/LICENSE-OFL-Silkscreen.txt", origin: "@fontsource/silkscreen@5.3.0 (npm tarball, not a dependency)", sha256: "e6c72ea4702249202bcdd79d3343057e4e25ef1f04e3fcffd8602ab53b40b4cc" },
   { id: "vt323-latin-400", path: "fonts/vt323-latin-400-normal.woff2", license: "OFL-1.1", licenseFile: "fonts/LICENSE-OFL-VT323.txt", origin: "@fontsource/vt323@5.3.0 (npm tarball, not a dependency)", sha256: "8ddbebcc1048154132e1d78eb9b1f7850bca1b7d857035ccf1cb4318ebc615b6" },
+  { id: "vt323-vietnamese-400", path: "fonts/vt323-vietnamese-400-normal.woff2", license: "OFL-1.1", licenseFile: "fonts/LICENSE-OFL-VT323.txt", origin: "@fontsource/vt323@5.3.0 (npm tarball, not a dependency)", sha256: "84b335a53b55c33f919f11b5cf83d857f053097171461eaba10d44be1c623609" },
 ] as const;
 
 // Run as a script only when invoked directly (not when imported by tests).

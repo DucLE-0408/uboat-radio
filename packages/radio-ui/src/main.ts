@@ -9,6 +9,8 @@ import type { Ctx } from "./ctx";
 import { resolveKey, shouldPrevent } from "./input/keymap";
 import { blursAfterPointer, routeKey } from "./input/modes";
 import { mountScene } from "./scene";
+import { mountDesk } from "./desk";
+import { parseLang, setLang } from "./i18n";
 import { FixedStepLoop } from "./sim/loop";
 import { Session, type StorageLike } from "./sim/session";
 import { rebuildStore, Store } from "./store";
@@ -55,6 +57,7 @@ const applySettings = (s: Settings): void => {
   audio.setMix({ master: s.master, morse: s.morse, hydro: s.hydro, sound: s.sound });
   document.documentElement.classList.toggle("reduce-motion", s.reduceMotion);
   flags.reduceMotion = s.reduceMotion;
+  setLang(parseLang(params.get("lang")) ?? s.lang); // ?lang= (allowlisted) wins over the saved setting
 };
 applySettings(settings);
 let settingsWarned = false;
@@ -114,7 +117,7 @@ store.on(["copy"], () => copies.schedule());
 if (params.get("diag") === "1") mountDiagOverlay(diag);
 
 const ui = params.get("ui") ?? settings.ui; // ?ui=classic still wins; otherwise the player's setting
-const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : mountScene(ctx, app); // P5 is the default; ?ui=classic keeps the P4 panels
+const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : ui === "desk" ? mountDesk(ctx, app) : mountScene(ctx, app); // P5 is the default; ?ui=desk is the paperwork desk preview; ?ui=classic keeps the P4 panels
 
 controller.syncTelemetry();
 store.on(["ui", "alert", "ended", "clock"], () => document.body.classList.toggle("emergency", store.state.emergency.reason !== null && store.state.ended === null));
