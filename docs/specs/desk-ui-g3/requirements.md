@@ -1,6 +1,6 @@
 # Desk UI G3 (hậu quả, tell trên giấy, plugboard) — Requirements
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Không được sửa `packages/sim-core` cho tới khi người vận hành duyệt spec này (xem `tasks.md`, cổng S0). Spec cha: `docs/specs/desk-ui/` (G1–G2 đã xong và đã merge).
+Trạng thái: **ĐÃ DUYỆT 2026-11-04** (xem `tasks.md`, cổng S0). Spec cha: `docs/specs/desk-ui/` (G1–G2 đã xong và đã merge).
 
 ## Giới thiệu
 
@@ -25,12 +25,13 @@ Vì có hậu quả và có dữ liệu sim mới, G3 **bắt buộc sửa `pack
 1. THE SYSTEM SHALL có sổ cảnh cáo trong sim (`Watch`), tăng khi một *lỗi giấy tờ* xảy ra; mỗi lần phát sinh sự kiện `CITATION { tSec, rxId | null, reason, count }`.
 2. THE SYSTEM SHALL định nghĩa lỗi giấy tờ gồm: đóng dấu sai màu hoặc sai loại giấy; vứt vào thùng rác giấy không được vứt; giao bức điện thiếu dấu Echo, thiếu chữ ký hoặc sai bó (Input không kèm đúng Output); **hết giờ** bức điện (R4); vi phạm lệnh lưu/hủy (R5).
 3. WHEN số cảnh cáo là 1 hoặc 2 THE SYSTEM SHALL phát `CONSEQUENCE { level: "warning" }`: nhắc nhở, **trừ Ration**, **mất một thông tin quan trọng** (R1.9) và **bị địch đánh dấu** (tăng `Intel` một bậc, làm tăng hazard HF/DF theo `intelHazardStep` sẵn có). *(Người vận hành chốt 2026-11-04.)*
-4. WHEN số cảnh cáo đạt 3 THE SYSTEM SHALL phát `CONSEQUENCE { level: "located" }`: địch biết khoảng **80% vị trí** tàu (một `HFDF_FIX` với độ tin cậy 0.8 từ dữ liệu cân bằng) và **tàu bị tấn công**: `ESCORT_DISPATCHED` rồi `DEPTH_CHARGE` theo cơ chế escort sẵn có của sim. Cảnh cáo thứ 4 giữ mức này (không có bậc mới) và tăng điểm trừ. *(Chốt 2026-11-04 cho lần 3; lần 4 là giả định chờ xác nhận.)*
+4. WHEN số cảnh cáo đạt 3 THE SYSTEM SHALL phát `CONSEQUENCE { level: "located" }`: địch biết khoảng **80% vị trí** tàu (một `HFDF_FIX` với độ tin cậy 0.8 từ dữ liệu cân bằng) và **tàu bị tấn công**: `ESCORT_DISPATCHED` rồi `DEPTH_CHARGE` theo cơ chế escort sẵn có của sim. *(Chốt 2026-11-04.)*
+4b. WHEN số cảnh cáo đạt 4 THE SYSTEM SHALL phát `CONSEQUENCE { level: "severe" }`: **mất thêm thông tin** (R1.9), bị đánh dấu thêm một bậc và địch định vị lại (`HFDF_FIX` độ tin cậy 0.9, escort thứ hai gần hơn). *(Chốt 2026-11-04: lần 4 mất thông tin và tăng mức nghiêm trọng.)*
 5. WHEN số cảnh cáo đạt 5 THE SYSTEM SHALL phát `CONSEQUENCE { level: "executed" }`: thuyền trưởng kéo người chơi ra ngoài tàu để hành quyết; kết thúc ca (`WATCH_END`, lý do mới `"executed"`) kèm cảnh kết ở desk. *(Chốt 2026-11-04.)*
 6. THE SYSTEM SHALL đọc ngưỡng, loại lỗi và trọng số từ dữ liệu cân bằng (`packages/sim-core/data`), không hardcode.
 7. THE SYSTEM SHALL phát cảnh cáo **một lần** cho mỗi (bức điện, loại lỗi); gửi lại cùng lỗi (kể cả sau reload) không cộng thêm (idempotent theo khóa).
 8. THE SYSTEM SHALL hiện cảnh cáo ở desk bằng tờ *Citation* (giấy mới) và lời thoại; **không** nói lỗi đó vì sao đúng/sai về nội dung tin (D4), chỉ nói luật giấy tờ nào bị vi phạm.
-9. THE SYSTEM SHALL cho "mất thông tin quan trọng" là mất có kiểm soát một dữ liệu hữu ích đang có trên bàn (đề xuất: một trang Daily Orders bị gạch/thu hồi, chọn từ bảng cân bằng); chi tiết ở câu hỏi mở 8 của design.
+9. THE SYSTEM SHALL coi "thông tin quan trọng" là các mục **tọa độ an toàn** và **điểm có thể tiếp tế** do sim sinh từ seed và in trên Daily Orders (trang mới "Safe waters & resupply"). Mỗi lần mất (cảnh cáo 1, 2, 4) sim thu hồi một mục theo thứ tự tất định từ seed (`CITATION.lostItem`); desk gạch mục đó trên Orders từ lúc ấy.
 
 ### R2. Tell dạng giấy tờ
 1. THE SYSTEM SHALL sinh cho mỗi bức điện (trong sim, từ seed) một *hồ sơ giấy* quan sát được: `authMark` (`none` | `genuine` | `forged`), `signatureVariant`, `senderApproved`, `senderId` (mã hóa bằng khóa ngày, cần máy để đọc).

@@ -1,6 +1,6 @@
 # Desk UI G3 — Design
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Đi kèm `requirements.md`.
+Trạng thái: **ĐÃ DUYỆT 2026-11-04**. Đi kèm `requirements.md`.
 
 ## 1. Kiến trúc
 
@@ -71,10 +71,10 @@ Hạn giờ G3 dùng thời gian sim. Chỉ báo G2 (thời gian thực) bị th
 
 1. ~~**Mức phạt**~~ **ĐÃ CHỐT 2026-11-04** (người vận hành): lần 1–2 nhắc nhở, trừ điểm, mất thông tin quan trọng, bị địch đánh dấu; lần 3 địch biết ~80% vị trí và đánh bom tàu; lần 5 bị thuyền trưởng kéo ra ngoài tàu hành quyết. Ánh xạ vào sim: lần 1–2 = `INTEL_LEVEL`+1 (hazard HF/DF tăng theo `intelHazardStep`); lần 3 = `HFDF_FIX` độ tin cậy 0.8 + `ESCORT_DISPATCHED` + `DEPTH_CHARGE` (cơ chế sẵn có, người chơi vẫn có thể lặn/đổi hướng); lần 5 = `WATCH_END "executed"`.
 2. ~~**Xử tử**~~ **ĐÃ CHỐT**: kết thúc ca kèm cảnh kết (thuyền trưởng kéo ra ngoài tàu).
-2b. **Lần 4**: giả định giữ mức "located" và tăng điểm trừ, không thêm bậc mới. Xác nhận?
-3. **Save**: v3 có nhận save v2 không (đề xuất có) hay buộc ca mới.
-4. **Chống gian lận**: chấp nhận `paperwork` do client báo ở G3 (đề xuất có, ghi rõ giới hạn), hay làm ngay giao thức chuỗi thao tác.
-5. **Hạn giờ**: giá trị mặc định (đề xuất 120 giây sim-time) và có chia theo loại tin không.
-6. **Lệnh lưu/hủy**: danh sách lệnh ban đầu (đề xuất 3: hủy Input sau giao, lưu Output, không lưu gì).
-7. **Chữ ký mẫu**: số biến thể (đề xuất 6) và cách vẽ (vector nhỏ gán `TEMPORARY`, không chép game tham chiếu).
-8. **Mất thông tin quan trọng** (lần 1–2): đề xuất thu hồi/gạch một trang Daily Orders (ví dụ danh sách đài đã biết hoặc mẫu chữ ký) trong phần còn lại của ca, chọn tất định từ seed và bảng cân bằng. Chấp nhận, hay muốn dạng khác (ví dụ mất một bức điện chưa giao)?
+2b. ~~**Lần 4**~~ **ĐÃ CHỐT**: mất thông tin và tăng mức nghiêm trọng (`CONSEQUENCE "severe"`: mất thêm một mục, đánh dấu thêm, định vị lại độ tin cậy 0.9, escort thứ hai gần hơn).
+3. ~~**Save**~~ **ĐÃ CHỐT** ("làm save"): lệnh mới đi vào `commandLog`; định dạng file save v2 giữ nguyên (thêm kiểu lệnh là tương thích ngược), `parseCommand` ở radio-ui validate từng kiểu lệnh mới. Save cũ nạp như trước, không có cảnh cáo.
+4. ~~**Chống gian lận**~~ **ĐÃ CHỐT** (theo đề xuất): chấp nhận `paperwork` do client báo ở G3; giới hạn ghi ở mục 3.
+5. ~~**Hạn giờ**~~ **ĐÃ CHỐT**: 120 giây sim-time, chung mọi loại tin.
+6. ~~**Lệnh lưu/hủy**~~ **QUYẾT ĐỊNH (người vận hành giao cho tôi)**: 3 lệnh theo ngày, chọn bằng `derive(seed, "orders", day)`: "hủy Input sau khi giao", "lưu bản Output vào ngăn hồ sơ", "không lưu gì (chỉ giao)". Làm trái lệnh = `orderBreach`.
+7. ~~**Chữ ký mẫu**~~ **QUYẾT ĐỊNH (giao cho tôi)**: 6 biến thể vẽ vector nhỏ (nét ngắn sinh từ `signatureVariant`), gán `TEMPORARY`, không chép game tham chiếu.
+8. ~~**Mất thông tin quan trọng**~~ **ĐÃ CHỐT**: tọa độ an toàn và điểm có thể tiếp tế (4 mục sinh từ seed: 2 tọa độ an toàn, 2 điểm tiếp tế), thu hồi từng mục ở cảnh cáo 1, 2, 4.

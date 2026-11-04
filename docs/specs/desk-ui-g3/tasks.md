@@ -1,10 +1,10 @@
 # Desk UI G3 — Tasks
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
+Trạng thái: **ĐÃ DUYỆT 2026-11-04** (người vận hành trả lời toàn bộ câu hỏi mở và giao câu 6, 7 cho tôi quyết). Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
 
 ## Cổng S0 — Duyệt spec (bắt buộc, chưa xong)
-- [ ] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở còn lại (design mục 8). Đã chốt 2026-11-04: bậc phạt 1–2 / 3 / 5 (câu 1 và 2).
-- **Không sửa `packages/sim-core` trước cổng này.**
+- [x] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở còn lại (design mục 8). Đã chốt 2026-11-04: bậc phạt 1–2 / 3 / 5 (câu 1 và 2).
+- Cổng đã mở; được sửa `packages/sim-core` trong phạm vi bảng ở `design.md` mục 2.
 
 ## Stage 1 — Sim-core: luật, cảnh cáo, hậu quả (sau S0)
 - [ ] **T1.1** `data/paper.json` + loader có validate; test dữ liệu. (R1.5, R9.1)
