@@ -151,8 +151,11 @@ export function generateForgery(seed: number | string, id: number, kind: Kind, i
     // imitated fist against that station's known fist and reports an un-injected "fist" tell
     // (flaky property failure, e.g. seed 261327 / id 36, where genuine "UZQ" was the old fallback).
     from = "U" + String.fromCharCode(65 + r.int(26)) + "Q";
-    for (let i = 0; ctx.callsigns.includes(from) && i < 26; i++) {
-      from = "U" + String.fromCharCode(65 + ((from.charCodeAt(1) - 65 + 1) % 26)) + "Q";
+    // Walk U?Q, then (roster exhausted) V?Q; a roster cannot hold all 52 in practice.
+    for (let i = 0; ctx.callsigns.includes(from) && i < 52; i++) {
+      const next = (from.charCodeAt(1) - 65 + 1) % 26;
+      const lead = i === 25 ? "V" : from[0];
+      from = lead + String.fromCharCode(65 + next) + "Q";
     }
   }
 

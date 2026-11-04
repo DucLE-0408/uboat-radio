@@ -25,7 +25,7 @@ handoff: null
 
 ## Architecture linkage
 
-Client/input → API/handler → service → DB/cache/queue/external dependency → logs/metrics/traces.
+Seeded RNG (`derive(seed,"forge",id)`) → `generateForgery` (callsign flaw + injected tells) → `verifyTells` (observables only) → property tests in `packages/sim-core/test/messages.test.ts`. No API/DB/network layers involved.
 
 ## Progress and decisions
 
