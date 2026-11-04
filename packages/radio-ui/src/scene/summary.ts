@@ -20,10 +20,10 @@ export function mountSummary(ctx: SceneCtx, root: HTMLElement): void {
     el.hidden = false;
     for (const n of root.querySelectorAll<HTMLElement>(":scope > .sc")) if (n !== el) n.setAttribute("inert", "");
     const right = s.decisions.filter((d) => d.correct).length;
-    const h1 = mk("h1", "lbl"); h1.id = "sc-sum-title"; h1.textContent = s.ended === "sunk" ? "Boat lost" : "Dawn: watch complete";
+    const h1 = mk("h1", "lbl"); h1.id = "sc-sum-title"; h1.textContent = s.ended === "sunk" ? "Boat lost" : s.ended === "executed" ? "Court-martial" : "Dawn: watch complete";
     const dl = mk("dl", "typ sdl");
     const row = (k: string, v: string): void => { const dt = mk("dt", "lbl"); dt.textContent = k; const dd = mk("dd", ""); dd.textContent = v; dl.append(dt, dd); };
-    row("Outcome", s.ended === "sunk" ? "The boat was sunk and the keybook lost." : "You brought the boat through the night watch.");
+    row("Outcome", s.ended === "sunk" ? "The boat was sunk and the keybook lost." : s.ended === "executed" ? "The captain had you taken on deck. Too many paperwork violations." : "You brought the boat through the night watch.");
     row("Hull", `${Math.round(s.boat.hull)} / 100`);
     row("Time on the air", formatClock(s.tx.totalSec));
     row("Decisions", s.decisions.length === 0 ? "none taken" : `${right} of ${s.decisions.length} correct`);

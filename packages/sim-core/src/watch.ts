@@ -8,6 +8,7 @@ import { Boat, type BoatMode } from "./boat";
 import { HfdfDetector } from "./detection";
 import { EventBus, type SimEvent } from "./events";
 import { Intel } from "./intel";
+import { judge, lossOrder, orderItems, validAction, type OrderItem, type PaperAction, type PaperFault } from "./paper";
 import {
   generateForgery, generateGenuine, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
 } from "./messages";
@@ -37,13 +38,20 @@ export type Command =
   | { readonly kind: "repeat"; readonly rxId: number }
   | { readonly kind: "challenge"; readonly rxId: number }
   | { readonly kind: "check"; readonly rxId: number }
-  | { readonly kind: "resolve"; readonly rxId: number; readonly decision: "accept" | "reject" };
+  | { readonly kind: "resolve"; readonly rxId: number; readonly decision: "accept" | "reject" }
+  /** G3 (desk UI): what the player did with a sheet; the sim judges it (see paper.ts) and may issue a citation. */
+  | { readonly kind: "paperwork"; readonly rxId: number | null; readonly action: PaperAction }
+  /** G3: the optional per-message deadline (Settings). Off unless the UI sends it, so P5/classic never get timeout citations. */
+  | { readonly kind: "timer"; readonly on: boolean };
+
+export type EndReason = "time" | "sunk" | "executed";
 
 export interface LoggedCommand { readonly tick: number; readonly cmd: Command }
 
 export interface WatchSummary {
   readonly tSec: number;
-  readonly endReason: "time" | "sunk" | null;
+  readonly endReason: EndReason | null;
+  readonly citations: number;
   readonly hull: number;
   readonly sunk: boolean;
   readonly intelLevel: number;
@@ -55,6 +63,8 @@ interface RxState {
   readonly gen: Generated;
   readonly checkLetter: string; // what goes on the air (true letter, or a forger's guess)
   attempts: number;
+  deadlineAt: number | null; // sim-time second by which the Input must be handed over (G3 timer)
+  handed: boolean;
   challenge: Challenge | undefined;
   reply: string | undefined;
   replyChecked: boolean;
@@ -84,7 +94,13 @@ export class Watch {
   private txRemaining = 0;
   private txTotal = 0;
   private lastIntelLevel: number;
-  private ended: "time" | "sunk" | null = null;
+  private ended: EndReason | null = null;
+  private timerOn = false;
+  private citations = 0;
+  private readonly cited = new Set<string>();
+  private readonly items: readonly OrderItem[];
+  private readonly lossQueue: string[];
+  private readonly lost = new Set<string>();
   private ambushes = 0;
 
   constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE) {
@@ -99,6 +115,8 @@ export class Watch {
     this.knownFists = makeKnownFists(seed, this.callsigns, b);
     this.asdicRng = derive(seed, "asdic");
     this.challengeRng = derive(seed, "challenge");
+    this.items = orderItems(seed, b);
+    this.lossQueue = lossOrder(seed, this.items);
 
     this.bus.subscribe((e) => { if (e.type === "BOAT_SUNK") this.onSunk(e.tSec); });
 
@@ -119,7 +137,11 @@ export class Watch {
 
   get tSec(): number { return this.tick * DT; }
   get tickCount(): number { return this.tick; }
-  get endReason(): "time" | "sunk" | null { return this.ended; }
+  get endReason(): EndReason | null { return this.ended; }
+  get citationCount(): number { return this.citations; }
+
+  /** G3: the safe coordinates and resupply points printed on the Daily Orders, and which ones citations have taken away. */
+  orderItems(): readonly (OrderItem & { readonly lost: boolean })[] { return this.items.map((i) => ({ ...i, lost: this.lost.has(i.id) })); }
 
   /** Own position and clock, plus the fists of friendly stations the operator knows by ear. */
   worldCtx(): WorldCtx {
@@ -153,7 +175,7 @@ export class Watch {
   summary(): WatchSummary {
     const s = this.boat.state();
     return {
-      tSec: this.tSec, endReason: this.ended, hull: s.hull, sunk: s.sunk, intelLevel: this.intel.level,
+      tSec: this.tSec, endReason: this.ended, citations: this.citations, hull: s.hull, sunk: s.sunk, intelLevel: this.intel.level,
       txTotalSec: this.txTotal, resolved: this.resolved.slice(),
     };
   }
@@ -176,6 +198,8 @@ export class Watch {
       case "challenge": return this.sendChallenge(cmd.rxId);
       case "check": return this.checkReply(cmd.rxId);
       case "resolve": return this.resolve(cmd.rxId, cmd.decision);
+      case "paperwork": return this.paperwork(cmd.rxId, cmd.action);
+      case "timer": return this.setTimer(cmd.on);
     }
   }
 
@@ -279,7 +303,7 @@ export class Watch {
       const r = derive(this.seed, "forgeauth", id);
       if (!r.chance(this.intel.forgeryPassProbability())) letter = L((idx(real) + 1 + r.int(25)) % 26);
     }
-    this.rx.set(id, { gen, checkLetter: letter, attempts: 0, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
+    this.rx.set(id, { gen, checkLetter: letter, attempts: 0, deadlineAt: null, handed: false, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
     this.deliver(id);
   }
 
@@ -298,7 +322,60 @@ export class Watch {
       type: "MSG_RX", tSec: this.tSec, rxId, attempt: rx.attempts, from: msg.from, net: msg.net, sentAtMin: msg.sentAtMin,
       indicator, tokens, snrDb: snr, txFist: msg.txFist, dfBearingDeg: msg.dfBearingDeg,
     });
+    if (rx.attempts === 0) { // the clock for this message starts when it first reaches the desk
+      rx.deadlineAt = this.tSec + this.b.paper.deadlineSec;
+      this.at(rx.deadlineAt, () => this.timeoutCheck(rxId));
+    }
     rx.attempts++;
+  }
+
+  // ---------------------------------------------------------------- G3: paperwork, citations, consequences
+
+  private paperwork(rxId: number | null, action: PaperAction): boolean {
+    if (!validAction(action)) return false;
+    const rx = rxId === null ? undefined : this.rx.get(rxId);
+    if (rxId !== null && !rx) return false;
+    if (action.act === "handover") {
+      if (rx === undefined) return false; // a bundle always belongs to a message
+      rx.handed = true;
+    }
+    for (const f of judge(action)) this.cite(rxId, f);
+    return true;
+  }
+
+  private setTimer(on: boolean): boolean {
+    this.timerOn = on;
+    if (on) for (const id of [...this.rx.keys()]) this.timeoutCheck(id); // overdue messages count the moment the clock is switched on
+    return true;
+  }
+
+  private timeoutCheck(rxId: number): void {
+    const rx = this.rx.get(rxId);
+    if (!this.timerOn || !rx || rx.handed || rx.deadlineAt === null || this.tSec < rx.deadlineAt) return;
+    this.cite(rxId, "timeout");
+  }
+
+  /** One citation per (message, fault); the consequence depends only on the running count (approved G3 spec, R1). */
+  private cite(rxId: number | null, reason: PaperFault): void {
+    const key = `${rxId ?? "-"}:${reason}`;
+    if (this.ended || this.cited.has(key)) return;
+    this.cited.add(key);
+    const t = this.tSec, p = this.b.paper, count = ++this.citations;
+    const lostItem = p.lostAt.includes(count) ? this.lossQueue.shift() ?? null : null;
+    if (lostItem !== null) this.lost.add(lostItem);
+    this.emit({ type: "CITATION", tSec: t, rxId, reason, count, lostItem });
+    if (count >= p.executeAt) {
+      this.emit({ type: "CONSEQUENCE", tSec: t, level: "executed", count, positionKnown: null });
+      this.ended = "executed";
+      this.emit({ type: "WATCH_END", tSec: t, reason: "executed" });
+      return;
+    }
+    const tier = count >= p.severeAt ? p.severe : count >= p.locatedAt ? p.located : null;
+    const level = count >= p.severeAt ? "severe" : count >= p.locatedAt ? "located" : "warning";
+    this.emit({ type: "CONSEQUENCE", tSec: t, level, count, positionKnown: tier?.positionKnown ?? null });
+    this.intel.mark(); // "marked by the enemy": Intel up one level, which also raises the HF/DF hazard
+    this.syncIntel(t);
+    if (tier !== null) for (const e of this.det.forceFix(this.b.watch.freqKhz, tier.reactSec, tier.etaSec)) this.emit(e);
   }
 
   private requestRepeat(rxId: number): boolean {

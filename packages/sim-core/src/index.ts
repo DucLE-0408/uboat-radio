@@ -10,4 +10,5 @@ export { BALANCE, type Balance } from "./balance";
 export * from "./sonar";
 export * from "./boat";
 export * from "./traffic";
+export * from "./paper";
 export * from "./watch";

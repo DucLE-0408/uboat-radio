@@ -1,5 +1,5 @@
 // Session = Watch + save file. Vietnamese: save/load CHỈ là seed + commandLog + untilTick; khôi phục bằng replay(). Bản chép dở lưu RIÊNG (transcripts.ts).
-import { replay, Watch, type Command, type LoggedCommand } from "@uboat/sim-core";
+import { replay, Watch, type Command, type LoggedCommand, type PaperAction } from "@uboat/sim-core";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -41,6 +41,30 @@ export function parseCommand(x: unknown): Command | null {
     case "resolve":
       return isInt(c["rxId"]) && (c["decision"] === "accept" || c["decision"] === "reject")
         ? { kind: "resolve", rxId: c["rxId"], decision: c["decision"] } : null;
+    case "timer": return typeof c["on"] === "boolean" ? { kind: "timer", on: c["on"] } : null;
+    case "paperwork": {
+      const rx = c["rxId"] === null ? null : isInt(c["rxId"]) ? c["rxId"] : undefined;
+      const a = parseAction(c["action"]);
+      return rx !== undefined && a !== null ? { kind: "paperwork", rxId: rx, action: a } : null;
+    }
+    default: return null;
+  }
+}
+
+const SHEETS = ["input", "output", "mission", "orders", "manual"] as const;
+const isCount = (x: unknown): x is number => typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 100;
+/** G3 paperwork facts from untrusted storage; the sim validates them again (`validAction`). */
+function parseAction(x: unknown): PaperAction | null {
+  if (typeof x !== "object" || x === null) return null;
+  const a = x as Record<string, unknown>;
+  switch (a["act"]) {
+    case "stamp":
+      return (a["sheet"] === "input" || a["sheet"] === "output") && (a["color"] === "blue" || a["color"] === "red") && isCount(a["stampsBefore"])
+        ? { act: "stamp", sheet: a["sheet"], color: a["color"], stampsBefore: a["stampsBefore"] } : null;
+    case "bin": return SHEETS.find((s) => s === a["sheet"]) !== undefined ? { act: "bin", sheet: a["sheet"] as (typeof SHEETS)[number] } : null;
+    case "handover":
+      return typeof a["echo"] === "boolean" && typeof a["signed"] === "boolean" && isCount(a["inputStamps"]) && isCount(a["outputs"]) && isCount(a["outputRed"]) && isCount(a["outputOther"]) && isCount(a["messages"])
+        ? { act: "handover", echo: a["echo"], signed: a["signed"], inputStamps: a["inputStamps"], outputs: a["outputs"], outputRed: a["outputRed"], outputOther: a["outputOther"], messages: a["messages"] } : null;
     default: return null;
   }
 }

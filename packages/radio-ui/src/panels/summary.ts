@@ -15,9 +15,9 @@ export function mountSummary(ctx: Ctx): Panel {
     const again = button("Play again — same seed", "", () => actions.newGame(true));
     const fresh = button("Play again — new seed", "", () => actions.newGame(false));
     card.replaceChildren(
-      h("h1", { text: s.ended === "sunk" ? "BOAT LOST" : "DAWN — WATCH COMPLETE", attrs: { id: "sum-title" } }),
+      h("h1", { text: s.ended === "sunk" ? "BOAT LOST" : s.ended === "executed" ? "COURT-MARTIAL" : "DAWN — WATCH COMPLETE", attrs: { id: "sum-title" } }),
       h("dl", { class: "kv" },
-        h("dt", { text: "Outcome" }), h("dd", { text: s.ended === "sunk" ? "The boat was sunk and the keybook lost." : "You brought the boat through the night watch." }),
+        h("dt", { text: "Outcome" }), h("dd", { text: s.ended === "sunk" ? "The boat was sunk and the keybook lost." : s.ended === "executed" ? "The captain had you taken on deck. Too many paperwork violations." : "You brought the boat through the night watch." }),
         h("dt", { text: "Hull" }), h("dd", { text: `${Math.round(s.boat.hull)} / 100` }),
         h("dt", { text: "Time on the air" }), h("dd", { text: formatClock(s.tx.totalSec) }),
         h("dt", { text: "Decisions" }), h("dd", { text: s.decisions.length === 0 ? "none taken" : `${right} of ${s.decisions.length} correct` }),

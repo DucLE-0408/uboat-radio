@@ -203,5 +203,44 @@
         "forged": true
       }
     ]
+  },
+  "paper": {
+    "deadlineSec": 120,
+    "warnUntil": 2,
+    "locatedAt": 3,
+    "severeAt": 4,
+    "executeAt": 5,
+    "lostAt": [
+      1,
+      2,
+      4
+    ],
+    "located": {
+      "positionKnown": 0.8,
+      "reactSec": {
+        "min": 20,
+        "max": 40
+      },
+      "etaSec": {
+        "min": 120,
+        "max": 240
+      }
+    },
+    "severe": {
+      "positionKnown": 0.9,
+      "reactSec": {
+        "min": 10,
+        "max": 20
+      },
+      "etaSec": {
+        "min": 60,
+        "max": 120
+      }
+    },
+    "items": {
+      "safeCoords": 2,
+      "resupply": 2,
+      "rangeKm": 150
+    }
   }
 }

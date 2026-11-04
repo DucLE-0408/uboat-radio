@@ -58,7 +58,10 @@ export interface UiState {
   emergency: { untilSec: number; reason: "asdic" | "depth_charge" | null };
   log: LogLine[];
   decisions: Decision[];
-  ended: "time" | "sunk" | null;
+  ended: "time" | "sunk" | "executed" | null;
+  /** G3: running number of paperwork citations and the Daily Orders items they took away (rebuilt from CITATION events). */
+  citations: number;
+  lostItems: Set<string>;
   notice: { text: string; seq: number } | null;
   pendingCheck: number | null;
   /** True while a restored event log is being re-applied (silent: no alarms survive unless still in force). */
@@ -77,7 +80,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0,
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -199,9 +202,19 @@ export class Store {
         this.mark("rx", "challenge", "ended");
         break;
       }
+      case "CITATION":
+        st.citations = e.count;
+        if (e.lostItem !== null) st.lostItems.add(e.lostItem);
+        this.log(e.tSec, "alert", `Citation ${e.count}: ${e.reason}${e.rxId === null ? "" : ` (#${e.rxId})`}`);
+        this.mark("ui", "log");
+        break;
+      case "CONSEQUENCE":
+        this.log(e.tSec, "alert", `Consequence: ${e.level}`);
+        this.mark("ui", "log");
+        break;
       case "WATCH_END":
         st.ended = e.reason;
-        this.log(e.tSec, "alert", e.reason === "sunk" ? "Watch ended: boat lost" : "Watch ended: dawn");
+        this.log(e.tSec, "alert", e.reason === "sunk" ? "Watch ended: boat lost" : e.reason === "executed" ? "Watch ended: executed" : "Watch ended: dawn");
         this.mark("ended", "ui");
         break;
     }

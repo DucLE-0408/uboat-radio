@@ -21,7 +21,9 @@ export type SimEvent =
   | { readonly type: "CHALLENGE_SENT"; readonly tSec: number; readonly rxId: number; readonly row: string; readonly col: string }
   | { readonly type: "CHALLENGE_REPLY"; readonly tSec: number; readonly rxId: number; readonly reply: string }
   | { readonly type: "MSG_RESOLVED"; readonly tSec: number; readonly rxId: number; readonly decision: "accept" | "reject"; readonly forged: boolean; readonly correct: boolean }
-  | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" };
+  | { readonly type: "CITATION"; readonly tSec: number; readonly rxId: number | null; readonly reason: "wrongStamp" | "wrongBin" | "badHandover" | "timeout"; readonly count: number; readonly lostItem: string | null }
+  | { readonly type: "CONSEQUENCE"; readonly tSec: number; readonly level: "warning" | "located" | "severe" | "executed"; readonly count: number; readonly positionKnown: number | null }
+  | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" };
 
 export type Handler = (e: SimEvent) => void;
 
