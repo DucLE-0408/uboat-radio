@@ -8,6 +8,7 @@ import type { Action } from "./input/keymap";
 import { explainRefusal, needsRx } from "./refusal";
 import type { FixedStepLoop } from "./sim/loop";
 import { Session } from "./sim/session";
+import { clearCopies } from "./sim/transcripts";
 import type { Analysis, Store, WordView } from "./store";
 
 export interface ControllerEnv {
@@ -218,6 +219,7 @@ export class Controller implements Actions {
 
   newGame(sameSeed: boolean): void {
     Session.clear(this.env.storage);
+    clearCopies(this.env.storage);
     this.env.navigate(sameSeed ? `?seed=${this.session.seed}` : "");
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Session, parseSave, SAVE_KEY, type StorageLike } from "../src/sim/session";
+import { Session, parseSave, SAVE_KEY, LEGACY_SAVE_KEY, type StorageLike } from "../src/sim/session";
 
 class MemStore implements StorageLike {
   readonly m = new Map<string, string>();
@@ -42,7 +42,8 @@ describe("Session save/load = seed + commandLog", () => {
     const a = Session.fresh(7, store);
     play(a);
     const j = JSON.parse(store.getItem(SAVE_KEY)!) as Record<string, unknown>;
-    expect(Object.keys(j).sort()).toEqual(["commands", "seed", "tick", "v"]);
+    expect(Object.keys(j).sort()).toEqual(["commands", "seed", "untilTick", "v"]);
+    expect(j["v"]).toBe(2);
   });
 
   it("ignores a save for a different wanted seed", () => {
@@ -72,5 +73,26 @@ describe("Session save/load = seed + commandLog", () => {
     s.dispatch({ kind: "silence", on: false });
     expect(errors).toHaveLength(1);
     expect(Session.restore(broken, null, (e) => errors.push(e))).toBeNull();
+  });
+
+  it("migrates a legacy v1 (P4) save to v2 and drops the old key", () => {
+    const store = new MemStore();
+    const a = Session.fresh(5, store);
+    play(a);
+    const v2 = JSON.parse(store.getItem(SAVE_KEY)!) as { seed: number; untilTick: number; commands: unknown[] };
+    store.removeItem(SAVE_KEY);
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 1, seed: v2.seed, tick: v2.untilTick, commands: v2.commands }));
+    const b = Session.restore(store, null);
+    expect(b).not.toBeNull();
+    expect(JSON.stringify(b!.watch.bus.getLog())).toBe(JSON.stringify(a.watch.bus.getLog()));
+    expect(store.getItem(LEGACY_SAVE_KEY)).toBeNull();
+    expect((JSON.parse(store.getItem(SAVE_KEY)!) as { v: number }).v).toBe(2);
+  });
+
+  it("bounds replay work: an absurd untilTick or command count is rejected", () => {
+    expect(parseSave(JSON.stringify({ v: 2, seed: 1, untilTick: 20_001, commands: [] }))).toBeNull();
+    const many = Array.from({ length: 5001 }, () => ({ tick: 1, cmd: { kind: "silence", on: true } }));
+    expect(parseSave(JSON.stringify({ v: 2, seed: 1, untilTick: 5, commands: many }))).toBeNull();
+    expect(parseSave("x".repeat(2_000_001))).toBeNull();
   });
 });

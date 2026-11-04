@@ -3,7 +3,8 @@ import type { Ctx } from "../ctx";
 import { h } from "../dom";
 import { HELP } from "../input/keymap";
 import { mountSummary } from "../panels/summary";
-import { preloadSprites } from "./assets";
+import { assetErrors, preloadSprites } from "./assets";
+import { mountToast } from "./toast";
 import { mountFrame } from "./frame";
 import { mountMachine } from "./machine";
 import { computeScale, paint } from "./px";
@@ -23,6 +24,7 @@ export function mountScene(ctx: Ctx, app: HTMLElement): { frame(): void; dispose
   mountTelegram(ctx, scene);
   mountSecret(ctx, scene);
   const disposeMachine = mountMachine(ctx, scene);
+  const toast = mountToast(ctx, scene);
   scene.append(noise);
 
   const help = h("div", { class: "scene-help lbl" }, ...HELP.map((t) => h("div", { text: t })));
@@ -32,6 +34,6 @@ export function mountScene(ctx: Ctx, app: HTMLElement): { frame(): void; dispose
   const fit = (): void => document.documentElement.style.setProperty("--px", String(computeScale(window.innerWidth, window.innerHeight)));
   fit();
   window.addEventListener("resize", fit);
-  void preloadSprites().then((fails) => { if (fails > 0) scene.classList.add("no-sprites"); });
-  return { frame: () => {}, dispose: () => { window.removeEventListener("resize", fit); disposeMachine(); } };
+  void preloadSprites().then((fails) => { for (const c of assetErrors) ctx.diag.err("asset", c); if (fails > 0) scene.classList.add("no-sprites"); });
+  return { frame: () => toast.frame(), dispose: () => { window.removeEventListener("resize", fit); disposeMachine(); } };
 }

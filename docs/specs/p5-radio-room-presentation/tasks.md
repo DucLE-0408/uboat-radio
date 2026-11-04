@@ -13,12 +13,12 @@ Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, ki�
 - [x] **S2.4** Chụp ảnh desktop 1280/1920; kiểm console; ghi `unverified` cho thẩm mỹ.
 - **Cổng duyệt:** người dùng xem lát cắt, chỉnh hướng nghệ thuật trước khi làm tiếp.
 
-## Stage 3 — Loop, controller, store, save/replay
-- [ ] **S3.1** Mở rộng `FixedStepLoop` (`clamped`), `diag.ts` (khung, trần bù bước, mã lỗi). (R8.1, R11.3)
-- [ ] **S3.2** Save `v2` + migration từ `v1`; transcript store riêng có validate/giới hạn. (R3.3, R8.3)
-- [ ] **S3.3** `rebuildStore` chế độ silent; khẩn cấp chỉ nếu còn hiệu lực. (R2.4, R8.4)
-- [ ] **S3.4** Tương quan `AUTH_RESULT` + test nhiều `check` cùng tick. (R5.5)
-- [ ] **S3.5** `input/modes.ts` + test tách chế độ; `refusal.ts` chỉ nêu sự kiện quan sát. (R3.5, R6.3)
+## Stage 3 — Loop, controller, store, save/replay (xong)
+- [x] **S3.1** Mở rộng `FixedStepLoop` (`clamped`), `diag.ts` (khung, trần bù bước, mã lỗi). (R8.1, R11.3)
+- [x] **S3.2** Save `v2` + migration từ `v1`; transcript store riêng có validate/giới hạn. (R3.3, R8.3)
+- [x] **S3.3** `rebuildStore` chế độ silent; khẩn cấp chỉ nếu còn hiệu lực. (R2.4, R8.4)
+- [x] **S3.4** Tương quan `AUTH_RESULT` + test nhiều `check` cùng tick. (R5.5)
+- [x] **S3.5** `input/modes.ts` + test tách chế độ; `refusal.ts` chỉ nêu sự kiện quan sát. (R3.5, R6.3)
 
 ## Stage 4 — Nối toàn bộ gameplay radio và Web Audio
 - [ ] **S4.1** Receiver (đèn tone/sóng), phát Morse, mở âm bằng cử chỉ, dọn nguồn âm khi pause/kết thúc/unmount. (R2)

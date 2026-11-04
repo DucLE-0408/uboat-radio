@@ -12,6 +12,8 @@ import { mountScene } from "./scene";
 import { FixedStepLoop } from "./sim/loop";
 import { Session, type StorageLike } from "./sim/session";
 import { rebuildStore, Store } from "./store";
+import { CopyPersistence, loadCopies } from "./sim/transcripts";
+import { Diag, mountDiagOverlay } from "./diag";
 
 const app = document.getElementById("app");
 if (!app) throw new Error("#app missing");
@@ -27,8 +29,11 @@ try { storage = window.localStorage; } catch { storage = null; }
 
 const randomSeed = (): number => crypto.getRandomValues(new Uint32Array(1))[0] as number; // UI boundary only, never inside the sim
 const store = new Store();
+const hex = (n: number): string => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const diag = new Diag(hex(4)); // random session id, unrelated to identity or seed
 let storageWarned = false;
 const onStorageError = (): void => {
+  diag.err("save", "SAVE_FAILED"); // code only: never the exception text
   if (storageWarned) return;
   storageWarned = true;
   store.notify("Browser storage is unavailable — this watch will not survive a reload.");
@@ -36,9 +41,14 @@ const onStorageError = (): void => {
 
 const restored = Session.restore(storage, seedParam, onStorageError);
 const session = restored ?? Session.fresh(seedParam ?? randomSeed(), storage, onStorageError);
-if (restored) rebuildStore(store, restored.watch.bus.getLog(), restored.watch.commandLog());
+if (restored) {
+  // Silent rebuild (R8.4): UI state only; no audio is queued and no stale alarm survives. The controller subscribes AFTER this.
+  rebuildStore(store, restored.watch.bus.getLog(), restored.watch.commandLog(), restored.watch.tSec);
+  store.importCopies(loadCopies(storage, restored.seed)); // unfinished transcription lives in its own key (R3.3)
+}
 
 const audio = new AudioEngine();
+audio.onError = (code) => diag.err("audio", code);
 const morse = new MorsePlayer(audio);
 const hydro = new Hydrophone(audio);
 const loop = new FixedStepLoop();
@@ -51,7 +61,10 @@ const controller = new Controller(session, store, audio, morse, hydro, loop, {
   cosmeticSeed: randomSeed(), // separate stream for audio jitter (R1.2)
   ctxRef: { flags },
 });
-const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, seed: session.seed, flags };
+const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, diag, seed: session.seed, flags };
+const copies = new CopyPersistence(storage, session.seed, () => store.exportCopies(), (c) => diag.err("save", c));
+store.on(["copy"], () => copies.schedule());
+if (params.get("diag") === "1") mountDiagOverlay(diag);
 
 const ui = params.get("ui");
 const view: { frame(): void } = ui === "p5" ? mountScene(ctx, app) : mountClassic(ctx, app);
@@ -78,13 +91,17 @@ document.addEventListener("click", (ev) => { const t = ev.target as HTMLElement 
 
 // A hidden tab freezes the sim; the player resumes explicitly (design s9).
 document.addEventListener("visibilitychange", () => { if (document.hidden) controller.autoPause(); });
-window.addEventListener("pagehide", () => session.save());
+window.addEventListener("pagehide", () => { session.save(); copies.flush(); });
 
 // ---- render loop: rAF only feeds the fixed-step accumulator ----
 let last = performance.now();
 const frame = (now: number): void => {
-  const steps = loop.advance(now - last);
+  const dt = now - last;
+  const steps = loop.advance(dt);
   last = now;
+  diag.frame(dt);
+  diag.loopStats(loop.stats);
+  diag.tick(session.watch.tickCount);
   for (let i = 0; i < steps && store.state.ended === null; i++) controller.stepSim();
   controller.frame();
   store.flush();

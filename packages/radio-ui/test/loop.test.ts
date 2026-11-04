@@ -52,3 +52,15 @@ describe("FixedStepLoop", () => {
     expect(loop.advance(-5)).toBe(0);
   });
 });
+
+describe("FixedStepLoop diagnostics", () => {
+  it("counts catch-up clamps and clamped frames without changing behaviour", () => {
+    const loop = new FixedStepLoop({ stepMs: 1000, maxStepsPerFrame: 2, maxFrameMs: 10_000 });
+    expect(loop.advance(5000)).toBe(2);
+    expect(loop.stats.clamped).toBe(1);
+    expect(loop.advance(20_000)).toBe(2); // frame clamped to 10 s, then capped to 2 steps
+    expect(loop.stats).toEqual({ clamped: 2, frameClamped: 1 });
+    expect(loop.advance(1000)).toBe(1);
+    expect(loop.stats.clamped).toBe(2);
+  });
+});

@@ -36,6 +36,7 @@ Client/input → API/handler → service → DB/cache/queue/external dependency 
 - Stage 1 done and approved by the user.
 - Stage 2 done (pending user review): assets (17 TEMPORARY sprites via tools/art/generate.ts, 2 OFL fonts, manifest + test), scene shell with integer --px scale, banner/portrait/gauges/telegram/command dock/SECRET paper/cipher machine with working keyboard (mouse/touch + event.code), input/modes.ts, classic UI split into classic.ts. The scene is opt-in via ?ui=p5 until stage 5 flips the default.
 - Findings: classic CSS leaked into scene classes (.banner, .lamp, .grp, .tell) -> renamed to s* classes; Node strip-types needs explicit .ts import extensions and no parameter properties; `border` shorthand resets border-image.
+- Stage 3 done: loop stats + diag.ts (?diag=1), save v2 (untilTick, bounded) with v1 migration, separate validated transcript persistence (debounced, pagehide flush), silent rebuild (finishReplay), AUTH_RESULT correlation tests, refusal feedback lists observed facts only, scene toast. Verified in Chromium: refusal toast, reload restores copy, legacy v1 migrates to v2, corrupt/hostile storage ignored without crash, classic regression playthrough (mode B, emergency + reload) clean.
 - Not done in stage 2 by design: decode lamp readout and plaintext display (stage 4), responsive layouts (stage 5), diag/save v2 (stage 3).
 
 ## Verification

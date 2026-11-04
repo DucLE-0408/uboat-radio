@@ -55,6 +55,8 @@ export interface UiState {
   ended: "time" | "sunk" | null;
   notice: { text: string; seq: number } | null;
   pendingCheck: number | null;
+  /** True while a restored event log is being re-applied (silent: no alarms survive unless still in force). */
+  replaying: boolean;
   lookup: { row: string | null; col: string | null; active: boolean };
   hydrophone: number | null; // contactId being listened to
   paused: boolean;
@@ -69,7 +71,7 @@ export function emptyState(): UiState {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
     tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null },
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
-    emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null,
+    emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
   };
 }
@@ -274,6 +276,38 @@ export class Store {
     this.mark("copy");
   }
 
+  /**
+   * End of a silent rebuild. Historical alerts must not re-trigger: the emergency layout survives only if its window
+   * is still open at the restored tick, and no pending notice is carried over. Audio is never involved: the controller
+   * subscribes to the bus only after the replay, so no historical MSG_RX is queued for playback.
+   */
+  finishReplay(tSec: number): void {
+    const st = this.state;
+    st.replaying = false;
+    st.tSec = tSec;
+    if (st.emergency.reason !== null && tSec >= st.emergency.untilSec) st.emergency = { untilSec: 0, reason: null };
+    st.notice = null;
+    st.pendingCheck = null;
+    this.mark("ui", "alert", "clock");
+  }
+
+  /** Non-empty copies as plain entries (for separate persistence). */
+  exportCopies(): { rxId: number; attempt: number; text: string }[] {
+    const out: { rxId: number; attempt: number; text: string }[] = [];
+    for (const rx of this.state.rx.values()) for (const [attempt, text] of rx.copy) if (text.length > 0) out.push({ rxId: rx.rxId, attempt, text });
+    return out;
+  }
+
+  /** Restore unfinished copies for messages that exist; unknown messages/attempts are ignored. */
+  importCopies(entries: readonly { rxId: number; attempt: number; text: string }[]): void {
+    for (const e of entries) {
+      const rx = this.state.rx.get(e.rxId);
+      if (!rx || !rx.attempts.some((a) => a.attempt === e.attempt) || rx.resolved) continue;
+      rx.copy.set(e.attempt, e.text);
+    }
+    this.mark("copy");
+  }
+
   setAnalysis(rxId: number, attempt: number, a: Analysis): void {
     this.state.rx.get(rxId)?.analysis.set(attempt, a);
     this.mark("analysis");
@@ -320,8 +354,9 @@ export class Store {
  * command that caused it (events carry no rxId). A check is accepted by the sim exactly when the challenge has
  * a reply and no verdict yet, which the store mirrors, so the match is deterministic.
  */
-export function rebuildStore(store: Store, events: readonly SimEvent[], commands: readonly LoggedCommand[]): void {
+export function rebuildStore(store: Store, events: readonly SimEvent[], commands: readonly LoggedCommand[], restoredAtSec?: number): void {
   const used = new Set<number>();
+  store.state.replaying = true;
   for (const ev of events) {
     if (ev.type === "AUTH_RESULT") {
       const idx = commands.findIndex((c, i) => {
@@ -337,4 +372,5 @@ export function rebuildStore(store: Store, events: readonly SimEvent[], commands
     }
     store.apply(ev);
   }
+  store.finishReplay(restoredAtSec ?? store.state.tSec);
 }

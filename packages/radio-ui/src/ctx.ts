@@ -2,6 +2,7 @@
 import type { Watch } from "@uboat/sim-core";
 import type { AudioEngine } from "./audio/engine";
 import type { MorsePlayer } from "./audio/morse";
+import type { Diag } from "./diag";
 import type { Action } from "./input/keymap";
 import type { Store } from "./store";
 
@@ -38,6 +39,7 @@ export interface Ctx {
   readonly actions: Actions;
   /** Routes resolved key actions (typing, lookup, ...) into the controller. */
   readonly input: { handle(a: Action): void };
+  readonly diag: Diag;
   readonly seed: number;
   readonly flags: { showMorse: boolean; simSpeed: number };
 }
