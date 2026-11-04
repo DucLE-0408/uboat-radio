@@ -50,10 +50,12 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
   - Evidence: `evidence/stage4-*.png`.
 
 ### Stage 5 — Kiểm chứng G1
-- [ ] **T5.1** `tsc`, vitest cả hai gói, invariants, `git diff packages/sim-core` rỗng, `check-repo`.
-- [ ] **T5.2** Chơi trọn ca `?ui=desk` qua Edge headless; reload; `en`/`vi`; ảnh chụp; console sạch.
-- [ ] **T5.4** Đổi mặc định sang Desk, P5 thành tùy chọn Settings. (D7)
-- [ ] **T5.3** Cập nhật `docs/architecture.md`, task record, báo cáo.
+- [x] **T5.1** `tsc`, vitest cả hai gói, invariants, `git diff packages/sim-core` rỗng, `check-repo`.
+- [x] **T5.2** Chơi trọn ca `?ui=desk` qua Edge headless; reload; `en`/`vi`; ảnh chụp; console sạch.
+  - Đã chạy (en, seed 12, speed 60, URL mặc định không có `?ui`): vào thẳng Desk, xử lý bức #1 tới dấu TRUE ECHO, reload giữa ca (T 13:11, dấu còn), tới T 30:00 hiện bảng tổng kết "1 of 1 correct", console sạch. Lượt `vi` (seed 12, speed 60) chạy tới T 30:00, reload giữa ca, console sạch (Playwright/Chromium trên cloud); `?ui=p5` và `?ui=classic` vẫn nạp, console sạch. Evidence: `evidence/stage5-vi-*.png`.
+- [x] **T5.4** Đổi mặc định sang Desk, P5 thành tùy chọn Settings. (D7)
+  - `defaultSettings().ui = "desk"`; người đã lưu `p5` vẫn giữ P5; `?ui=p5` và `?ui=classic` vẫn ưu tiên.
+- [x] **T5.3** Cập nhật `docs/architecture.md`, task record, báo cáo.
 
 ## G2 — Máy thật, khóa ngày, điểm
 - [ ] **T6.1** Máy giả lập bằng `Enigma` + `dayEnigma`; công tắc nguồn; nắp rotor; lăn chuột đặt 4 vòng; odometer + double-step; đồng bộ lại theo nhóm. Property test so với `decipherCopy`. (R4.3–R4.7)
