@@ -1,4 +1,5 @@
 // Player settings: a small, separate localStorage key (never part of the save). Everything read from storage is untrusted and validated.
+import { parseLang, type Lang } from "../i18n";
 import type { StorageLike } from "../sim/session";
 
 export interface Settings {
@@ -7,14 +8,15 @@ export interface Settings {
   readonly hydro: number;        // 0..1 (hydrophone)
   readonly sound: boolean;
   readonly reduceMotion: boolean;
-  readonly ui: "p5" | "classic";
+  readonly ui: "p5" | "classic" | "desk";
+  readonly lang: Lang;
 }
 
 export const SETTINGS_KEY = "uboat-radio.settings.v1";
 const MAX_BYTES = 4096;
 
 export function defaultSettings(prefersReducedMotion: boolean): Settings {
-  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "p5" };
+  return { master: 1, morse: 1, hydro: 1, sound: true, reduceMotion: prefersReducedMotion, ui: "p5", lang: "en" };
 }
 
 const level = (x: unknown, d: number): number => (typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, Math.round(x * 20) / 20)) : d);
@@ -30,7 +32,8 @@ export function parseSettings(raw: string | null, d: Settings): Settings {
   return {
     master: level(o["master"], d.master), morse: level(o["morse"], d.morse), hydro: level(o["hydro"], d.hydro),
     sound: flag(o["sound"], d.sound), reduceMotion: flag(o["reduceMotion"], d.reduceMotion),
-    ui: o["ui"] === "classic" ? "classic" : o["ui"] === "p5" ? "p5" : d.ui,
+    ui: o["ui"] === "classic" || o["ui"] === "p5" || o["ui"] === "desk" ? o["ui"] : d.ui,
+    lang: parseLang(o["lang"]) ?? d.lang,
   };
 }
 

@@ -1,5 +1,6 @@
 // Main menu: shown before the watch starts. It never touches the Watch; it only returns what the player chose.
 import { h } from "../dom";
+import { LANGS, translate, type Lang } from "../i18n";
 import { sprite } from "../scene/assets";
 import type { StorageLike } from "../sim/session";
 import { describeSave, formatElapsed, initialSelection, menuItems, parseSeedInput, stepSelection, type MenuId, type MenuItem } from "./model";
@@ -161,11 +162,17 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
         inp.addEventListener("change", () => apply({ ...settings, [key]: inp.checked }));
         return h("div", { class: "mc-field mc-check" }, inp, h("label", { attrs: { for: id }, text: label }));
       };
-      const radio = (value: "p5" | "classic", label: string): HTMLElement => {
+      const radio = (value: Settings["ui"], label: string): HTMLElement => {
         const inp = h("input", { attrs: { id: `mc-ui-${value}`, type: "radio", name: "mc-ui", value } });
         inp.checked = settings.ui === value;
         inp.addEventListener("change", () => { if (inp.checked) apply({ ...settings, ui: value }); });
         return h("div", { class: "mc-field mc-check" }, inp, h("label", { attrs: { for: `mc-ui-${value}` }, text: label }));
+      };
+      const langRadio = (value: Lang): HTMLElement => {
+        const inp = h("input", { attrs: { id: `mc-lang-${value}`, type: "radio", name: "mc-lang", value } });
+        inp.checked = settings.lang === value;
+        inp.addEventListener("change", () => { if (inp.checked) apply({ ...settings, lang: value }); });
+        return h("div", { class: "mc-field mc-check" }, inp, h("label", { attrs: { for: `mc-lang-${value}`, lang: value }, text: translate(value, "lang.name") }));
       };
       const first = slider("mc-master", "Master volume", "master");
       const b = back();
@@ -173,7 +180,8 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
         h("h2", { attrs: { id: "mc-title" }, text: "Settings" }),
         first, slider("mc-morse", "Morse and static", "morse"), slider("mc-hydro", "Hydrophone", "hydro"),
         check("mc-sound", "Sound on", "sound"), check("mc-motion", "Reduce motion", "reduceMotion"),
-        h("fieldset", { class: "mc-set" }, h("legend", { text: "Interface (next watch)" }), radio("p5", "Pixel-art radio room"), radio("classic", "Classic panels")),
+        h("fieldset", { class: "mc-set" }, h("legend", { text: "Interface (next watch)" }), radio("p5", "Pixel-art radio room"), radio("desk", translate(settings.lang, "settings.ui.desk")), radio("classic", "Classic panels")),
+        h("fieldset", { class: "mc-set" }, h("legend", { text: `${translate("en", "settings.language")} / ${translate("vi", "settings.language")}` }), ...LANGS.map(langRadio)),
         h("p", { class: "mc-hint", text: "Saved in this browser only." }),
         h("div", { class: "mc-row" }, b),
       );
