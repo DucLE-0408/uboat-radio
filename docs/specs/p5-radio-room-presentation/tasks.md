@@ -6,11 +6,11 @@ Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, ki�
 - [x] **S1.1** Ba file spec P5, đổi đánh số (Bridge → P6, save slot → P7), ghi chú vào spec P4.
 - **Cổng duyệt:** dừng, chờ người dùng.
 
-## Stage 2 — Lát cắt hình ảnh đại diện
-- [ ] **S2.1** `assets/` + `manifest.json` + font OFL + `tools/art/generate.mjs`; test manifest (kích thước, hash, license, TEMPORARY). (R10)
-- [ ] **S2.2** `scene/` hệ thống lớp + slot + `--px` scale nguyên; khung ngoài, banner (tĩnh), điện tín, dock lệnh, giấy SECRET. (R1)
-- [ ] **S2.3** Bàn phím máy hoạt động (chuột/chạm + `event.code`) ghi vào bản copy; modes `copy`/`focus`. (R3.1, R3.5)
-- [ ] **S2.4** Chụp ảnh desktop 1280/1920; kiểm console; ghi `unverified` cho thẩm mỹ.
+## Stage 2 — Lát cắt hình ảnh đại diện (xong, chờ duyệt; xem `evidence/stage2-slice-*.png`, mở bằng `?ui=p5`)
+- [x] **S2.1** `assets/` + `manifest.json` + font OFL + `tools/art/generate.mjs`; test manifest (kích thước, hash, license, TEMPORARY). (R10)
+- [x] **S2.2** `scene/` hệ thống lớp + slot + `--px` scale nguyên; khung ngoài, banner (tĩnh), điện tín, dock lệnh, giấy SECRET. (R1)
+- [x] **S2.3** Bàn phím máy hoạt động (chuột/chạm + `event.code`) ghi vào bản copy; modes `copy`/`focus`. (R3.1, R3.5)
+- [x] **S2.4** Chụp ảnh desktop 1280/1920; kiểm console; ghi `unverified` cho thẩm mỹ.
 - **Cổng duyệt:** người dùng xem lát cắt, chỉnh hướng nghệ thuật trước khi làm tiếp.
 
 ## Stage 3 — Loop, controller, store, save/replay

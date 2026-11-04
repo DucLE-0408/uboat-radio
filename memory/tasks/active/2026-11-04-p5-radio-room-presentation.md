@@ -33,7 +33,10 @@ Client/input → API/handler → service → DB/cache/queue/external dependency 
 
 - Recon: PR #8 open draft (head fde3170), VERSION v0.0.0.0, no tags or releases, vite 8.3.5 MIT / typescript 7.0.2 Apache-2.0 / vitest 5.1.0 MIT (needs Node >= 22.12).
 - Fonts verified from registry tarballs (not dependencies): @fontsource/silkscreen 5.3.0 and @fontsource/vt323 5.3.0, OFL-1.1; sha256 silkscreen-latin-400 e6c72ea4702249202bcdd79d3343057e4e25ef1f04e3fcffd8602ab53b40b4cc, vt323-latin-400 8ddbebcc1048154132e1d78eb9b1f7850bca1b7d857035ccf1cb4318ebc615b6.
-- Stage 1 in progress: write docs/specs/p5-radio-room-presentation/{requirements,design,tasks}.md and stop for user review.
+- Stage 1 done and approved by the user.
+- Stage 2 done (pending user review): assets (17 TEMPORARY sprites via tools/art/generate.ts, 2 OFL fonts, manifest + test), scene shell with integer --px scale, banner/portrait/gauges/telegram/command dock/SECRET paper/cipher machine with working keyboard (mouse/touch + event.code), input/modes.ts, classic UI split into classic.ts. The scene is opt-in via ?ui=p5 until stage 5 flips the default.
+- Findings: classic CSS leaked into scene classes (.banner, .lamp, .grp, .tell) -> renamed to s* classes; Node strip-types needs explicit .ts import extensions and no parameter properties; `border` shorthand resets border-image.
+- Not done in stage 2 by design: decode lamp readout and plaintext display (stage 4), responsive layouts (stage 5), diag/save v2 (stage 3).
 
 ## Verification
 

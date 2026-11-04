@@ -1,0 +1,74 @@
+/* P5 scene. All geometry is logical px * --px (integer). Fonts are local OFL files; text and controls are live DOM. */
+@font-face { font-family: "Silkscreen"; src: url("../../assets/fonts/silkscreen-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "VT323"; src: url("../../assets/fonts/vt323-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --px: 2;
+  --sc-ink: #0c0a18; --sc-paper: #ebdde0; --sc-paper-dim: #8d7885; --sc-text: #3a2c3f; --sc-text-dim: #5d4a63;
+  --sc-lav: #938acb; --sc-amber: #e9b96a; --sc-green: #6fe39a; --sc-red: #ff7b8c; --sc-focus: #c9ffe0;
+  --f-label: "Silkscreen", ui-monospace, Menlo, Consolas, monospace;
+  --f-type: "VT323", ui-monospace, Menlo, Consolas, monospace;
+}
+#app.p5 { display: block; max-width: none; padding: 0; min-height: 100vh; background: #07060f; }
+.scene { position: relative; margin: 0 auto; width: calc(640px * var(--px)); height: calc(360px * var(--px)); image-rendering: pixelated; background-color: #14122b; }
+.scene * { image-rendering: pixelated; }
+.scene .sc { position: absolute; margin: 0; padding: 0; }
+.scene h2, .scene .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.scene.no-sprites { background: #1d1a41; }
+.scene.no-sprites .sc { outline: 1px solid #3a3475; background-color: #1d1a41; } /* sprite failure fallback: token colours only */
+
+.lbl { font-family: var(--f-label); font-size: calc(8px * var(--px)); line-height: 1; letter-spacing: 0; text-transform: uppercase; white-space: nowrap; }
+.typ { font-family: var(--f-type); line-height: 1; white-space: nowrap; }
+
+/* telegram */
+.tg dt, .tg dd { position: absolute; margin: 0; overflow: hidden; display: flex; align-items: center; }
+.tg dt { font: inherit; color: #fff2f4; justify-content: center; }
+.tg dt.lbl { color: #4d1a2a; }
+.tg dd { color: var(--sc-text); font-family: var(--f-type); font-size: calc(11px * var(--px)); padding-left: calc(3px * var(--px)); }
+.tg .tg-ch { color: var(--sc-text); }
+.tg .stell { font-family: var(--f-type); font-size: calc(10px * var(--px)); color: var(--sc-text); line-height: 1; }
+.tg .stampv { font-family: var(--f-label); font-size: calc(8px * var(--px)); color: var(--sc-text-dim); text-align: center; }
+.tg .stampv.ok { color: #1f6b43; } .tg .stampv.bad { color: #8a2540; }
+
+/* secret paper */
+.secret .grps { position: absolute; font-family: var(--f-type); font-size: calc(16px * var(--px)); line-height: calc(18px * var(--px)); color: var(--sc-text); display: flex; flex-wrap: wrap; align-content: flex-start; column-gap: calc(8px * var(--px)); }
+.secret .sgrp { height: calc(18px * var(--px)); }
+.secret .sgrp.bad { text-decoration: underline wavy #8a2540; text-underline-offset: calc(2px * var(--px)); text-decoration-thickness: calc(1px * var(--px)); }
+.secret .sgrp.check { color: #2e5c8a; }
+.secret .sgrp.cur::after { content: "▌"; animation: sc-blink 1s steps(1) infinite; }
+@keyframes sc-blink { 50% { opacity: 0; } }
+.secret .ttl { position: absolute; color: var(--sc-text-dim); }
+.secret .st { position: absolute; color: var(--sc-text-dim); }
+
+/* buttons: 9-slice sprite borders, text stays live */
+.sbtn { position: absolute; margin: 0; padding: 0; color: #f3eaff; font-family: var(--f-label); font-size: calc(8px * var(--px)); line-height: 1; text-transform: uppercase; cursor: pointer; background: none; display: flex; align-items: center; justify-content: center;
+  border: calc(4px * var(--px)) solid transparent; border-image-slice: 4 fill; border-image-width: calc(4px * var(--px)); border-image-repeat: stretch; }
+.sbtn, .key.wide { border-image-source: var(--up); }
+.sbtn:active, .key.wide:active, .key.wide.down { border-image-source: var(--down); }
+.sbtn:disabled { border-image-source: var(--off); cursor: not-allowed; color: #a5aecb; }
+.sbtn.on { color: var(--sc-amber); }
+.sbtn:focus-visible, .key:focus-visible, .pause:focus-visible { outline: calc(1px * var(--px)) solid var(--sc-focus); outline-offset: calc(1px * var(--px)); }
+
+/* machine */
+.mach .plate { position: absolute; text-align: center; color: #2a1d10; display: flex; align-items: center; justify-content: center; }
+.mach .win { position: absolute; display: flex; align-items: center; justify-content: center; font-family: var(--f-type); font-size: calc(22px * var(--px)); color: var(--sc-amber); text-shadow: 0 0 calc(2px * var(--px)) #5a3b10; }
+.slamp, .key { position: absolute; margin: 0; padding: 0; border: 0; background-color: transparent; }
+.slamp { display: flex; align-items: center; justify-content: center; font-family: var(--f-label); font-size: calc(8px * var(--px)); color: #7a84a8; pointer-events: none; }
+.slamp.on { color: #0c2a1a; }
+.key { color: #1a1426; font-family: var(--f-label); font-size: calc(8px * var(--px)); cursor: pointer; display: flex; align-items: center; justify-content: center; background-position: 0 0; }
+.key.round { background-size: calc(32px * var(--px)) calc(16px * var(--px)); color: #e7dff7; }
+.key.round:active, .key.round.down { background-position: calc(-16px * var(--px)) 0; padding-top: calc(1px * var(--px)); }
+.key.wide { color: #e7dff7; border: calc(4px * var(--px)) solid transparent; border-image-slice: 4 fill; border-image-width: calc(4px * var(--px)); border-image-repeat: stretch; border-image-source: var(--up); }
+.key.wide:active, .key.wide.down { border-image-source: var(--down); }
+.key.wide.go { color: var(--sc-amber); }
+
+/* gauges */
+.gauges .gv { position: absolute; color: #c9d1ec; font-family: var(--f-type); font-size: calc(11px * var(--px)); display: flex; align-items: center; padding-left: calc(3px * var(--px)); overflow: hidden; }
+.gauges .gl { position: absolute; color: #a5aecb; }
+.pause { position: absolute; margin: 0; padding: 0; border: 0; background-color: transparent; cursor: pointer; }
+.pause:active { background-position: calc(-24px * var(--px)) 0 !important; }
+.bannerlbl { position: absolute; color: #c9d1ec; text-shadow: 0 calc(1px * var(--px)) 0 #0c0a18; }
+
+.fx-noise { position: absolute; inset: 0; pointer-events: none; display: none; background-size: calc(64px * var(--px)); }
+.scene.crt .fx-noise { display: block; }
+@media (prefers-reduced-motion: reduce) { .secret .sgrp.cur::after { animation: none; } .scene.crt .fx-noise { display: none; } }
