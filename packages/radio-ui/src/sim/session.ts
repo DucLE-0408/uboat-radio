@@ -21,6 +21,8 @@ const MAX_TICK = 20_000;   // bounds replay work: replay() steps the sim untilTi
 const MAX_BYTES = 2_000_000;
 
 const isInt = (x: unknown): x is number => typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 1_000_000;
+/** Seeds are u32 (main.ts draws them with getRandomValues(Uint32Array)); the 1e6 bound of isInt rejected almost every real save. */
+export const isSeed = (x: unknown): x is number => typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 4_294_967_295;
 const isNum = (x: unknown, lo: number, hi: number): x is number => typeof x === "number" && Number.isFinite(x) && x >= lo && x <= hi;
 
 /** Boundary validation of one command from untrusted storage. */
@@ -52,7 +54,7 @@ export function parseSave(raw: string | null): SaveFile | null {
   const o = j as Record<string, unknown>;
   const ver = o["v"];
   const until = ver === 2 ? o["untilTick"] : ver === 1 ? o["tick"] : undefined;
-  if ((ver !== 1 && ver !== 2) || !isInt(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
+  if ((ver !== 1 && ver !== 2) || !isSeed(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
   const commands: LoggedCommand[] = [];
   let prev = 0;
   for (const e of o["commands"] as unknown[]) {

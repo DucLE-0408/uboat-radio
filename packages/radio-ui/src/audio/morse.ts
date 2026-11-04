@@ -64,7 +64,7 @@ export class MorsePlayer {
   /** Returns false when sound cannot start yet (no gesture / unsupported). */
   play(plan: MorsePlan): boolean {
     const ctx = this.engine.ctx;
-    const out = this.engine.out;
+    const out = this.engine.morseOut;
     if (ctx === null || out === null || ctx.state !== "running") return false;
     this.stop();
     const t0 = ctx.currentTime + 0.08;

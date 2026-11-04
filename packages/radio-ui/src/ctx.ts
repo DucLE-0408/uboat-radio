@@ -32,6 +32,8 @@ export interface Actions {
   closeDrawer(): void;
   showView(v: "copy" | "plain"): void;
   newGame(sameSeed: boolean): void;
+  /** Saves the watch and returns to the main menu (reloads the page; nothing is lost). */
+  openMenu(): void;
 }
 
 export interface Ctx {
@@ -47,7 +49,7 @@ export interface Ctx {
   readonly seed: number;
   /** Seed of the purely cosmetic RNG streams (audio jitter, blinks, flicker); never the simulation seed. */
   readonly cosmeticSeed: number;
-  readonly flags: { showMorse: boolean; simSpeed: number };
+  readonly flags: { showMorse: boolean; simSpeed: number; reduceMotion?: boolean };
 }
 
 export interface Panel { readonly el: HTMLElement; frame?(): void }

@@ -238,7 +238,12 @@ export class Controller implements Actions {
   newGame(sameSeed: boolean): void {
     Session.clear(this.env.storage);
     clearCopies(this.env.storage);
-    this.env.navigate(sameSeed ? `?seed=${this.session.seed}` : "");
+    this.env.navigate(sameSeed ? `?seed=${this.session.seed}` : "?play=new"); // a bare path would open the menu
+  }
+
+  openMenu(): void {
+    this.session.save();
+    this.env.navigate(""); // bare path = main menu; the saved watch stays available under Continue
   }
 
   // ------------------------------------------------------------------ key actions

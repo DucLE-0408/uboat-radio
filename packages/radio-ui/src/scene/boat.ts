@@ -1,6 +1,6 @@
 import { formatClock } from "../store";
 import { setClass, setText } from "../dom";
-import { paint, place, setFrame, u } from "./px";
+import { paint, place, setFrame, sliceVars, u } from "./px";
 import { boatPose } from "./pose";
 import type { SceneCtx } from "./scope";
 import type { Decor } from "./decor";
@@ -28,7 +28,9 @@ export function mountBoat(ctx: SceneCtx, root: HTMLElement, decor: Decor): { fra
   const label = mk("div", "bannerlbl lbl"); label.style.left = u(10); label.style.bottom = u(6); label.setAttribute("aria-live", "off");
   const pause = mk("button", "pause"); pause.type = "button"; pause.setAttribute("aria-label", "Pause or resume the watch (Esc)"); place(pause, 592, 8, 24, 24); paint(pause, "pause");
   pause.addEventListener("click", () => actions.togglePause());
-  banner.append(label, pause);
+  const menuBtn = mk("button", "sbtn menubtn"); menuBtn.type = "button"; menuBtn.textContent = "Menu"; menuBtn.setAttribute("aria-label", "Save and return to the main menu");
+  place(menuBtn, 8, 8, 66, 24); sliceVars(menuBtn, "btn"); menuBtn.addEventListener("click", () => actions.openMenu());
+  banner.append(label, pause, menuBtn);
   root.append(banner);
 
   let lastDy = -1, lastCrack = -2, lastAlarm: boolean | null = null, lastProp = "x", nextFlick = 0, flickOn = false;
@@ -47,7 +49,7 @@ export function mountBoat(ctx: SceneCtx, root: HTMLElement, decor: Decor): { fra
   refresh();
   return {
     frame: (now) => { // decorative light flicker on a damaged boat (decor RNG, wall clock)
-      if (lastCrack < 1) { if (flickOn) { flickOn = false; hull.classList.remove("flick"); } return; }
+      if (lastCrack < 1 || ctx.flags.reduceMotion === true) { if (flickOn) { flickOn = false; hull.classList.remove("flick"); } return; }
       if (now >= nextFlick) { flickOn = !flickOn; setClass(hull, "flick", flickOn); nextFlick = now + (flickOn ? 120 : decor.nextFlickerMs()); }
     },
     setStageClass: (c) => { banner.dataset["layout"] = c; },
