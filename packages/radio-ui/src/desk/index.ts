@@ -4,7 +4,8 @@ import type { Ctx } from "../ctx";
 import { h, setAttr, setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { formatClock, formatDtg, type RxView } from "../store";
-import { planMorse } from "../audio/morse";
+import { cosmeticRng } from "../audio/morse";
+import { schedule } from "@uboat/sim-core";
 import { assetErrors, preloadSprites } from "../scene/assets";
 import { mountBoat } from "../scene/boat";
 import { makeDecor } from "../scene/decor";
@@ -14,7 +15,7 @@ import { createScope, type SceneCtx } from "../scene/scope";
 import { mountSummary } from "../scene/summary";
 import { mountToast } from "../scene/toast";
 import { DESK_KEY, PaperModel, parseLayout, type Paper } from "./papers";
-import { Printer } from "./printer";
+import { Printer, tokenEnds } from "./printer";
 import { flipButton, groupGrid, mountSheet, type SheetHost, type SheetView } from "./sheets";
 import "../scene/scene.css";
 import "./desk.css";
@@ -189,6 +190,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     const status = label("ink typ small", "", 8, 129, 96, 9);
     view.front.append(label("strip", title, 4, 5, 88, 9), label("ink fld", t("desk.paper.from"), 6, 22, 42, 7), label("ink fld", t("desk.paper.indicator"), 6, 34, 42, 7),
       fv.from, fv.ind, grid.el, status, flipButton(host, p, view, 94, 4));
+    let lastAn: unknown = undefined, decodedCopy: string | null = null;
     view.back.append(label("ink", t("desk.paper.back"), 4, 4, 88, 7), label("faint center", t("desk.paper.stampRed"), 8, 50, 96, 9), label("ink", t("desk.paper.sign"), 10, 131, 60, 7),
       flipButton(host, p, view, 94, 2));
     return {
@@ -197,12 +199,13 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         const rx = store.state.rx.get(rxId), a = rx?.attempts.find((x) => x.attempt === attempt);
         if (!rx || !a) return;
         setText(fv.from, rx.from); setText(fv.ind, a.indicator);
-        const an = rx.analysis.get(attempt);
-        if (an) {
+        const an = rx.analysis.get(attempt), text = store.copyText(rxId, attempt);
+        if (an !== lastAn) { lastAn = an; decodedCopy = an ? text : null; } // a decode replaces the analysis object
+        if (an && text === decodedCopy) {
           grid.set(an.words.map((w) => ({ text: w.plain, bad: !w.ok })), t("desk.out.plainLabel"));
           setText(status, t("desk.out.damaged", { n: an.damagedGroups }));
         } else {
-          const text = store.copyText(rxId, attempt), ws = groupsOf(text), typing = text.length > 0 && !text.endsWith(" ");
+          const ws = groupsOf(text), typing = text.length > 0 && !text.endsWith(" "); // no decode yet, or the copy was edited after it
           grid.set(ws.map((w, i) => ({ text: w, cur: typing && i === ws.length - 1 })), t("desk.out.copyLabel"));
           setText(status, t("desk.out.hint"));
         }
@@ -226,7 +229,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
           const fresh = !known.has(key) && !store.state.replaying;
           known.add(key);
           const p = model.ensure("input", rx.rxId, a.attempt);
-          if (fresh) printer.start(inId, a.tokens, watch.copy(a.tokens), now, planMorse(a.tokens, rx.txFist, rx.from, a.snrDb, ctx.cosmeticSeed, rx.rxId, a.attempt).endSec);
+          if (fresh) { // same segments the Morse audio plays for this attempt (cosmetic RNG), so print and sound share one timeline
+            const ends = tokenEnds(a.tokens, schedule(a.tokens, rx.txFist, cosmeticRng(ctx.cosmeticSeed, rx.rxId, a.attempt)));
+            printer.start(inId, a.tokens, watch.copy(a.tokens), now, ends.at(-1) ?? 0, ends);
+          }
           add(p, input);
         }
         const outId = `out:${key}`;

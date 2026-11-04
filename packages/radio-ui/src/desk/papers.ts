@@ -24,7 +24,7 @@ export const SIZE: Readonly<Record<PaperKind, { readonly w: number; readonly h: 
 const SPAWN: Readonly<Record<PaperKind, { readonly x: number; readonly y: number }>> = {
   input: { x: 262, y: 150 }, output: { x: 168, y: 176 }, mission: { x: 150, y: 112 },
 };
-const CASCADE = 8, CASCADE_STEPS = 6;
+const CASCADE = 8, CASCADE_STEPS = 6, COLUMN = 20, SPAWN_TRIES = 60;
 /** A sheet may hang over the desk edge but always keeps this much on the desk, so it can be grabbed again. */
 const KEEP = 24;
 
@@ -45,12 +45,22 @@ export class PaperModel {
     const id = paperId(kind, rxId, attempt);
     const old = this.byId.get(id);
     if (old) return old;
-    const n = this.list().filter((p) => p.kind === kind).length % CASCADE_STEPS;
-    const s = SPAWN[kind];
-    const p: Paper = { id, kind, rxId, attempt, x: s.x + n * CASCADE, y: s.y + n * CASCADE, z: ++this.top, face: "front" };
-    this.clamp(p);
+    const p: Paper = { id, kind, rxId, attempt, x: 0, y: 0, z: ++this.top, face: "front" };
+    this.spawnAt(p);
     this.byId.set(id, p);
     return p;
+  }
+
+  /** First cascade slot not taken by another sheet; after six steps the cascade starts a new column, so no sheet hides another exactly. */
+  private spawnAt(p: Paper): void {
+    const s = SPAWN[p.kind];
+    const taken = new Set([...this.byId.values()].map((q) => `${q.x},${q.y}`));
+    for (let k = 0; k < SPAWN_TRIES; k++) {
+      p.x = s.x + (k % CASCADE_STEPS) * CASCADE + Math.floor(k / CASCADE_STEPS) * COLUMN;
+      p.y = s.y + (k % CASCADE_STEPS) * CASCADE;
+      this.clamp(p);
+      if (!taken.has(`${p.x},${p.y}`)) return;
+    }
   }
 
   raise(id: string): void { const p = this.byId.get(id); if (p && p.z !== this.top) p.z = ++this.top; }

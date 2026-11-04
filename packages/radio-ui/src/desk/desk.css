@@ -41,7 +41,7 @@
 .deskui .dpaper.dragging { cursor: grabbing; filter: drop-shadow(calc(4px * var(--px)) calc(6px * var(--px)) 0 rgba(14, 13, 18, .45)); }
 .deskui .dpaper:focus-visible { outline: calc(1px * var(--px)) dashed #c6f2d6; outline-offset: calc(1px * var(--px)); }
 .deskui .dpaper.held { outline: calc(1px * var(--px)) solid #f0b85a; outline-offset: calc(1px * var(--px)); }
-.deskui .dpaper.dmis { filter: drop-shadow(calc(1px * var(--px)) calc(2px * var(--px)) 0 rgba(14, 13, 18, .4)); }
+.deskui .dpaper.dmis:not(.dragging) { filter: drop-shadow(calc(1px * var(--px)) calc(2px * var(--px)) 0 rgba(14, 13, 18, .4)); }
 .deskui .dpaper.dout.active::after { content: ""; position: absolute; left: calc(-3px * var(--px)); top: calc(20px * var(--px)); width: calc(2px * var(--px)); height: calc(40px * var(--px)); background: #f0b85a; }
 .deskui .dcell.bad { color: #b23a44; border-color: #b23a44; border-style: dashed; }
 .deskui .dcell.cur::after { content: "_"; color: #874b58; }

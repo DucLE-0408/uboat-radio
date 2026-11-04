@@ -11,6 +11,12 @@ describe("desk paper model", () => {
     expect(m.list().map((p) => p.id)).toEqual(["in:1:1", "in:1:2"]);
     expect(paperId("output", 3, 2)).toBe("out:3:2");
   });
+  it("never spawns a sheet exactly on top of another, also past the sixth one", () => {
+    const m = new PaperModel();
+    for (let k = 0; k < 20; k++) m.ensure("input", k, 0);
+    const spots = m.list().map((p) => `${p.x},${p.y}`);
+    expect(new Set(spots).size).toBe(spots.length);
+  });
   it("raises, flips and keeps every sheet grabbable inside the desk", () => {
     const m = new PaperModel();
     const a = m.ensure("input", 1, 1); m.ensure("output", 1, 1);

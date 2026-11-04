@@ -89,6 +89,7 @@ export function mountSheet(host: SheetHost, paper: Paper, sprite: string | null,
     if (ev.target !== el) return;               // keys inside the sheet (flip button, group list) keep their own meaning
     const c = ev.code;
     if (c === "Enter" || c === "NumpadEnter" || c === "Space") {
+      if (ev.repeat) { ev.preventDefault(); ev.stopPropagation(); return; } // holding the key must not drop what it just picked up
       if (held) drop(false);
       else {
         held = { x: paper.x, y: paper.y };

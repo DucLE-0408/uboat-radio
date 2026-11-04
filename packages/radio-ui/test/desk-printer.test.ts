@@ -36,3 +36,23 @@ describe("teletyper print pacing", () => {
     expect(p.busy()).toBe(false);
   });
 });
+
+describe("print timing follows the Morse schedule", () => {
+  it("token end times add up to the audio plan and weight dahs and gaps", async () => {
+    const { schedule } = await import("@uboat/sim-core");
+    const { cosmeticRng, planMorse } = await import("../src/audio/morse");
+    const { tokenEnds } = await import("../src/desk/printer");
+    const fist = { wpm: 20, dahRatio: 3, gapStretch: 1, jitter: 0.1 };
+    const tokens = encode("TE EM K");
+    const ends = tokenEnds(tokens, schedule(tokens, fist, cosmeticRng(5, 1, 0)));
+    expect(ends).toHaveLength(tokens.length);
+    expect(ends.at(-1) as number).toBeCloseTo(planMorse(tokens, fist, "KDK", 30, 5, 1, 0).endSec, 9);
+    // "T" is one dah, "E" one dit: with real timing T prints later in its share than its token count suggests
+    const copy = copyFromTokens(tokens);
+    const timed = printMarks(tokens, copy, ends), flat = printMarks(tokens, copy);
+    expect(timed).toHaveLength(copy.length);
+    expect(timed.at(-1)).toBe(1);
+    expect(timed).not.toEqual(flat);
+    for (let i = 1; i < timed.length; i++) expect(timed[i] as number).toBeGreaterThanOrEqual(timed[i - 1] as number);
+  });
+});
