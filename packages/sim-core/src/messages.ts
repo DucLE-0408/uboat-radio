@@ -147,8 +147,16 @@ export function generateForgery(seed: number | string, id: number, kind: Kind, i
   }
   if (intelLevel === 1) {
     flaws.push("callsign");
+    // The forged callsign must NOT be a genuine station: otherwise the verifier compares the
+    // imitated fist against that station's known fist and reports an un-injected "fist" tell
+    // (flaky property failure, e.g. seed 261327 / id 36, where genuine "UZQ" was the old fallback).
     from = "U" + String.fromCharCode(65 + r.int(26)) + "Q";
-    if (ctx.callsigns.includes(from)) from = "UZQ";
+    // Walk U?Q, then (roster exhausted) V?Q; a roster cannot hold all 52 in practice.
+    for (let i = 0; ctx.callsigns.includes(from) && i < 52; i++) {
+      const next = (from.charCodeAt(1) - 65 + 1) % 26;
+      const lead = i === 25 ? "V" : from[0];
+      from = lead + String.fromCharCode(65 + next) + "Q";
+    }
   }
 
   // Vietnamese: số tell giảm dần theo Intel nhưng KHÔNG BAO GIỜ bằng 0 (bất biến forgery).

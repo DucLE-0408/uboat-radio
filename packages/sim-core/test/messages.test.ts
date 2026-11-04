@@ -40,6 +40,22 @@ describe("messages", () => {
       for (const t of seen) expect(truth.tells).toContain(t); // verifier only flags injected tells
     }), { numRuns: 5000 });
   });
+  it("REGRESSION: Intel 1 forged callsign never collides with a genuine station", () => {
+    // Counterexample from fast-check flake (~1/17 runs): genuine roster contained "UZQ", the old
+    // fallback callsign, so verifyTells flagged an un-injected "fist" tell.
+    const cases: [number, number, number][] = [[261327, 0, 36], [1306635, 0, 3], [2161887, 0, 6], [5281973, 0, 11]];
+    for (const [seed, k, id] of cases) {
+      const c = ctxFor(seed);
+      const { msg, truth } = generateForgery(seed, id, KINDS[k] as Kind, 1, c);
+      expect(c.callsigns).not.toContain(msg.from);
+      for (const t of verifyTells(msg, c)) expect(truth.tells).toContain(t);
+      expect(verifyTells(msg, c).length).toBeGreaterThanOrEqual(1);
+    }
+    fc.assert(fc.property(fc.integer({ min: 0, max: 2 ** 30 }), fc.nat(500), (seed, id) => {
+      const c = ctxFor(seed);
+      expect(c.callsigns).not.toContain(generateForgery(seed, id, "ORDER", 1, c).msg.from);
+    }), { numRuns: 5000 });
+  });
   it("Intel 4 still leaves exactly one tell", () => {
     const c = ctxFor(11);
     for (let i = 0; i < 200; i++) expect(generateForgery(11, i, "REPORT", 4, c).truth.tells.length).toBe(1);
