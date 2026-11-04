@@ -36,6 +36,7 @@ Presentation only: tools/art generator -> assets/sprites + manifest -> menu CSS 
 - Menu backdrop redrawn as a night sea (12 flat sky bands, moon, dash-built moon path, brighter moonlit boat), slate panel with mauve rails, brass plates and icons on slate, sealed letter on clean paper.
 - App icons redrawn on the night palette (PWA icons regenerated).
 - Menu CSS and landing tokens moved off purple/dusk.
+- Landing index art (operator follow-up: "upgrade cả art của index", same acceptance): added a game screenshot showcase (site/public/assets/desk.png, a real capture, not generated) and a 7-icon pixel sheet (tools/art/site.ts -> site-icons.png) for the cards; build.mjs copies the sheet.
 
 ## Verification
 
