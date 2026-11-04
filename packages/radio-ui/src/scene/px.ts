@@ -1,12 +1,23 @@
-// Pixel-scale helpers. Vietnamese: toàn bộ kích thước scene tính theo đơn vị logic 640x360 nhân với --px (số nguyên).
+// Pixel-scale helpers. Vietnamese: toàn bộ kích thước scene tính theo đơn vị logic 640x360 nhân với --px (có thể lẻ, xem computeScale).
 import { sprite } from "./assets";
 
 export const SCENE_W = 640;
 export const SCENE_H = 360;
 
-/** Integer scale that fits the scene in the viewport (>= 1). Non-integer scales blur pixel art, so the remainder becomes border. */
+/**
+ * Scale that fits the whole 640x360 scene in the viewport (>= 1), rounded DOWN to 0.01 so it never overflows.
+ * It is fractional on purpose: the game is played full screen or maximised, and an integer scale left half of a maximised
+ * 1920x960 window empty (50% of the area). Sprites keep image-rendering: pixelated; the leftover margin is painted with the
+ * scene's slate colour by fillWindow().
+ */
 export function computeScale(vw: number, vh: number): number {
-  return Math.max(1, Math.floor(Math.min(vw / SCENE_W, vh / SCENE_H)));
+  return Math.max(1, Math.floor(Math.min(vw / SCENE_W, vh / SCENE_H) * 100) / 100);
+}
+
+/** Fixed-frame layouts (desktop) fill the window and centre the scene; flow layouts (tablet, mobile) scroll as before. */
+export function fillWindow(app: HTMLElement, on: boolean): void {
+  app.classList.toggle("fill-window", on);
+  document.documentElement.classList.toggle("fill-window", on);
 }
 
 export type LayoutMode = "desktop" | "tablet" | "mobile";

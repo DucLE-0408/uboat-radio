@@ -9,7 +9,7 @@ import { dayEnigma, schedule } from "@uboat/sim-core";
 import { assetErrors, preloadSprites } from "../scene/assets";
 import { mountBoat } from "../scene/boat";
 import { makeDecor } from "../scene/decor";
-import { computeScale, paint, place, setFrame } from "../scene/px";
+import { computeScale, fillWindow, paint, place, setFrame } from "../scene/px";
 import { Reveal } from "../scene/reveal";
 import { createScope, type SceneCtx } from "../scene/scope";
 import { mountDrawers } from "../scene/drawers";
@@ -77,6 +77,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const fit = (): void => {
     const ok = window.innerWidth >= MIN_W && window.innerHeight >= MIN_H;
     scene.hidden = !ok; small.hidden = ok;
+    fillWindow(app, ok);
     px = Math.max(2, computeScale(window.innerWidth, window.innerHeight));
     document.documentElement.style.setProperty("--px", String(px));
   };
@@ -750,7 +751,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
       if (rationFlash.timer !== null) clearTimeout(rationFlash.timer);
       onHide();
       ctx.morse.stop(); scope.dispose();
-      app.classList.remove("p5"); document.body.classList.remove("p5");
+      fillWindow(app, false); app.classList.remove("p5"); document.body.classList.remove("p5");
       scene.remove(); small.remove();
     },
   };

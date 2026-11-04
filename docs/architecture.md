@@ -127,3 +127,7 @@ The default UI since desk-ui Stage 5 (D7). It is presentation only: it reads the
 **Running.** `cd packages/radio-ui && npm run dev` (or `npm run serve`). The desk is the default; `?ui=p5` and `?ui=classic` still win, and Settings stores `desk | p5 | classic` (a previously saved `p5` is kept). Useful test URL: `?seed=12&speed=60&lang=vi`.
 
 **Rollback.** Revert the default in `defaultSettings().ui` (`menu/settings.ts`) to `"p5"`, or ship with `?ui=p5`; `desk.v1` is a separate key and can be deleted without affecting the save.
+
+## Window fill (`scene/px.ts`)
+
+The fixed 640x360 frame (desk UI and P5 room) is scaled by `computeScale()`: the exact fit to the window, fractional and rounded down to 0.01 (it used to be an integer, which left a maximised 1920x960 window half empty). `fillWindow()` marks `#app` and `html` with `.fill-window` for the desktop layout, which centres the frame in a viewport-sized box with `overflow: hidden` and paints the margin with the scene slate. Sprites stay `image-rendering: pixelated`; at fractional scales some pixels are one device pixel wider than others. A window whose aspect is not 16:9 keeps a margin on the short axis (1920x960: 88% of the area). The menu panel keeps an integer scale, capped at 8.
