@@ -28,6 +28,7 @@ export interface Actions {
   lookupCell(row: string, col: string): void;
   dismissEmergency(): void;
   openAuthTable(): void;
+  openDrawer(d: "sonar" | "log"): void;
   closeDrawer(): void;
   showView(v: "copy" | "plain"): void;
   newGame(sameSeed: boolean): void;
@@ -44,6 +45,8 @@ export interface Ctx {
   readonly input: { handle(a: Action): void };
   readonly diag: Diag;
   readonly seed: number;
+  /** Seed of the purely cosmetic RNG streams (audio jitter, blinks, flicker); never the simulation seed. */
+  readonly cosmeticSeed: number;
   readonly flags: { showMorse: boolean; simSpeed: number };
 }
 

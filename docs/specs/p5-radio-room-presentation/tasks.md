@@ -26,11 +26,11 @@ Trạng thái: **DRAFT, chờ duyệt (Stage 1)**. Mỗi nhiệm vụ nhỏ, ki�
 - [x] **S4.3** Điện tín: header, tells, KHỚP/KHÔNG KHỚP; lưới auth nhỏ + ngăn kéo bảng đầy đủ + lookup; challenge/reply/check. (R5)
 - [x] **S4.4** Dock lệnh: repeat/challenge/check/accept/reject/report/silence; đồng hồ giờ phát; cảnh báo `HFDF_FIX`/`ESCORT`/`DEPTH_CHARGE`. (R6)
 
-## Stage 5 — Tàu, chân dung, sonar, khẩn cấp, tổng kết, responsive
-- [ ] **S5.1** Cutaway phản ánh mode/tốc độ/hull/báo động; chân dung 5 trạng thái; `decorRng` riêng. (R7.1, R7.2, R1.4)
-- [ ] **S5.2** Ngăn kéo sonar + hydrophone (không khoảng cách); khẩn cấp; tổng kết ca trực + chơi lại. (R7)
-- [ ] **S5.3** Responsive: tablet 768–1024, mobile 320–480 (tab + ngăn kéo, mục tiêu chạm ≥ 44 px); reduced-motion; focus. (R9)
-- [ ] **S5.4** `?ui=classic` giữ P4 làm dự phòng.
+## Stage 5 — Tàu, chân dung, sonar, khẩn cấp, tổng kết, responsive (xong; P5 là mặc định, `?ui=classic` giữ P4)
+- [x] **S5.1** Cutaway phản ánh mode/tốc độ/hull/báo động; chân dung 5 trạng thái; `decorRng` riêng. (R7.1, R7.2, R1.4)
+- [x] **S5.2** Ngăn kéo sonar + hydrophone (không khoảng cách); khẩn cấp; tổng kết ca trực + chơi lại. (R7)
+- [x] **S5.3** Responsive: tablet 768–1024, mobile 320–480 (tab + ngăn kéo, mục tiêu chạm ≥ 44 px); reduced-motion; focus. (R9)
+- [x] **S5.4** `?ui=classic` giữ P4 làm dự phòng.
 
 ## Stage 6 — Kiểm chứng, tài liệu, báo cáo
 - [ ] **S6.1** `tsc` strict cả hai gói; `vitest` sim-core (70) + radio-ui; invariants (grep `truthOf`, barrel-only, không Intel/hazard, không `innerHTML`); `git diff --stat packages/sim-core` rỗng; `python3 -I scripts/validate_repo.py`.

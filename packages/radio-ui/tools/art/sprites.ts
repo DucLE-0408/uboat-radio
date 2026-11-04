@@ -1,18 +1,10 @@
 // Placeholder pixel art (TEMPORARY), generated deterministically. Muted purple/navy, pink-grey paper, worn brass, restrained green.
 // Original work: no pixels are taken from the reference screenshot. Neutral emblems only (no national insignia).
-import { artRng, bayer, CLEAR, Img, rgb } from "./pix.ts";
+import { artRng, bayer, CLEAR, Img } from "./pix.ts";
+import { boatSprites, portraitSheet } from "./sprites2.ts";
 
-export const P = {
-  ink: rgb("#0c0a18"), n0: rgb("#14122b"), n1: rgb("#1d1a41"), n2: rgb("#2a2658"), n3: rgb("#3a3475"), p1: rgb("#4c4390"), p2: rgb("#6a5fae"), lav: rgb("#938acb"),
-  s0: rgb("#23263f"), s1: rgb("#38405f"), s2: rgb("#535c82"), s3: rgb("#7a84a8"), s4: rgb("#a5aecb"),
-  b0: rgb("#3b2c22"), b1: rgb("#6b5233"), b2: rgb("#9a7b45"), b3: rgb("#c7a45e"),
-  pa0: rgb("#8d7885"), pa1: rgb("#b49fa9"), pa2: rgb("#d2bfc6"), pa3: rgb("#ebdde0"), pink: rgb("#c58fa0"),
-  tx: rgb("#3a2c3f"), tx2: rgb("#5d4a63"),
-  g0: rgb("#173d2c"), g1: rgb("#2f8f5a"), g2: rgb("#6fe39a"), g3: rgb("#c9ffe0"),
-  r0: rgb("#4d1a2a"), r1: rgb("#b13a56"), r2: rgb("#ff7b8c"),
-  w0: rgb("#10224f"), w1: rgb("#1c3a7a"), w2: rgb("#2f5bab"), w3: rgb("#5e8fd6"),
-  skin0: rgb("#8a5f58"), skin1: rgb("#b98873"), skin2: rgb("#dcb598"), hair: rgb("#2a2226"), amber: rgb("#e9b96a"),
-} as const;
+import { P } from "./palette.ts";
+export { P };
 
 export interface Sprite { readonly id: string; readonly img: Img; readonly frames?: { readonly w: number; readonly h: number; readonly count: number }; readonly note: string }
 
@@ -44,79 +36,6 @@ function sceneBg(): Sprite {
   const alcove = (x: number, y: number, w: number, h: number): void => { i.bevel(x - 3, y - 3, w + 6, h + 6, P.s2, P.n0, P.ink, true); i.rect(x, y, w, h, P.n0); };
   alcove(8, 8, 624, 92); alcove(8, 108, 132, 152); alcove(8, 264, 132, 88); alcove(148, 108, 268, 104); alcove(148, 216, 268, 22); alcove(148, 242, 268, 110); alcove(424, 108, 208, 244);
   return { id: "scene-bg", img: i, note: "scene background, frame and alcoves" };
-}
-
-/** Cutaway of the boat (surface state). */
-function bannerSub(): Sprite {
-  const W = 624, H = 92, i = new Img(W, H), rng = artRng(23);
-  i.vgrad(0, 0, W, 44, P.n1, P.p1);                // dusk sky through the viewport
-  i.vgrad(0, 44, W, 48, P.w1, P.w0);               // sea
-  for (let y = 46; y < H; y += 5) for (let x = (y * 7) % 11; x < W; x += 11) i.hline(x, y, 3, P.w2); // wave dashes
-  for (let x = 0; x < W; x += 3) i.set(x, 44 + (x % 6 < 3 ? 0 : 1), P.w3);                          // waterline glint
-  // hull (cutaway): rounded plates with a lit interior
-  const hx = 96, hy = 34, hw = 430, hh = 40;
-  i.ellipse(hx + 14, hy + 20, 18, 20, P.s1); i.ellipse(hx + hw - 14, hy + 20, 18, 20, P.s1);
-  i.rect(hx + 12, hy, hw - 24, hh, P.s1);
-  i.rect(hx + 8, hy + 4, hw - 16, hh - 8, P.s0);
-  i.dither(hx + 10, hy + 6, hw - 20, hh - 12, P.n2, P.n3, 0.35); // lit interior wall
-  for (let k = 0; k < 7; k++) { const bx = hx + 40 + k * 58; i.rect(bx, hy + 6, 3, hh - 12, P.s2); i.vline(bx + 3, hy + 6, hh - 12, P.s0); } // bulkheads
-  i.rect(hx + 10, hy + hh - 10, hw - 20, 4, P.b1); i.hline(hx + 10, hy + hh - 10, hw - 20, P.b2);                                             // deck
-  for (let k = 0; k < 14; k++) { const px = hx + 24 + k * 29; i.hline(px, hy + 8, 18, P.s3); i.hline(px, hy + 9, 18, P.s0); }                    // pipes
-  for (let k = 0; k < 7; k++) { const lx = hx + 52 + k * 58; i.rect(lx, hy + 10, 4, 3, P.amber); i.set(lx + 1, hy + 13, P.b3); }                    // lamps
-  // crew silhouettes
-  for (const cx of [hx + 70, hx + 134, hx + 188, hx + 250, hx + 304, hx + 362]) {
-    i.rect(cx, hy + 18, 5, 12, P.ink); i.ellipse(cx + 2, hy + 16, 2, 2, P.skin0); i.rect(cx - 1, hy + 18, 1, 6, P.ink); i.rect(cx + 5, hy + 18, 1, 6, P.ink);
-  }
-  // outline and rivet line
-  i.frame(hx + 8, hy + 4, hw - 16, hh - 8, P.s2);
-  for (let k = 0; k < 40; k++) i.set(hx + 12 + k * 10, hy + 2, P.s3);
-  // conning tower, periscope, bow, stern
-  i.rect(hx + 190, hy - 18, 54, 20, P.s1); i.frame(hx + 190, hy - 18, 54, 20, P.s0); i.rect(hx + 196, hy - 14, 42, 8, P.n2);
-  for (let k = 0; k < 4; k++) i.rect(hx + 200 + k * 10, hy - 12, 6, 4, P.amber);
-  i.rect(hx + 244, hy - 30, 2, 14, P.s3); i.rect(hx + 244, hy - 30, 8, 2, P.s3);
-  i.rect(hx + 150, hy - 6, 20, 6, P.s1); i.line(hx + 150, hy - 6, hx + 170, hy - 6, P.s3); // gun deck
-  i.rect(hx + hw - 6, hy + 26, 20, 4, P.s1); i.ellipse(hx + hw + 18, hy + 28, 5, 6, P.s2);  // stern screw housing
-  i.line(hx + hw + 14, hy + 20, hx + hw + 22, hy + 36, P.b2); i.line(hx + hw + 22, hy + 20, hx + hw + 14, hy + 36, P.b2);
-  i.rect(hx - 18, hy + 22, 22, 4, P.s2);                                                     // bow
-  // viewport frame with rivets
-  i.frame(0, 0, W, H, P.ink); i.frame(1, 1, W - 2, H - 2, P.s1); i.frame(2, 2, W - 4, H - 4, P.s0);
-  for (let x = 10; x < W; x += 52) { i.rivet(x, 2, P.s3, P.s0); i.rivet(x, H - 4, P.s3, P.s0); }
-  i.wear(rng, 3, 3, W - 6, H - 6, P.n3, 300);
-  return { id: "banner-sub", img: i, note: "submarine cutaway, surface state (static for stage 2)" };
-}
-
-/** Operator in an alcove under a hanging lamp. */
-function portrait(): Sprite {
-  const W = 132, H = 152, i = new Img(W, H), rng = artRng(31);
-  i.vgrad(0, 0, W, H, P.n2, P.n0);
-  for (let y = 0; y < H; y += 12) i.hline(0, y, W, P.n1);
-  i.wear(rng, 0, 0, W, H, P.n3, 200);
-  // lamp + light
-  i.rect(64, 0, 4, 12, P.s1); i.ellipse(66, 16, 9, 6, P.s2); i.ellipse(66, 20, 6, 3, P.amber); i.hline(60, 22, 12, P.b3);
-  for (let y = 10; y < 150; y++) for (let x = 0; x < W; x++) { const dx = x - 66, dy = y - 20; if (bayer(x, y) < Math.max(0, 1 - Math.sqrt(dx * dx * 0.5 + dy * dy * 0.25) / 80) * 0.5) i.set(x, y, P.p1); }
-  // shoulders / uniform
-  i.ellipse(66, 150, 50, 36, P.s0); i.ellipse(66, 152, 46, 34, P.n1); i.rect(40, 118, 52, 34, P.n1);
-  i.line(48, 122, 40, 152, P.s0); i.line(84, 122, 92, 152, P.s0);
-  for (let k = 0; k < 3; k++) i.set(66, 128 + k * 8, P.b3);                                  // buttons
-  i.rect(54, 116, 24, 6, P.pa1); i.rect(60, 116, 12, 4, P.skin1);                          // collar + neck
-  // head (lit from the lamp above-left)
-  i.ellipse(66, 86, 19, 26, P.skin1); i.shadeEllipse(66, 86, 19, 26, P.skin1, P.skin0, -0.6, -0.5);
-  i.ellipse(64, 80, 12, 14, P.skin2); i.shadeEllipse(64, 80, 12, 14, P.skin2, P.skin1, -0.4, -0.4);
-  i.ellipse(66, 106, 11, 6, P.skin1); i.shadeEllipse(66, 106, 11, 6, P.skin1, P.skin0, 0, 1);
-  i.ellipse(47, 90, 3, 5, P.skin1); i.ellipse(85, 90, 3, 5, P.skin0);
-  // cap
-  i.rect(42, 64, 48, 12, P.s0); i.ellipse(66, 62, 24, 10, P.s1); i.rect(42, 74, 48, 3, P.ink); i.ellipse(66, 66, 5, 4, P.b2); i.set(66, 66, P.b3);
-  // glasses
-  i.ellipse(58, 86, 6, 5, P.s4); i.ellipse(74, 86, 6, 5, P.s4); i.ellipse(58, 86, 4, 3, P.pa3); i.ellipse(74, 86, 4, 3, P.pa3); i.hline(63, 85, 6, P.s4);
-  i.set(59, 86, P.tx); i.set(75, 86, P.tx);
-  i.hline(60, 100, 12, P.skin0); i.hline(62, 101, 8, P.r0);                                 // mouth
-  i.vline(66, 90, 6, P.skin0);                                                              // nose
-  // headphones
-  i.rect(41, 78, 4, 18, P.s1); i.rect(87, 78, 4, 18, P.s1); i.line(44, 66, 88, 66, P.s3); i.vline(43, 66, 12, P.s3); i.vline(89, 66, 12, P.s3);
-  i.bevel(38, 82, 8, 14, P.s3, P.s2, P.s0); i.bevel(86, 82, 8, 14, P.s3, P.s2, P.s0);
-  // alcove frame
-  i.frame(0, 0, W, H, P.ink); i.frame(1, 1, W - 2, H - 2, P.s1);
-  return { id: "portrait", img: i, frames: { w: W, h: H, count: 1 }, note: "operator portrait, idle frame only (stage 5 adds states)" };
 }
 
 function gauges(): Sprite {
@@ -198,7 +117,7 @@ function slicedKey(id: string, down: boolean): Sprite {
   const w = 16, h = 16, i = new Img(w, h), r = artRng(down ? 83 : 81);
   i.bevel(0, down ? 1 : 0, w, h - 1, down ? P.s2 : P.s3, down ? P.s1 : P.s2, P.s0);
   i.frame(0, 0, w, h, P.ink); for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]] as const) i.set(x, y, CLEAR);
-  i.wear(r, 2, 2, w - 4, h - 5, P.s0, 3);
+  void r; // no specks: they would be stretched into dashes by the 9-slice
   return { id, img: i, note: `9-slice wide key (${down ? "pressed" : "up"}), 4px corners` };
 }
 
@@ -253,7 +172,7 @@ function noise(): Sprite {
 
 export function buildSprites(): Sprite[] {
   return [
-    sceneBg(), bannerSub(), portrait(), gauges(),
+    sceneBg(), ...boatSprites(), portraitSheet(), gauges(),
     paper("telegram", 268, 104, 61, "telegram"), paper("secret-paper", 268, 110, 67, "secret"),
     machine(), key("key-round", 16, 16, 71), slicedKey("keywide-up", false), slicedKey("keywide-down", true), lamp(), statusLamp(),
     button("btn-up", "up"), button("btn-down", "down"), button("btn-off", "off"), pause(), noise(),

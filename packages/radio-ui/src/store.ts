@@ -50,7 +50,7 @@ export interface UiState {
   tx: { totalSec: number; keyedUntilSec: number; locatedAtSec: number | null; escortAtSec: number | null; depthChargeAtSec: number | null };
   /** Which text the SECRET paper shows: the player's own copy or the deciphered plain text. */
   view: "copy" | "plain";
-  drawer: "auth" | null;
+  drawer: Drawer | null;
   /** Increments on every decode (drives the lamp reveal animation) and on every live alert (drives the flash). Never advanced by a silent rebuild. */
   decodeSeq: number;
   alertSeq: number;
@@ -67,6 +67,8 @@ export interface UiState {
   hydrophone: number | null; // contactId being listened to
   paused: boolean;
 }
+
+export type Drawer = "auth" | "sonar" | "log";
 
 export const EMERGENCY_SEC = 25; // UI-only duration of the "all hands" layout after a BRIDGE_ALERT
 export const COPY_MAX = 400;
@@ -328,7 +330,7 @@ export class Store {
 
   showCopy(): void { if (this.state.view !== "copy") { this.state.view = "copy"; this.mark("view"); } }
   setView(v: "copy" | "plain"): void { if (this.state.view !== v) { this.state.view = v; this.mark("view", "copy"); } }
-  openDrawer(d: "auth"): void { if (this.state.drawer !== d) { this.state.drawer = d; this.mark("drawer"); } }
+  openDrawer(d: Drawer): void { if (this.state.drawer !== d) { this.state.drawer = d; this.mark("drawer"); } }
   closeDrawer(): void { if (this.state.drawer !== null) { this.state.drawer = null; this.mark("drawer"); } }
 
   selectRx(rxId: number): void {

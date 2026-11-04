@@ -188,6 +188,7 @@ export class Controller implements Actions {
   }
 
   openAuthTable(): void { this.store.setLookup({ active: true, row: null, col: null }); this.store.openDrawer("auth"); }
+  openDrawer(d: "sonar" | "log"): void { this.store.openDrawer(d); }
   closeDrawer(): void { this.store.closeDrawer(); if (this.store.state.lookup.active) this.store.setLookup({ active: false, row: null, col: null }); }
   showView(v: "copy" | "plain"): void { this.store.setView(v); }
   lookupCell(row: string, col: string): void { this.store.setLookup({ row, col }); }

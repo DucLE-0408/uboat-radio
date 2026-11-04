@@ -55,19 +55,20 @@ const loop = new FixedStepLoop();
 loop.setSpeed(initialSpeed);
 const flags: Ctx["flags"] = { showMorse: !audio.supported, simSpeed: initialSpeed };
 
+const cosmeticSeed = randomSeed();
 const controller = new Controller(session, store, audio, morse, hydro, loop, {
   storage,
   navigate: (q) => { location.assign(`${location.pathname}${q}`); },
-  cosmeticSeed: randomSeed(), // separate stream for audio jitter (R1.2)
+  cosmeticSeed, // separate stream for audio jitter and scene decoration (R1.2)
   ctxRef: { flags },
 });
-const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, diag, seed: session.seed, flags };
+const ctx: Ctx = { store, watch: session.watch, audio, morse, actions: controller, input: controller, diag, seed: session.seed, cosmeticSeed, flags };
 const copies = new CopyPersistence(storage, session.seed, () => store.exportCopies(), (c) => diag.err("save", c));
 store.on(["copy"], () => copies.schedule());
 if (params.get("diag") === "1") mountDiagOverlay(diag);
 
 const ui = params.get("ui");
-const view: { frame(): void } = ui === "p5" ? mountScene(ctx, app) : mountClassic(ctx, app);
+const view: { frame(): void } = ui === "classic" ? mountClassic(ctx, app) : mountScene(ctx, app); // P5 is the default; ?ui=classic keeps the P4 panels
 
 controller.syncTelemetry();
 store.on(["ui", "alert", "ended", "clock"], () => document.body.classList.toggle("emergency", store.state.emergency.reason !== null && store.state.ended === null));

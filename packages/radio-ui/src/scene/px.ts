@@ -9,9 +9,22 @@ export function computeScale(vw: number, vh: number): number {
   return Math.max(1, Math.floor(Math.min(vw / SCENE_W, vh / SCENE_H)));
 }
 
+export type LayoutMode = "desktop" | "tablet" | "mobile";
+
+/**
+ * desktop: the 640x360 scene at an integer scale >= 2 (needs >= 1280 px wide);
+ * tablet: 768-1279 px (or a wide but short window): two columns of real-size controls + drawers;
+ * mobile: < 768 px: one column with tabs. (R9)
+ */
+export function layoutMode(vw: number, vh: number): LayoutMode {
+  if (vw >= 1280 && computeScale(vw, vh) >= 2) return "desktop";
+  return vw >= 768 ? "tablet" : "mobile";
+}
+
 export const u = (n: number): string => `calc(var(--px) * ${n}px)`;
 
 export function place(el: HTMLElement, x: number, y: number, w: number, h: number): void {
+  el.dataset["p"] = "1"; // marks logical-px placement so flow layouts (tablet/mobile) can neutralise it
   const s = el.style;
   s.left = u(x); s.top = u(y); s.width = u(w); s.height = u(h);
 }

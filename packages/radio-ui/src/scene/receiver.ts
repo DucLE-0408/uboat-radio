@@ -50,6 +50,7 @@ export function mountReceiver(ctx: SceneCtx, root: HTMLElement): { frame(now: nu
   ctx.scope.on(["rx", "view", "ui"], refresh);
   refresh();
 
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches; // touch devices have no keys to press
   const g = canvas.getContext("2d");
   const ring = new Uint8Array(80);
   let head = 0, lastTone = false, lastTxt = "";
@@ -65,7 +66,7 @@ export function mountReceiver(ctx: SceneCtx, root: HTMLElement): { frame(now: nu
         t = a ? a.tokens.replaceAll("_", " ").replaceAll("/", " / ") : "";
         txt.title = t;
       } else if (!audio.supported) t = "NO AUDIO: USE VIS";
-      else if (audio.needsGesture) t = "PRESS ANY KEY FOR SOUND";
+      else if (audio.needsGesture) t = coarse ? "TAP ANYWHERE FOR SOUND" : "PRESS ANY KEY FOR SOUND";
       if (t !== lastTxt) { lastTxt = t; setText(txt, t); setClass(txt, "prompt", !flags.showMorse); }
       if (!g) return;
       g.fillStyle = "#0c0a18"; g.fillRect(0, 0, 80, 14);
