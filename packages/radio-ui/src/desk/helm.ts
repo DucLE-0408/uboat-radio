@@ -1,6 +1,6 @@
 // Helm screen (G5): chart, compass, wheel, speed and depth controls, taken off the radio desk. Presentation only: the position it
 // shows is the navigator's ESTIMATE (Watch.navFix), steering goes through the existing Actions (D3: no true position, no enemy).
-import { BALANCE, coastKm, posToGrid } from "@uboat/sim-core";
+import { BALANCE, coastKm, posToGrid, seaSpeedFactor } from "@uboat/sim-core";
 import type { Ctx } from "../ctx";
 import { h, setClass, setText } from "../dom";
 import { t } from "../i18n";
@@ -205,7 +205,9 @@ export function mountHelm(d: HelmDeps): Helm {
     const st = store.state, threat = st.tx.escortAtSec !== null || (st.tx.depthChargeAtSec !== null && st.tSec - st.tx.depthChargeAtSec < 300);
     const chargeWarn = threat && seabedM !== null && seabedM < BALANCE.boat.depthChargeDropDepthM ? `\n${t("desk.helm.chargeWarn")}` : ""; // charges burst just above the floor in shallow water
     const wx0 = store.state.weather, wxLine = wx0 === null ? "" : `\n${t("desk.helm.wx", { vis: String(wx0.visKm), force: String(wx0.force), dir: String(wx0.windDeg).padStart(3, "0") })}`;
-    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}`);
+    const capKn = wx0 === null || st.tSec - wx0.tSec > 2400 ? null : Math.round(BALANCE.boat.maxSpeedSurfaceKn * seaSpeedFactor(BALANCE, wx0.seaState)); // from the REPORTED sea state only
+    const seaLine = capKn !== null && capKn < BALANCE.boat.maxSpeedSurfaceKn ? `\n${t(wx0 !== null && wx0.force >= BALANCE.weather.stormForce ? "desk.helm.storm" : "desk.helm.seaCap", { kn: String(capKn) })}` : "";
+    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}${seaLine}`);
     const ord = store.state.moveOrder, f = fix();
     if (ord === null) setText(orderTxt, t("desk.helm.noOrder"));
     else { const c = parseGrid(ord.grid); const dist = c === null ? 0 : Math.hypot(c.x - f.x, c.y - f.y), brg = c === null ? 0 : bearingTo({ x: f.x, y: f.y }, c);

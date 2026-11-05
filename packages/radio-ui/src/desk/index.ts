@@ -921,7 +921,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   helmBtn.addEventListener("click", () => { helm.toggle(); helmBtn.setAttribute("aria-expanded", String(helm.isOpen())); });
   const onHelmEsc = (ev: KeyboardEvent): void => { if (ev.code === "Escape" && helm.isOpen()) { helm.close(); helmBtn.setAttribute("aria-expanded", "false"); ev.preventDefault(); ev.stopPropagation(); } };
   window.addEventListener("keydown", onHelmEsc, true);
-  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt, seenShoal = store.state.shoalWarnAt, seenBottom = store.state.bottomings, seenShallow = store.state.shallowHitAt, seenSighted = store.state.sightedAt;
+  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt, seenShoal = store.state.shoalWarnAt, seenBottom = store.state.bottomings, seenShallow = store.state.shallowHitAt, seenSighted = store.state.sightedAt, seenStorm = false;
   let seenReached = store.state.ordersReached, seenFailed = store.state.ordersFailed, seenOrder = store.state.moveOrder?.rxId ?? -1;
   scope.on(["ui", "log"], () => {
     const s = store.state;
@@ -929,6 +929,9 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     if (s.ordersReached > seenReached) { addRation(adjust(ration, MOVE_REWARD * (s.ordersReached - seenReached))); seenReached = s.ordersReached; store.notify(t("desk.order.reached")); }
     if (s.shoalWarnAt > seenShoal) { seenShoal = s.shoalWarnAt; store.notify(t("desk.seabed.warn")); }
     if (s.bottomings > seenBottom) { addRation(adjust(ration, -BOTTOM_PENALTY * (s.bottomings - seenBottom))); seenBottom = s.bottomings; store.notify(t("desk.seabed.bottomed")); }
+    const storm = s.weather !== null && s.weather.force >= BALANCE.weather.stormForce;
+    if (storm && !seenStorm) store.notify(t("desk.weather.storm"));
+    seenStorm = storm;
     if (s.sightedAt > seenSighted) { seenSighted = s.sightedAt; store.notify(t("desk.weather.sighted", { km: String(Math.round(s.weather?.visKm ?? 0)) })); }
     if (s.shallowHitAt > seenShallow) { seenShallow = s.shallowHitAt; store.notify(t("desk.charge.shallow")); }
     if (s.coastWarnAt > seenWarn) { seenWarn = s.coastWarnAt; store.notify(t("desk.coast.warn")); }

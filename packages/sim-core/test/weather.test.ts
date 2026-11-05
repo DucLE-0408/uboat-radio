@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { replay, Watch } from "../src/watch";
 import { defaultOptions, ALL_MODULES, parseOptions, type WatchOptions } from "../src/options";
-import { clearness, makeWeather } from "../src/weather";
+import { clearness, makeWeather, seaSpeedFactor } from "../src/weather";
 import { BALANCE, type Balance } from "../src/balance";
 import type { SimEvent } from "../src/events";
 
@@ -67,5 +67,30 @@ describe("weather in the watch", () => {
     const w = new Watch(9, BALANCE, opts); w.dispatch({ kind: "speed", kn: 8 }); w.runUntil(3000);
     const r = replay(9, w.commandLog(), w.tickCount, BALANCE, opts);
     expect(r.bus.getLog()).toEqual(w.bus.getLog());
+  });
+});
+
+describe("storms slow the boat", () => {
+  const rough: Balance = { ...BALANCE, weather: { ...BALANCE.weather, calmSeaState: 0, stormMinFactor: 0.5 } }; // any sea slows it, so a short run shows the effect
+  const fast = (b: Balance, o: WatchOptions): Watch => { const w = new Watch(4, b, o); w.dispatch({ kind: "speed", kn: 17 }); w.runUntil(600); return w; };
+  it("the sea factor is 1 when calm and the minimum at sea state 8, linear in between", () => {
+    const w = BALANCE.weather;
+    expect(seaSpeedFactor(BALANCE, 0)).toBe(1); expect(seaSpeedFactor(BALANCE, w.calmSeaState)).toBe(1);
+    expect(seaSpeedFactor(BALANCE, 8)).toBeCloseTo(w.stormMinFactor, 10); expect(seaSpeedFactor(BALANCE, 12)).toBeCloseTo(w.stormMinFactor, 10);
+    expect(seaSpeedFactor(BALANCE, (w.calmSeaState + 8) / 2)).toBeCloseTo((1 + w.stormMinFactor) / 2, 10);
+  });
+  it("a rough sea lowers the surfaced top speed; no weather module means full speed", () => {
+    const calm = fast(rough, noWx).boat.state().speedKn, wet = fast(rough, opts);
+    expect(calm).toBeCloseTo(BALANCE.boat.maxSpeedSurfaceKn, 5);
+    const sea = makeWeather(4, rough).at(wet.tSec).sea;
+    expect(sea).toBeGreaterThan(0.2);
+    expect(wet.boat.state().speedKn).toBeLessThan(calm - 0.1);
+    expect(wet.boat.state().speedKn).toBeCloseTo(BALANCE.boat.maxSpeedSurfaceKn * seaSpeedFactor(rough, sea), 1);
+  });
+  it("a dived boat keeps its battery speed; the plain night watch is unaffected", () => {
+    const d = new Watch(4, rough, opts); d.dispatch({ kind: "mode", mode: "dive" }); d.dispatch({ kind: "speed", kn: 7 }); d.runUntil(900);
+    expect(d.boat.state().speedKn).toBeCloseTo(BALANCE.boat.maxSpeedDivedKn, 5);
+    const n = new Watch(4, rough); n.dispatch({ kind: "speed", kn: 17 }); n.runUntil(600);
+    expect(n.boat.state().speedKn).toBeCloseTo(BALANCE.boat.maxSpeedSurfaceKn, 5);
   });
 });
