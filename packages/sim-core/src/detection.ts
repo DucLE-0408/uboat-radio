@@ -1,6 +1,6 @@
 // Allied HF/DF: detection grows with cumulative transmit time on a frequency inside a sliding window.
 // Fixed timestep, one RNG, no wall-clock => deterministic.
-import { BALANCE, type Balance } from "./balance";
+import { BALANCE, type Balance, type Range } from "./balance";
 import type { SimEvent } from "./events";
 import type { Rng } from "./rng";
 
@@ -88,6 +88,17 @@ export class HfdfDetector {
     this.pending.push({ atSec: this.t + reactSec, event: { type: "ESCORT_DISPATCHED", tSec: this.t + reactSec, etaSec: travel } });
     this.pending.push({ atSec: this.t + reactSec + travel, event: { type: "DEPTH_CHARGE", tSec: this.t + reactSec + travel } });
     return [{ type: "HFDF_FIX", tSec: this.t, freqKhz, cumulativeTxSec: this.cumulativeTx(freqKhz) }];
+  }
+
+  /** A visual sighting by an escort: like forceFix, but no HF/DF fix is reported. Returns false while a contact is still cooling down. */
+  visualContact(react: Range, eta: Range): boolean {
+    if (this.t < this.cooldownUntil) return false;
+    this.cooldownUntil = this.t + this.b.detection.cooldownSec;
+    const reactSec = react.min + this.rng.next() * (react.max - react.min);
+    const travel = eta.min + this.rng.next() * (eta.max - eta.min);
+    this.pending.push({ atSec: this.t + reactSec, event: { type: "ESCORT_DISPATCHED", tSec: this.t + reactSec, etaSec: travel } });
+    this.pending.push({ atSec: this.t + reactSec + travel, event: { type: "DEPTH_CHARGE", tSec: this.t + reactSec + travel } });
+    return true;
   }
 
   /** Cancel inbound attack (e.g. boat dived and evaded). Returns number of cancelled events. */

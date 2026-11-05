@@ -69,4 +69,9 @@ describe("seabed events in the store and ration", () => {
     rebuildStore(s, [ev({ type: "CHARGE_EFFECT", tSec: 40, dropM: 25, shallow: true, reflected: true, hit: true })], [], 50);
     expect(s.state.shallowHitAt).toBe(40);
   });
+  it("keeps the last weather report and the last sighting", () => {
+    const s = new Store();
+    rebuildStore(s, [ev({ type: "WEATHER_REPORT", tSec: 0, visKm: 12, windDeg: 90, force: 3, seaState: 3 }), ev({ type: "WEATHER_REPORT", tSec: 600, visKm: 4, windDeg: 100, force: 5, seaState: 4 }), ev({ type: "SIGHTED", tSec: 700, visKm: 5 })], [], 800);
+    expect(s.state.weather).toEqual({ tSec: 600, visKm: 4, windDeg: 100, force: 5, seaState: 4 }); expect(s.state.sightedAt).toBe(700);
+  });
 });
