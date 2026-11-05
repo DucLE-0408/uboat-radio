@@ -11,16 +11,16 @@ function digest(seed: number, opts?: ReturnType<typeof defaultOptions>): string 
   const script: [number, () => void][] = [
     [60, () => w.dispatch({ kind: "speed", kn: 8 })], [120, () => w.dispatch({ kind: "heading", deg: 70 })],
     [600, () => w.dispatch({ kind: "transmit", seconds: 40 })], [900, () => w.dispatch({ kind: "mode", mode: "periscope" })],
-    [1200, () => w.dispatch({ kind: "mode", mode: "dive" })], [1500, () => w.dispatch({ kind: "heading", deg: 200 })],
+    [1200, () => w.dispatch({ kind: "mode", mode: "dive" })], [1500, () => w.dispatch({ kind: "heading", deg: 200 })], [2400, () => w.dispatch({ kind: "mode", mode: "surface" })], [4200, () => w.dispatch({ kind: "heading", deg: 20 })],
   ];
   for (const [t, f] of script) { w.runUntil(t); f(); }
-  w.runUntil(1800);
+  w.runUntil(7200); // long enough for the first radar patrol (it starts after 30 minutes)
   return fnv1a(JSON.stringify(w.bus.getLog())).toString(16);
 }
 
 describe("sim version guard", () => {
   // If these fail you changed what a saved game replays into. Bump SIM_VERSION (src/simversion.ts), then update the digests.
-  const GOLDEN = { sim: 3, night: "60dcf0c", endless: "3b2df408" };
+  const GOLDEN = { sim: 4, night: "60dcf0c", endless: "dc72b1" };
   it("the replay digests match the declared SIM_VERSION", () => {
     expect({ sim: SIM_VERSION, night: digest(1), endless: digest(24, defaultOptions("endless")) }).toEqual(GOLDEN);
   });

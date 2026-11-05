@@ -207,7 +207,8 @@ export function mountHelm(d: HelmDeps): Helm {
     const wx0 = store.state.weather, wxLine = wx0 === null ? "" : `\n${t("desk.helm.wx", { vis: String(wx0.visKm), force: String(wx0.force), dir: String(wx0.windDeg).padStart(3, "0") })}`;
     const capKn = wx0 === null || st.tSec - wx0.tSec > 2400 ? null : Math.round(BALANCE.boat.maxSpeedSurfaceKn * seaSpeedFactor(BALANCE, wx0.seaState)); // from the REPORTED sea state only
     const seaLine = capKn !== null && capKn < BALANCE.boat.maxSpeedSurfaceKn ? `\n${t(wx0 !== null && wx0.force >= BALANCE.weather.stormForce ? "desk.helm.storm" : "desk.helm.seaCap", { kn: String(capKn) })}` : "";
-    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}${seaLine}`);
+    const radarLine = st.radarWarnAt > st.radarClearAt && st.tSec - st.radarWarnAt < 1200 ? `\n${t("desk.helm.radar")}` : ""; // the Metox heard it; nothing is known about whether we were picked up
+    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}${seaLine}${radarLine}`);
     const ord = store.state.moveOrder, f = fix();
     if (ord === null) setText(orderTxt, t("desk.helm.noOrder"));
     else { const c = parseGrid(ord.grid); const dist = c === null ? 0 : Math.hypot(c.x - f.x, c.y - f.y), brg = c === null ? 0 : bearingTo({ x: f.x, y: f.y }, c);
