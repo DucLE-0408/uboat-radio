@@ -159,6 +159,8 @@ export const en = {
   "desk.helm.keel": "UNDER KEEL",
   "desk.helm.tooShallow": "The chart shows too little water: {m} m needed",
   "desk.seabed.warn": "Shoal: the water under the keel is thin.",
+  "desk.helm.chargeWarn": "SHALLOW: CHARGES BITE",
+  "desk.charge.shallow": "Depth charge in shallow water: the blast hit us hard.",
   "desk.seabed.bottomed": "Keel on the bottom! Hull damaged; rising to a safe depth.",
   "desk.helm.btn": "HELM",
   "desk.helm.title": "Helm",

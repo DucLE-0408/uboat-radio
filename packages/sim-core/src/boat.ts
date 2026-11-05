@@ -53,6 +53,8 @@ export class Boat {
   private targetSpeed = 0;
   private targetDepth = 0;
   private tSec = 0;
+  /** Set by the Watch when there is a seabed: where charges burst and how hard the bottom reflects them (the plain night watch leaves it null). */
+  private chargeModel: ((depthM: number) => { dropM: number; mult: number; shallow: boolean }) | null = null;
 
   constructor(private readonly bus: EventBus, init: BoatInit, private readonly b: Balance = BALANCE) {
     this.x = init.x;
@@ -156,6 +158,8 @@ export class Boat {
     }
   }
 
+  setChargeModel(m: (depthM: number) => { dropM: number; mult: number; shallow: boolean }): void { this.chargeModel = m; }
+
   /** Held at the coast (G5): the boat cannot go east of `xM` and loses all way; the player must turn away and give speed again. */
   hold(xM: number): void {
     if (this.sunk) return;
@@ -177,9 +181,12 @@ export class Boat {
   // Damage falls off linearly with the depth gap to the pattern; outside the lethal radius it misses.
   private takeDepthCharge(tSec: number): void {
     const d = this.b.boat;
-    const gap = Math.abs(this.depth - d.depthChargeDropDepthM);
-    if (gap > d.depthChargeLethalRadiusM) return;
-    const dmg = d.depthChargeDamage * (1 - 0.5 * (gap / d.depthChargeLethalRadiusM));
+    const m = this.chargeModel?.(this.depth) ?? { dropM: d.depthChargeDropDepthM, mult: 1, shallow: false };
+    const gap = Math.abs(this.depth - m.dropM);
+    const hit = gap <= d.depthChargeLethalRadiusM;
+    if (this.chargeModel !== null) this.bus.emit({ type: "CHARGE_EFFECT", tSec, dropM: Math.round(m.dropM), shallow: m.shallow, reflected: m.mult > 1, hit });
+    if (!hit) return;
+    const dmg = d.depthChargeDamage * (1 - 0.5 * (gap / d.depthChargeLethalRadiusM)) * m.mult;
     this.hull = Math.max(0, this.hull - dmg);
     this.bus.emit({ type: "BOAT_DAMAGED", tSec, hull: this.hull });
     if (this.hull <= 0) {
