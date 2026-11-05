@@ -46,7 +46,7 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
   return new Promise((resolve) => {
     let settings = deps.settings;
     const save = describeSave(deps.storage);
-    const items = menuItems(save !== null);
+    const items = menuItems(save !== null && !save.incompatible);
     let page: "none" | "settings" | "help" | "new" | "endless" = "none";
     let opener: HTMLElement | null = null;
 
@@ -68,12 +68,12 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
       b.style.setProperty("--f", String(ICON_FRAME[it.id]));
       if (it.id === "continue") {
         b.setAttribute("aria-describedby", "menu-save");
-        if (!it.enabled) b.title = "No saved watch yet";
+        if (!it.enabled) b.title = save?.incompatible ? "The saved watch is from another game version" : "No saved watch yet";
       }
       b.addEventListener("click", () => activate(it.id, b));
       buttons.set(it.id, b); nav.append(b);
     });
-    const saveNote = h("p", { class: "menu-save", attrs: { id: "menu-save" }, text: save === null ? "No saved watch." : `Saved watch: ${formatElapsed(save.tickSec)} into the night, seed ${save.seed}.` });
+    const saveNote = h("p", { class: "menu-save", attrs: { id: "menu-save" }, text: save === null ? "No saved watch." : save.incompatible ? "The saved watch is from another game version and cannot be continued. Starting a new watch replaces it." : `Saved watch: ${formatElapsed(save.tickSec)} into the night, seed ${save.seed}.` });
     const letter = h("button", { class: "menu-letter", attrs: { type: "button", "aria-label": "Help: how to play" }, on: { click: () => activate("help", letter) } });
     const ticker = h("p", { class: "menu-ticker", attrs: { "aria-hidden": "true" }, text: TIPS[0] ?? "" });
     const card = h("section", { class: "menu-card", attrs: { role: "dialog", "aria-modal": "true" } });
@@ -111,7 +111,7 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
 
     function activate(id: MenuId, from: HTMLElement): void {
       deps.unlockAudio();
-      if (id === "continue") { if (save !== null) finish({ kind: "continue" }); return; }
+      if (id === "continue") { if (save !== null && !save.incompatible) finish({ kind: "continue" }); return; }
       openPage(id, from);
     }
 

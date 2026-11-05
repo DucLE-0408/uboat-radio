@@ -1,5 +1,5 @@
 // Pure menu logic (no DOM): item list, keyboard navigation, seed input parsing, a safe description of the saved watch.
-import { parseSave, isSeed, SAVE_KEY, LEGACY_SAVE_KEY, type StorageLike } from "../sim/session";
+import { parseSave, isCompatible, isSeed, SAVE_KEY, LEGACY_SAVE_KEY, type StorageLike } from "../sim/session";
 
 export type MenuId = "continue" | "new" | "endless" | "settings" | "help";
 export interface MenuItem { readonly id: MenuId; readonly label: string; readonly enabled: boolean }
@@ -38,14 +38,14 @@ export function parseSeedInput(text: string): SeedInput {
   return isSeed(n) ? { ok: true, seed: n } : { ok: false };
 }
 
-export interface SaveInfo { readonly seed: number; readonly tickSec: number; readonly commands: number }
+export interface SaveInfo { readonly seed: number; readonly tickSec: number; readonly commands: number; /** Written by another simulation version: it is kept but cannot be continued. */ readonly incompatible: boolean }
 
 /** What the Continue button may show about the saved watch: seed and elapsed time only (never Intel, hazard or true range). */
 export function describeSave(storage: StorageLike | null): SaveInfo | null {
   let raw: string | null = null;
   try { raw = storage?.getItem(SAVE_KEY) ?? storage?.getItem(LEGACY_SAVE_KEY) ?? null; } catch { return null; }
   const s = parseSave(raw);
-  return s === null ? null : { seed: s.seed, tickSec: s.untilTick, commands: s.commands.length };
+  return s === null ? null : { seed: s.seed, tickSec: s.untilTick, commands: s.commands.length, incompatible: !isCompatible(s) };
 }
 
 export function formatElapsed(totalSec: number): string {

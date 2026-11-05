@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SIM_VERSION } from "@uboat/sim-core";
 import { Session, parseSave, SAVE_KEY, LEGACY_SAVE_KEY, type StorageLike } from "../src/sim/session";
 
 class MemStore implements StorageLike {
@@ -37,12 +38,12 @@ describe("Session save/load = seed + commandLog", () => {
     expect(b!.watch.tickCount).toBe(a.watch.tickCount);
   });
 
-  it("the save file holds only seed, tick and commands", () => {
+  it("the save file holds only seed, sim version, tick and commands", () => {
     const store = new MemStore();
     const a = Session.fresh(7, store);
     play(a);
     const j = JSON.parse(store.getItem(SAVE_KEY)!) as Record<string, unknown>;
-    expect(Object.keys(j).sort()).toEqual(["commands", "seed", "untilTick", "v"]);
+    expect(Object.keys(j).sort()).toEqual(["commands", "seed", "sim", "untilTick", "v"]);
     expect(j["v"]).toBe(2);
   });
 
@@ -99,5 +100,15 @@ describe("Session save/load = seed + commandLog", () => {
   it("accepts every u32 seed (random seeds are drawn from Uint32) and rejects out-of-range ones", () => {
     for (const seed of [0, 1_000_001, 3_000_000_000, 4_294_967_295]) expect(parseSave(JSON.stringify({ v: 2, seed, untilTick: 5, commands: [] })), String(seed)).not.toBeNull();
     for (const seed of [-1, 4_294_967_296, 1.5, "7"]) expect(parseSave(JSON.stringify({ v: 2, seed, untilTick: 5, commands: [] })), String(seed)).toBeNull();
+  });
+  it("a save from another sim version is not replayed or rewritten; a save without the field is read and stamped", () => {
+    const raw = (sim?: number): string => JSON.stringify({ v: 2, ...(sim === undefined ? {} : { sim }), seed: 9, untilTick: 30, commands: [] });
+    const other = new MemStore(); other.setItem(SAVE_KEY, raw(SIM_VERSION + 1));
+    expect(Session.restore(other, null)).toBeNull();
+    expect(other.getItem(SAVE_KEY)).toBe(raw(SIM_VERSION + 1)); // untouched, so nothing is lost
+    const old = new MemStore(); old.setItem(SAVE_KEY, raw());
+    expect(Session.restore(old, null)?.watch.tickCount).toBe(30);
+    expect((JSON.parse(old.getItem(SAVE_KEY)!) as { sim: number }).sim).toBe(SIM_VERSION);
+    expect(parseSave(JSON.stringify({ v: 2, sim: "x", seed: 9, untilTick: 30, commands: [] }))).toBeNull();
   });
 });

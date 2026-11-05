@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { describeSave, formatElapsed, initialSelection, menuItems, parseSeedInput, stepSelection } from "../src/menu/model";
 import { defaultSettings, loadSettings, parseSettings, saveSettings, SETTINGS_KEY } from "../src/menu/settings";
+import { SIM_VERSION } from "@uboat/sim-core";
 import { SAVE_KEY, type StorageLike } from "../src/sim/session";
 
 const mem = (init: Record<string, string> = {}): StorageLike & { map: Map<string, string> } => {
@@ -47,8 +48,14 @@ describe("seed input", () => {
 describe("saved watch description", () => {
   it("shows seed, elapsed time and command count only", () => {
     const st = mem({ [SAVE_KEY]: JSON.stringify({ v: 2, seed: 3000000000, untilTick: 754, commands: [{ tick: 3, cmd: { kind: "silence", on: true } }] }) });
-    expect(describeSave(st)).toEqual({ seed: 3000000000, tickSec: 754, commands: 1 });
+    expect(describeSave(st)).toEqual({ seed: 3000000000, tickSec: 754, commands: 1, incompatible: false });
     expect(formatElapsed(754)).toBe("12:34");
+  });
+  it("flags a save from another sim version, and reads a save without the field as current", () => {
+    const save = (sim?: number): string => JSON.stringify({ v: 2, ...(sim === undefined ? {} : { sim }), seed: 5, untilTick: 10, commands: [] });
+    expect(describeSave(mem({ [SAVE_KEY]: save(SIM_VERSION + 1) }))?.incompatible).toBe(true);
+    expect(describeSave(mem({ [SAVE_KEY]: save(SIM_VERSION) }))?.incompatible).toBe(false);
+    expect(describeSave(mem({ [SAVE_KEY]: save() }))?.incompatible).toBe(false);
   });
   it("is null for no, corrupt or unreadable storage", () => {
     expect(describeSave(null)).toBeNull();
