@@ -32,6 +32,28 @@ Document schema ownership, transactions, duplicate delivery/order, cache invalid
 
 Document timeouts, cancellation, retry/idempotency, circuit breaking, backpressure, partial failure, graceful shutdown/draining, signals, alerts, capacity, rollout, and rollback triggers.
 
+## Overview (U-Boat Radio Operator)
+
+```text
+seed + options + commands ──► sim-core (Watch, fixed 1 s tick) ──► events ──► radio-ui store ──► desk / Helm / sonar / radio room
+        ▲                                                                        │
+        └──────────────── save = seed + options + sim version + command log ◄─────┘
+```
+
+The sim emits events; the UI store is rebuilt from the event log (so a reload or a replay gives the same screen) and the UI sends commands back. The UI never sees the true position, the enemy, the hazard or the real weather and water; it sees noisy reports (bridge weather reports, thermometer readings at the estimated position, the Metox warning) and published charts (surveyed depth, climatology).
+
+| Stage | What it added | Section |
+|---|---|---|
+| P1 to P5 | cipher, Morse, authentication, night watch, radio room UI and presentation, PWA, Windows installer, menu | [simulation core](#u-boat-radio-operator-simulation-core-packagessim-core), [radio room](#radio-room-ui-packagesradio-ui-p4-functional-core), [installer](#desktop-installer-and-web-hosting-packagesdesktop-verceljson) |
+| G2 | paperwork desk | [desk](#paperwork-desk-packagesradio-uisrcdesk) |
+| G3 | paperwork consequences, paper tells, plugboard | [G3](#g3-paperwork-consequences-paper-tells-plugboard-packagessim-coresrcpaperts-desk) |
+| G4 | Endless, modules, replies, private notes, roster | [G4](#g4-endless-modules-replies-private-notes-roster-packagessim-core-desk-menu) |
+| G5 | movement orders, chart and Helm; coast, seabed and shoals; depth charges over a shallow floor | [G5](#g5-movement-orders-dead-reckoning-chart-and-the-helm-screen-packagessim-core-deskhelmts) and its addenda |
+| Save compatibility | `SIM_VERSION` | [save compatibility](#save-compatibility-sim_version-packagessim-coresrcsimversionts) |
+| G6 | weather and visibility, storms, sonar and sea-aware hearing, enemy radar and the Metox, water temperature and the thermocline | the G6 addenda at the end |
+
+Modules (Endless, all on by default): `timer`, `rotors`, `stamps`, `signatures`, `cables`, `teletyper`, `map`, `weather`, `radar`, `water`. Specs per stage are indexed in [docs/specs](specs/README.md). The newest sim rule set is `SIM_VERSION` 5.
+
 ## U-Boat Radio Operator: simulation core (`packages/sim-core`)
 
 Headless, deterministic TypeScript core (no DOM/engine). One seeded PRNG (`rng.ts`, mulberry32 + FNV-1a, `derive(seed, ...path)` for independent streams). Modules: `enigma` (M4), `morse` (element-level noisy channel + `Fist`), `messages` (genuine traffic and forgeries with verifiable tells), `auth` (Latin squares, challenge ledger, keybook), `intel` (Allied Intel ladder 0-4), `detection` (HF/DF), `events` (Event Bus; the only coupling to presentation/network). Tunables live in `data/balance.json`. Save/load is seed + event log, not snapshots. Presentation (P4+) subscribes to the Event Bus only.

@@ -37,7 +37,7 @@ try {
     $readme = Get-Content -LiteralPath (Join-Path $TemporaryRoot 'README.md') -Raw -Encoding utf8
     $dockerfile = Get-Content -LiteralPath (Join-Path $TemporaryRoot 'examples/fastapi/Dockerfile') -Raw -Encoding utf8
     $workflow = Get-Content -LiteralPath (Join-Path $TemporaryRoot '.github/workflows/version-governance.yml') -Raw -Encoding utf8
-    if ($readme -notmatch '^# Sample Service' -or $dockerfile -notmatch 'example/sample-service' -or $workflow -notmatch 'sample-service-example') {
+    if ($readme -notmatch 'created from the Sample Service' -or $dockerfile -notmatch 'example/sample-service' -or $workflow -notmatch 'sample-service-example') {
         throw 'Derived repository identity replacement failed.'
     }
     if (Test-Path -LiteralPath (Join-Path $TemporaryRoot 'examples/governance-history')) {
