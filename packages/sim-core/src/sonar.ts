@@ -2,6 +2,7 @@
 import { BALANCE, type Balance } from "./balance";
 import type { SimEvent } from "./events";
 import { type Rng } from "./rng";
+import { asdicSeaFactor } from "./weather";
 
 export type ContactKind = "merchant" | "escort" | "uboat" | "asdic";
 
@@ -73,6 +74,14 @@ export function bearingSigmaDeg(snr: number, b: Balance = BALANCE): number {
   return Math.min(s.bearingErrorMaxDeg, Math.max(s.bearingErrorMinDeg, s.bearingErrorK / Math.max(snr, 1)));
 }
 
+/** How far away a source of `srcLevelDb` is just audible, in km, given the sea and our own speed. Our own capability only: it says nothing about where anyone is. */
+export function detectRangeKm(srcLevelDb: number, seaState: number, speedKn: number, b: Balance = BALANCE): number {
+  const budget = srcLevelDb - noiseLevelDb(seaState, speedKn, b) - b.sonar.detectThresholdDb;
+  let lo = 0.001, hi = 200; // transmissionLossDb grows with range, so the margin falls monotonically: bisect
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (transmissionLossDb(mid * 1000, b) > budget) hi = mid; else lo = mid; }
+  return lo;
+}
+
 export type BladeClass = "escort" | "slow"; // "slow" = merchant OR U-boat (rates overlap on purpose)
 
 export function classifyBladeRate(rateHz: number, b: Balance = BALANCE): BladeClass {
@@ -129,7 +138,7 @@ export class SonarField {
    * Fixed-step update: move tracks, then let escorts in range try for an ASDIC lock.
    * A ping means the boat is LOCKED; the Bridge is alerted immediately (see boat.ts).
    */
-  tick(dtSec: number, tSec: number, l: Listener, rng: Rng, b: Balance = BALANCE): SimEvent[] {
+  tick(dtSec: number, tSec: number, l: Listener, rng: Rng, b: Balance = BALANCE, seaState?: number): SimEvent[] {
     const out: SimEvent[] = [];
     for (const t of this.tracks) {
       const a = (t.courseDeg * Math.PI) / 180;
@@ -138,7 +147,7 @@ export class SonarField {
       if (t.kind !== "escort") continue;
       const rb = rangeAndBearing(l, t);
       if (rb.rangeM > b.sonar.asdicRangeM) continue;
-      const rate = b.sonar.asdicLockPerSec * (1 + l.speedKn / b.sonar.asdicSpeedFactorKn);
+      const rate = b.sonar.asdicLockPerSec * (1 + l.speedKn / b.sonar.asdicSpeedFactorKn) * (seaState === undefined ? 1 : asdicSeaFactor(b, seaState));
       if (rng.chance(1 - Math.exp(-rate * dtSec))) {
         out.push({ type: "ASDIC_PING", tSec, contactId: t.id, bearingDeg: rb.bearing, rangeM: rb.rangeM });
       }

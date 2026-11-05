@@ -187,3 +187,7 @@ A save is seed + options + command log, rebuilt by replay, so any change to the 
 
 With the weather module the sea state (wind force x 0.9, unrounded) scales the boat's speed ceiling each tick through `Boat.setSeaFactor(seaSpeedFactor(sea))`: no cost up to sea state 3, falling linearly to 55% at sea state 8; the surfaced ceiling takes the full factor, periscope depth half of it, a dived boat none. Wind force 7 and up is a storm (about 13% of the time). Orders keep their deadline arithmetic. The Helm shows the resulting ceiling from the REPORTED sea state, and the desk toasts when a report turns to storm. `SIM_VERSION` is 2.
 
+### G6 addendum: sonar screen and sea-aware hearing (`docs/specs/desk-ui-g5/sonar.md`)
+
+With the weather module the hydrophone and the ASDIC lock use the weather's sea state (`Watch.seaNow`): a rough sea masks contacts, and also makes the pinging escort lose the lock more often (`asdicSeaFactor`). Without the module the fixed sea state is used, so the night watch is untouched. `detectRangeKm` (sim-core) gives our own hearing range for a source level, sea state and own speed. The sonar drawer adds a ten-minute bearing trace built from the hydrophone observations (`Store.sonarHist`, UI only), coarse signal bands (no range), a listening-conditions readout (own noise from speed, sea noise from the REPORTED sea state) with slow-down advice, an ASDIC banner (no bearing or range, as in the log) and i18n strings. `SIM_VERSION` is 3.
+

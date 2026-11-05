@@ -18,4 +18,4 @@ export * from "./pm";
 export * from "./send";
 export * from "./watch";
 export * from "./simversion";
-export { seaSpeedFactor } from "./weather";
+export { seaSpeedFactor, asdicSeaFactor } from "./weather";

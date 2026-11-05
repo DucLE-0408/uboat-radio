@@ -50,5 +50,11 @@ export const seaSpeedFactor = (b: Balance, seaState: number): number => {
   return 1 - (1 - w.stormMinFactor) * x;
 };
 
+/** Share of the normal ASDIC lock rate a rough sea leaves: 1 when calm, `asdicMinFactor` at sea state 8 (spray and clutter hide the boat from the pinging escort). */
+export const asdicSeaFactor = (b: Balance, seaState: number): number => {
+  const w = b.weather, x = Math.max(0, Math.min(1, (seaState - w.calmSeaState) / (8 - w.calmSeaState)));
+  return 1 - (1 - w.asdicMinFactor) * x;
+};
+
 /** Escorts see a surfaced boat best in clear air: 0 in fog, 1 in the clearest weather. */
 export const clearness = (b: Balance, visKm: number): number => Math.max(0, Math.min(1, (visKm - b.weather.minVisKm) / (b.weather.maxVisKm - b.weather.minVisKm)));

@@ -370,6 +370,7 @@
     "sightHazardPerSecClear": 0.0002,
     "periscopeFactor": 0.25,
     "calmSeaState": 3,
+    "asdicMinFactor": 0.6,
     "stormMinFactor": 0.55,
     "stormForce": 7,
     "reactSec": { "min": 60, "max": 180 },

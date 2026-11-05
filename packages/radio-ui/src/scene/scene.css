@@ -285,3 +285,14 @@ html.fill-window { overflow: hidden; }
 #app.p5.fill-window > .scene.desk { flex: none; margin: 0; }
 /* The key-hint strip lives under the scene on scrolling layouts; in the filled window it would share the flex row, so it becomes screen-reader-only (the menu Help lists the keys) */
 #app.p5.fill-window > .scene-help { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* G6 sonar drawer: listening conditions, ASDIC banner, bearing trace */
+.drawer .scond, .drawer .sasdic { position: absolute; color: #3a2c3f; font-size: calc(10px * var(--px)); line-height: 1.15; white-space: pre-line; }
+.drawer .scond.bad { color: #b13a56; font-weight: 700; }
+.drawer .scondt, .drawer .swft { position: absolute; color: #5d4a63; font-size: calc(8px * var(--px)); }
+.drawer .sasdic { background: #b13a56; color: #f6e8ea; font-weight: 700; padding: calc(3px * var(--px)); box-sizing: border-box; animation: sasdic-flash 1s steps(2, end) infinite; }
+@keyframes sasdic-flash { 50% { background: #7e2438; } }
+@media (prefers-reduced-motion: reduce) { .drawer .sasdic { animation: none; } }
+.drawer canvas.swf { position: absolute; image-rendering: pixelated; border: calc(1px * var(--px)) solid #5d4a63; box-sizing: border-box; background: rgba(255,255,255,0.18); }
+.sonartbl th, .sonartbl td { white-space: nowrap; }
+.scene.flow .drawer .scond, .scene.flow .drawer .sasdic, .scene.flow .drawer .scondt, .scene.flow .drawer .swft { position: static !important; font-size: 18px; }
+.scene.flow .drawer canvas.swf { position: static !important; width: 100% !important; height: auto !important; aspect-ratio: 360 / 100; }
