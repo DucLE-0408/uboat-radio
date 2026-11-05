@@ -104,6 +104,15 @@ jobs:
           ls -l
           # the checksum file is written on Windows (CRLF): strip the CR before checking
           tr -d '\r' < SHA256SUMS.txt | sha256sum --check -
+      - name: Name the asset the way GitHub will serve it
+        working-directory: release
+        run: |
+          # GitHub turns spaces in asset names into dots, so a checksum file that lists the spaced name cannot be checked after a download.
+          # The hash was verified above; rename, rewrite the list for the new name and check it again.
+          for f in ./*.exe; do n="${f// /.}"; [ "$f" = "$n" ] || mv -- "$f" "$n"; done
+          sha256sum -- *.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
       - name: Create the pre-release
         env:
           GH_TOKEN: ${{ github.token }}
