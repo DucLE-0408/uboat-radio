@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 id: task-2026-11-05-desktop-checksum-names
-status: in-progress
+status: completed
 owner: claude-cloud-session
 goal_confirmed_at: 2026-11-05T04:35:00.0000000Z
 started_at: 2026-11-05T04:35:00.0000000Z
-updated_at: 2026-11-05T04:50:00.0000000Z
+updated_at: 2026-11-05T07:40:00.0000000Z
 base_commit: 28905ec370a83054870753d0806db17d476ee3bc
 owned_paths:
   - .github/workflows/desktop-windows.yml
-  - memory/tasks/active/2026-11-05-desktop-checksum-names.md
+  - memory/tasks/completed/2026-11-05-desktop-checksum-names.md
 plan: null
 handoff: null
 ---
@@ -35,15 +35,15 @@ prerelease job: download artifact -> verify the original sums (CRLF stripped) ->
 ## Verification
 
 - Command/check: local dry run of the step on a mock release directory; python3 -I scripts/validate_repo.py; YAML parse
-- Result: `passed` (local) / `not verified` (real run)
-- Evidence/reason: the dry run produced "U-Boat.Radio.Operator_0.0.0_x64-setup.exe: OK"; validator and YAML parse pass. No tagged dispatch has been run with this change.
+- Result: `passed`
+- Evidence/reason: local dry run on a mock directory printed "U-Boat.Radio.Operator_0.0.0_x64-setup.exe: OK". Real run: workflow run 41986566729 on commit 1a68929, tag desktop-preview-20261105-3: step "Name the asset the way GitHub will serve it" succeeded; jobs installer and prerelease succeeded; the release is a pre-release (not draft), tag ref 1a68929, assets installer exe (3,353,054 bytes) and SHA256SUMS.txt; downloaded through the REST API, `sha256sum --check SHA256SUMS.txt` printed "U-Boat.Radio.Operator_0.0.0_x64-setup.exe: OK" (hash 22fd40ce...bbd8).
 
 ## Runtime and codebase-health verification
 
-- Runtime/user-flow exercise: pending the next tagged dispatch.
-- Health/readiness/log/error inspection: pending.
+- Runtime/user-flow exercise: the tagged dispatch above created the release and its assets were downloaded and checked.
+- Health/readiness/log/error inspection: job and step conclusions read through the Actions API.
 - Integration/dependency/config/migration check: no dependency change; no new action.
-- Remaining issue or reason not verified: the step has not run in Actions.
+- Remaining issue or reason not verified: whether the exe launches on Windows (unsigned, never run on a real machine); the three earlier previews keep their spaced checksum names.
 
 ## Security, observability, risk, and rollback
 
@@ -51,4 +51,4 @@ prerelease job: download artifact -> verify the original sums (CRLF stripped) ->
 - Observability impact: the run log prints the new checksum list.
 - Residual risk: low; a failure would stop the release (fail closed) before it is created.
 - Rollback: revert the workflow change.
-- Next safe action: on the next tagged preview, check that SHA256SUMS.txt matches the served name, then complete this record.
+- Next safe action: none for this task.
