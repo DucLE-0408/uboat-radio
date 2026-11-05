@@ -122,6 +122,8 @@ export class Controller implements Actions {
   // ------------------------------------------------------------------ G3 paperwork (the sim judges; refusals are silent)
   paperwork(rxId: number | null, action: PaperAction): void { this.sendG3({ kind: "paperwork", rxId, action }); }
   dispose(rxId: number, sheet: "input" | "output", how: "archive" | "burn"): void { this.sendG3({ kind: "dispose", rxId, sheet, how }); }
+  sendReply(rxId: number, indicator: string, groups: string): void { this.sendG3({ kind: "send", rxId, indicator, groups }); }
+  leaveWatch(): void { this.sendG3({ kind: "leave" }); }
   setTimer(on: boolean): void {
     let last: boolean | null = null;
     for (const c of this.session.watch.commandLog()) if (c.cmd.kind === "timer") last = c.cmd.on; // a reload must not stack identical commands
@@ -254,7 +256,8 @@ export class Controller implements Actions {
   newGame(sameSeed: boolean): void {
     Session.clear(this.env.storage);
     clearCopies(this.env.storage);
-    this.env.navigate(sameSeed ? `?seed=${this.session.seed}` : "?play=new"); // a bare path would open the menu
+    const mode = this.session.opts?.mode === "endless" ? "&mode=endless" : ""; // "play again" keeps the Endless configuration (stored under its own key)
+    this.env.navigate(sameSeed ? `?seed=${this.session.seed}${mode}` : `?play=new${mode}`); // a bare path would open the menu
   }
 
   openMenu(): void {

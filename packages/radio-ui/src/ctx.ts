@@ -19,6 +19,9 @@ export interface Actions {
   paperwork(rxId: number | null, action: PaperAction): void;
   dispose(rxId: number, sheet: "input" | "output", how: "archive" | "burn"): void;
   setTimer(on: boolean): void;
+  /** G4: send an enciphered reply (groups of 4 letters) to HQ; leave an Endless watch on purpose. */
+  sendReply(rxId: number, indicator: string, groups: string): void;
+  leaveWatch(): void;
   report(seconds: number): void;
   toggleSilence(): void;
   setMode(m: BoatOrder): void;

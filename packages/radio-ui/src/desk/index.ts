@@ -5,7 +5,7 @@ import { h, setAttr, setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { formatClock, formatDtg, type RxView } from "../store";
 import { cosmeticRng } from "../audio/morse";
-import { BALANCE, dayEnigma, decipherSenderId, schedule } from "@uboat/sim-core";
+import { BALANCE, dayEnigma, deadlineSec, decipherSenderId, encipherGroups, schedule, successorOf, type ModuleName, type Role } from "@uboat/sim-core";
 import { assetErrors, preloadSprites } from "../scene/assets";
 import { mountBoat } from "../scene/boat";
 import { makeDecor } from "../scene/decor";
@@ -19,12 +19,14 @@ import { mountSummary } from "../scene/summary";
 import { mountToast } from "../scene/toast";
 import { derive } from "@uboat/sim-core";
 import { getLang } from "../i18n";
-import { CREW, crewName, crewRole, pickScene, triggersBetween, YOU, type Observed, type Scene, type Trigger } from "./dialogue";
+import { CREW, crewName, crewRole, pickScene, remapCrew, ROLE_TO_CREW, setCrewNames, triggersBetween, YOU, type CrewId, type Observed, type Scene, type Trigger } from "./dialogue";
+import { pmText, type PmTone, type PmTopic } from "./pmtext";
+import { loadScores, recordScore, scoreLabel, type EndlessScore } from "../menu/endless";
 import { MANUAL, ordersPages, pickNews, SIGNATURES, type DocPage, type PaperDocs } from "./docs";
 import { EchoPress, type EchoDecision } from "./echo";
 import { DESK_KEY, PaperModel, parseExtra, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
 import { DeskMachine, replayCopy, type MachineView } from "./machine";
-import { awardSteps, copyMarks, MISSION_STEPS, penalize, RATION_EMPTY, scoreCopy, type RationState } from "./ration";
+import { awardSteps, copyMarks, MISSION_STEPS, penalize, RATION_EMPTY, reward, scoreCopy, type RationState } from "./ration";
 import { canTrash, checkHandOver } from "./rules";
 import { Printer, tokenEnds } from "./printer";
 import { flipButton, groupGrid, mountSheet, type SheetHost, type SheetView } from "./sheets";
@@ -191,27 +193,38 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   try { if (!freshWatch) model.restore(parseLayout(rawDesk, ctx.seed)); } catch { /* unreadable storage: default layout */ }
   const extra0 = parseExtra(rawDesk, ctx.seed);
   const dm = new DeskMachine(extra0.mach);
+  const gone = new Set<string>(extra0.gone ?? []); // private notes the player threw away (G4)
   let ration: RationState = extra0.ration;
   let saveTimer: ReturnType<typeof setTimeout> | null = null, saveWarned = false;
   const saveNow = (): void => {
     saveTimer = null;
-    try { storage?.setItem(DESK_KEY, model.serialize(ctx.seed, { mach: dm.state(), ration })); } catch { if (!saveWarned) { saveWarned = true; ctx.diag.err("save", "DESK_SAVE_FAILED"); } }
+    try { storage?.setItem(DESK_KEY, model.serialize(ctx.seed, { mach: dm.state(), ration, gone: [...gone] })); } catch { if (!saveWarned) { saveWarned = true; ctx.diag.err("save", "DESK_SAVE_FAILED"); } }
   };
   const scheduleSave = (): void => { if (saveTimer === null) saveTimer = setTimeout(saveNow, SAVE_DELAY_MS); };
 
   // ---------------------------------------------------------------- G2: machine logic (R4.3–R4.7) and rations (R10)
   const DAY = 1; // the sim's day number (Watch decipher uses the same constant; desk-machine.test.ts pins the equality)
+  // G4 modules: without options (the night watch) every module is on. Modules are the player's choice and independent of difficulty.
+  const opts = watch.options();
+  const mod = (k: ModuleName): boolean => opts === undefined || opts.modules[k];
+  const isEndless = opts?.mode === "endless";
+  const activeIndicator = (): string | null => { const s = store.state; return s.activeRx === null ? null : s.rx.get(s.activeRx)?.attempts.find((a) => a.attempt === s.activeAttempt)?.indicator ?? null; };
+  /** Start letters the machine works from: what the player dialled, or the message indicator when the Rotors module is off (the machine sets itself). */
+  const startPos = (): string => (mod("rotors") ? dm.positions : activeIndicator() ?? dm.positions);
+  /** The plugboard the player wired, or undefined (= the day key) when the Cables module is off. */
+  const plugsNow = (): readonly string[] | undefined => (mod("cables") ? dm.plugboard : undefined);
+  const outbox: { render: (() => void) | null } = { render: null };
   const activeCopy = (): { key: string; copy: string } => { const s = store.state; return { key: `${s.activeRx}:${s.activeAttempt}`, copy: s.activeRx === null ? "" : store.copyText(s.activeRx, s.activeAttempt) }; };
-  const machineView = (): MachineView => replayCopy(ctx.seed, DAY, dm.positions, activeCopy().copy, false, dm.plugboard);
-  const shownWindows = (): string => (dm.keysLive ? machineView().window : dm.positions);
+  const machineView = (): MachineView => replayCopy(ctx.seed, DAY, startPos(), activeCopy().copy, false, plugsNow());
+  const shownWindows = (): string => (dm.keysLive ? machineView().window : startPos());
   const machine = mountMachine(ctx, machWrap, { windows: shownWindows });
   machWrap.append(push); // keep the push-in button above the machine sprite
   const renderMachine = (): void => {
     const shown = shownWindows();
     wins.forEach((w, k) => {
       setText(w, shown[k] ?? "");
-      w.tabIndex = dm.cover ? 0 : -1;
-      setClass(w, "open", dm.cover);
+      w.tabIndex = dm.cover && mod("rotors") ? 0 : -1;
+      setClass(w, "open", dm.cover && mod("rotors"));
       w.setAttribute("aria-label", t("desk.mach.wheel", { n: k + 1, v: shown[k] ?? "" }));
     });
     setClass(pwr, "on", dm.power); pwr.setAttribute("aria-pressed", String(dm.power)); pwr.setAttribute("aria-label", t(dm.power ? "desk.mach.powerOn" : "desk.mach.powerOff")); pwr.title = pwr.getAttribute("aria-label") ?? "";
@@ -239,7 +252,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   plug.append(h("div", { class: "dplugt" , text: t("desk.plug.title") }), plugGrid, plugInfo, plugClear);
   scene.append(plug);
   const renderPlug = (): void => {
-    plug.hidden = !dm.cover;
+    plug.hidden = !dm.cover || !mod("cables");
     for (const [ch, b] of plugKeys) {
       const partner = dm.partnerOf(ch);
       setClass(b, "paired", partner !== null); setClass(b, "pend", plugPending === ch);
@@ -247,13 +260,13 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     }
     setText(plugInfo, t("desk.plug.pairs", { n: dm.plugboard.length, list: dm.plugboard.map((p) => `${p[0]}-${p[1]}`).join(" ") || "—" }));
   };
-  const machineChanged = (): void => { scheduleSave(); renderMachine(); renderPlug(); const now = performance.now(); for (const v of views.values()) v.refresh(now); };
+  const machineChanged = (): void => { scheduleSave(); renderMachine(); renderPlug(); outbox.render?.(); const now = performance.now(); for (const v of views.values()) v.refresh(now); };
   pwr.addEventListener("click", () => { if (!dm.setPower(!dm.power)) store.notify(t("desk.mach.interlock")); machineChanged(); });
   cov.addEventListener("click", () => { if (dm.cover) dm.closeCover(); else if (!dm.openCover()) store.notify(t("desk.mach.coverNeedsOff")); machineChanged(); });
   wins.forEach((w, k) => {
-    w.addEventListener("wheel", (ev) => { if (!dm.cover) return; ev.preventDefault(); if (dm.rotate(k, ev.deltaY < 0 ? 1 : -1)) machineChanged(); }, { passive: false });
+    w.addEventListener("wheel", (ev) => { if (!dm.cover || !mod("rotors")) return; ev.preventDefault(); if (dm.rotate(k, ev.deltaY < 0 ? 1 : -1)) machineChanged(); }, { passive: false });
     w.addEventListener("keydown", (ev) => {
-      if (!dm.cover || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (!dm.cover || !mod("rotors") || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       let handled = true;
       if (ev.key === "ArrowUp") dm.rotate(k, 1);
       else if (ev.key === "ArrowDown") dm.rotate(k, -1);
@@ -267,8 +280,8 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   let deniedAt = -1e9;
   if (ctx.hooks) {
     ctx.hooks.typingGate = () => dm.keysLive;
-    ctx.hooks.decodeSetting = () => dm.positions;
-    ctx.hooks.decodePlugs = () => dm.plugboard; // G3: the plugboard is wired by the player; the day key on the Orders says how
+    ctx.hooks.decodeSetting = () => (mod("rotors") ? dm.positions : null); // Rotors off: the machine sets itself to the indicator
+    ctx.hooks.decodePlugs = () => (mod("cables") ? dm.plugboard : null);   // Cables off: the day plugboard // G3: the plugboard is wired by the player; the day key on the Orders says how
     ctx.hooks.denied = () => { const now = performance.now(); if (now - deniedAt < 1500) return; deniedAt = now; store.notify(t(dm.cover ? "desk.mach.keysCover" : "desk.mach.keysOff")); };
   }
 
@@ -415,7 +428,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     view.back.append(label("ink", t("desk.paper.back"), 4, 4, 88, 7), phEcho, ...phStamps, label("ink", t("desk.paper.sign"), 10, 131, 60, 7),
       flipButton(host, p, view, 94, 2));
     const sealV = label("ink typ small", "", 38, 13, 66, 8), sigV = label("ink typ", "", 38, 21, 66, 9), sndV = label("ink typ small", "", 38, 31, 66, 8);
-    view.back.append(label("ink fld", t("desk.paper.seal"), 6, 13, 30, 7), label("ink fld", t("desk.paper.sig"), 6, 22, 30, 7), label("ink fld", t("desk.paper.sender"), 6, 31, 30, 7), sealV, sigV, sndV);
+    if (mod("signatures")) view.back.append(label("ink fld", t("desk.paper.seal"), 6, 13, 30, 7), label("ink fld", t("desk.paper.sig"), 6, 22, 30, 7), label("ink fld", t("desk.paper.sender"), 6, 31, 30, 7), sealV, sigV, sndV);
     let last = -1;
     const mk = marks(p, view, [12, 25], [[10, 80], [62, 80]], [12, 117], { echo: phEcho, stamps: phStamps });
     return {
@@ -427,7 +440,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         // G3: the printed seal, the signature strokes and the sender id (enciphered: read through the player's own machine setting and plugboard)
         setText(sealV, a.paper === undefined ? "" : t(a.paper.authMark === "stamped" ? "desk.paper.sealYes" : "desk.paper.sealNone"));
         setText(sigV, a.paper === undefined ? "" : SIGNATURES[a.paper.signatureVariant] ?? "?");
-        setText(sndV, a.paper === undefined ? "" : dm.keysLive ? decipherSenderId(ctx.seed, DAY, dm.positions, a.paper.senderIdCipher, dm.plugboard) : t("desk.paper.senderOff"));
+        setText(sndV, a.paper === undefined ? "" : dm.keysLive ? decipherSenderId(ctx.seed, DAY, mod("rotors") ? dm.positions : a.indicator, a.paper.senderIdCipher, plugsNow()) : t("desk.paper.senderOff"));
         const copy = watch.copy(a.tokens); // what the line printed: letters, ? where noise ate a symbol
         const k = printer.visible(p.id, copy, now);
         if (k === last) return;
@@ -489,15 +502,16 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
 
   // ---- optional per-message deadline (G3): measured in SIM time from the message's first arrival, so replays agree with the sim.
   // The sim cites 'timeout' itself (command `timer`); this is only the indicator.
-  const DEADLINE = BALANCE.paper.deadlineSec;
-  actions.setTimer(ctx.flags.timer === true);
+  const timerOnNow = (): boolean => (isEndless ? opts?.modules.timer === true : ctx.flags.timer === true); // Endless: the Timer module decides
+  const deadlineOf = (rxId: number): number => (isEndless && opts !== undefined ? deadlineSec(BALANCE, opts.difficulty, rxId - 1) : BALANCE.paper.deadlineSec);
+  if (!isEndless) actions.setTimer(ctx.flags.timer === true);
   let lastShown = "";
   const timerTick = (_now: number): void => {
-    const on = ctx.flags.timer === true;
+    const on = timerOnNow();
     if (timerBox.hidden === on) timerBox.hidden = !on;
     if (!on) return;
     const id = missionMsg(), first = id === null ? undefined : store.state.rx.get(id)?.attempts[0];
-    const left = first === undefined ? DEADLINE : Math.max(0, Math.ceil(first.tSec + DEADLINE - store.state.tSec));
+    const left = first === undefined || id === null ? deadlineOf(1) : Math.max(0, Math.ceil(first.tSec + deadlineOf(id) - store.state.tSec));
     const txt = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     if (txt !== lastShown) { lastShown = txt; setText(timerV, txt); }
     setClass(timerBox, "late", id !== null && first !== undefined && left === 0 && !stepDone(id).handed);
@@ -518,7 +532,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
           const fresh = !known.has(key) && !store.state.replaying;
           known.add(key);
           const p = model.ensure("input", rx.rxId, a.attempt);
-          if (fresh) { // same segments the Morse audio plays for this attempt (cosmetic RNG), so print and sound share one timeline
+          if (fresh && mod("teletyper")) { // same segments the Morse audio plays for this attempt (cosmetic RNG), so print and sound share one timeline
             const ends = tokenEnds(a.tokens, schedule(a.tokens, rx.txFist, cosmeticRng(ctx.cosmeticSeed, rx.rxId, a.attempt)));
             printer.start(inId, a.tokens, watch.copy(a.tokens), now, ends.at(-1) ?? 0, ends);
           }
@@ -529,6 +543,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         if (!views.has(outId) && (store.copyText(rx.rxId, a.attempt).length > 0 || rx.analysis.has(a.attempt) || model.hasPending(outId))) add(model.ensure("output", rx.rxId, a.attempt), output);
       }
     }
+    // G4: a message the sim dropped off the pile leaves the desk too, so a long Endless watch cannot bury the table in sheets
+    let dropped = false;
+    for (const id of store.state.lost) for (const p of model.list()) if (p.rxId === id && p.place === "desk") { p.place = "handed"; dropped = true; }
+    if (dropped) { host.changed(); if (selected !== null && model.get(selected)?.place !== "desk") selected = null; }
     for (const v of views.values()) v.refresh(now);
   };
 
@@ -748,7 +766,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     cur.idx = all ? cur.scene.lines.length : cur.idx + 1;
     if (cur.idx >= cur.scene.lines.length) nextScene(); else renderLine();
   };
-  const say = (tr: Trigger): void => { queue.push(pickScene(getLang(), tr, talk.next())); if (!cur) nextScene(); };
+  const CREW_TO_ROLE: Readonly<Record<CrewId, Role>> = { captain: "captain", officer: "xo", engineer: "chief", sonar: "sound", messenger: "liaison" };
+  const absentCrew = (): CrewId | null => { const r = store.state.absentRole; return r === null ? null : ROLE_TO_CREW[r] ?? null; };
+  const successorCrew = (id: CrewId): CrewId => ROLE_TO_CREW[successorOf(CREW_TO_ROLE[id], store.state.absentRole as Role | null)] ?? id; // an absent member's lines are told by the next one
+  const say = (tr: Trigger): void => { queue.push(remapCrew(pickScene(getLang(), tr, talk.next()), absentCrew(), successorCrew) as Scene); if (!cur) nextScene(); };
   trans.addEventListener("click", () => advance(false));
   // While a line is shown, any key goes to the Transcript (R8.1): Space tapped = next, Space held = skip the scene.
   const onTalkKey = (ev: KeyboardEvent): void => {
@@ -778,7 +799,136 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   const toast = mountToast(ctx, scene);
   mountDrawers(ctx, scene);
   mountEmergency(ctx, scene, scene);
-  mountSummary(ctx, scene);
+  // ---------------------------------------------------------------- G4: Outbox (enciphered replies), private notes, roster, leaving (Endless)
+  // TEMPORARY presentation: these are DOM panels on the existing desk style, not new paper sprites.
+  if (opts !== undefined) {
+    setCrewNames(watch.crew().members);
+    const strip = h("div", { class: "sc dxtra" }); place(strip, 150, 84, 270, 12); scene.append(strip);
+    const panels: HTMLElement[] = [], buttons: HTMLButtonElement[] = [];
+    const mkPanel = (cls: string, x: number, y: number, w: number, hh: number, title: string): HTMLElement => {
+      const p = h("section", { class: `sc dpanel ${cls}`, attrs: { "aria-label": title } }); place(p, x, y, w, hh); p.hidden = true;
+      p.append(h("div", { class: "dplugt", text: title }));
+      scene.append(p); panels.push(p); return p;
+    };
+    const mkBtn = (text: string, panel: HTMLElement | null, onOpen?: () => void): HTMLButtonElement => {
+      const b = h("button", { class: "dkey dxbtn", attrs: { type: "button", "aria-expanded": "false" }, text });
+      b.addEventListener("click", () => {
+        if (panel === null) return;
+        const open = panel.hidden;
+        panels.forEach((q) => { q.hidden = true; }); buttons.forEach((q) => q.setAttribute("aria-expanded", "false"));
+        panel.hidden = !open; b.setAttribute("aria-expanded", String(open));
+        if (open) onOpen?.();
+      });
+      strip.append(b); buttons.push(b); return b;
+    };
+
+    // ---- Outbox: the request, a plain-text field, the machine's cipher, Send
+    const ob = mkPanel("dobox", 150, 98, 270, 150, t("desk.ob.title"));
+    const obReq = h("div", { class: "dpt typ" }), obMach = h("div", { class: "dpt typ" }), obCipher = h("div", { class: "dpt typ dcipher" }), obRes = h("div", { class: "dpt typ" });
+    const obIn = h("input", { class: "dpin typ", attrs: { type: "text", maxlength: "40", autocomplete: "off", spellcheck: "false", "aria-label": t("desk.ob.plain"), placeholder: t("desk.ob.plain") } });
+    const obSend = h("button", { class: "dkey dpbtn", attrs: { type: "button" }, text: t("desk.ob.send") });
+    ob.append(obReq, obIn, obMach, obCipher, obSend, obRes);
+    const cleanPlain = (): string => { const p = obIn.value.toUpperCase().replace(/[^A-Z]/g, ""); if (p !== obIn.value) obIn.value = p; return p; };
+    const cipherNow = (plain: string): string => (dm.keysLive && plain.length > 0 ? encipherGroups(ctx.seed, DAY, startPos(), plain, plugsNow()) : "");
+    const renderOutbox = (): void => {
+      const id = missionMsg(), req = id === null ? null : watch.replyRequest(id), plain = cleanPlain(), cipher = cipherNow(plain);
+      setText(obReq, req === null ? t("desk.ob.none") : t("desk.ob.request", { rx: id as number, kind: t(req.kind === "ack" ? "desk.ob.kindAck" : "desk.ob.kindPos"), plain: req.plain }));
+      setText(obMach, dm.keysLive ? t("desk.ob.machineOk", { start: startPos() }) : t("desk.ob.machineOff"));
+      setText(obCipher, cipher === "" ? "—" : cipher);
+      obSend.disabled = req === null || cipher === "" || ctx.store.state.ended !== null;
+      const r = id === null ? undefined : store.state.sendResults.get(id);
+      setText(obRes, r === undefined ? "" : t(r ? "desk.ob.resOk" : "desk.ob.resBad"));
+    };
+    outbox.render = renderOutbox;
+    obIn.addEventListener("input", renderOutbox);
+    obSend.addEventListener("click", () => {
+      const id = missionMsg(), plain = cleanPlain(), cipher = cipherNow(plain);
+      if (id === null || cipher === "") { store.notify(t("desk.ob.machineOff")); return; }
+      actions.sendReply(id, startPos(), cipher);
+      obIn.value = ""; store.notify(t("desk.ob.keyed")); renderOutbox();
+    });
+    mkBtn(t("desk.ob.btn"), ob, renderOutbox);
+    let seenSend = new Set<number>(store.state.sendResults.keys()); // results already in the log at mount were paid before
+    scope.on(["ui", "log"], () => {
+      for (const [id, ok] of store.state.sendResults) {
+        if (seenSend.has(id)) continue;
+        seenSend = new Set(seenSend).add(id);
+        if (ok) addRation(reward(ration, 1));
+        store.notify(t(ok ? "desk.ob.resOk" : "desk.ob.resBad"));
+      }
+      renderOutbox();
+    });
+
+    // ---- Private notes (can be thrown away; never cited)
+    const notes = mkPanel("dnotes", 150, 98, 270, 150, t("desk.notes.title"));
+    const notesList = h("div", { class: "dlist typ" }); notes.append(notesList);
+    const noteKey = (n: { tSec: number; topic: string }): string => `${Math.floor(n.tSec)}:${n.topic}`;
+    const notesBtn = mkBtn(t("desk.notes.btn", { n: 0 }), notes, () => renderNotes());
+    const renderNotes = (): void => {
+      const vis = store.state.privateNotes.filter((n) => !gone.has(noteKey(n)));
+      setText(notesBtn, t("desk.notes.btn", { n: vis.length }));
+      notesList.replaceChildren(...(vis.length === 0 ? [h("div", { text: t("desk.notes.none") })] : vis.slice(-4).map((n) => {
+        const id = ROLE_TO_CREW[n.fromRole] ?? "captain";
+        const row = h("div", { class: `dnote ${n.tone}` }, h("div", { class: "dnotew", text: `${crewName(id)} · ${crewRole(getLang(), id)}` }), h("div", { text: pmText(getLang(), n.topic as PmTopic, n.tone as PmTone, Math.floor(n.tSec)) }));
+        const del = h("button", { class: "dkey dpbtn", attrs: { type: "button" }, text: t("desk.notes.bin") });
+        del.addEventListener("click", () => { gone.add(noteKey(n)); scheduleSave(); renderNotes(); });
+        row.append(del); return row;
+      })));
+    };
+    let lastNoteT = store.state.privateNotes.at(-1)?.tSec ?? -1;
+    scope.on(["ui", "log"], () => {
+      const last = store.state.privateNotes.at(-1);
+      if (last !== undefined && last.tSec > lastNoteT) { lastNoteT = last.tSec; const id = ROLE_TO_CREW[last.fromRole] ?? "captain"; store.notify(t("desk.notes.new", { name: crewName(id) })); }
+      renderNotes();
+    });
+    renderNotes();
+
+    // ---- Roster
+    const ros = mkPanel("droster", 150, 98, 270, 110, t("desk.roster.title"));
+    const rosList = h("div", { class: "dlist typ" }); ros.append(rosList);
+    const renderRoster = (): void => {
+      rosList.replaceChildren(...watch.crew().members.map((m) => {
+        const id = ROLE_TO_CREW[m.role] ?? "captain", away = store.state.absentRole === m.role;
+        return h("div", { class: away ? "dgone" : "", text: `${crewRole(getLang(), id)} — ${m.name}${away ? ` (${t("desk.roster.absent")})` : ""}` });
+      }));
+    };
+    mkBtn(t("desk.roster.btn"), ros, renderRoster);
+    scope.on(["ui", "log"], () => { if (!ros.hidden) renderRoster(); });
+
+    // ---- Leave (Endless only): two clicks so it cannot happen by accident
+    if (isEndless) {
+      const leave = mkBtn(t("desk.leave.btn"), null);
+      let armed: ReturnType<typeof setTimeout> | null = null;
+      leave.addEventListener("click", () => {
+        if (armed === null) { setText(leave, t("desk.leave.sure")); armed = setTimeout(() => { armed = null; setText(leave, t("desk.leave.btn")); }, 3000); return; }
+        clearTimeout(armed); armed = null; actions.leaveWatch();
+      });
+    }
+    renderOutbox();
+  }
+
+  // Endless debrief rows (computed once; the best of each field is kept per difficulty and module set)
+  let endlessMemo: [string, string][] | null = null;
+  const endlessRows = (): readonly [string, string][] => {
+    if (opts === undefined || !isEndless) return [];
+    if (endlessMemo !== null) return endlessMemo;
+    const s = store.state;
+    let run = 0, best = 0;
+    for (const d of s.decisions) { run = d.correct ? run + 1 : 0; best = Math.max(best, run); }
+    const score: EndlessScore = { correct: s.decisions.filter((d) => d.correct).length, streak: best, ration: ration.score, survivedSec: Math.floor(s.tSec) };
+    const prev = recordScore(storage, opts, score).previous ?? loadScores(storage)[scoreLabel(opts)] ?? null;
+    const off = (Object.keys(opts.modules) as ModuleName[]).filter((m) => !opts.modules[m]);
+    endlessMemo = [
+      [t("desk.sum.mode"), `${t(`endless.diff.${opts.difficulty}` as never)}${off.length === 0 ? "" : ` · ${t("desk.sum.off")}: ${off.join(", ")}`}`],
+      [t("desk.sum.streak"), String(score.streak)], [t("desk.sum.ration"), String(score.ration)],
+      [t("desk.sum.survived"), formatClock(score.survivedSec)], [t("desk.sum.citations"), String(s.citations)],
+      [t("desk.sum.replies"), String(s.sendOk)],
+      [t("desk.sum.best"), prev === null ? t("desk.sum.first") : t("desk.sum.bestOf", { c: prev.correct, s: prev.streak, r: prev.ration })],
+    ];
+    return endlessMemo;
+  };
+
+  mountSummary(ctx, scene, endlessRows);
 
   let blink = false, nextBlink = 0, lastDecode = store.state.decodeSeq;
   const stations = (now: number): void => {

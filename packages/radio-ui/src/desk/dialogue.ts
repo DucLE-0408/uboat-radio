@@ -12,7 +12,16 @@ export const TRIGGERS: readonly Trigger[] = ["start", "firstRx", "handover", "ac
 export interface Line { readonly who: "crew" | "you"; readonly text: string }
 export interface Scene { readonly crew: CrewId; readonly lines: readonly Line[] }
 
-const NAMES: Readonly<Record<CrewId, string>> = { captain: "Brandt", officer: "Keller", engineer: "Vogt", sonar: "Lorenz", messenger: "Hahn" };
+const NAMES: Record<CrewId, string> = { captain: "Brandt", officer: "Keller", engineer: "Vogt", sonar: "Lorenz", messenger: "Hahn" };
+/** G4: the sim's roster replaces the fixed names (same order as the sim roles: captain, xo, chief, sound, liaison). */
+export const ROLE_TO_CREW: Readonly<Record<string, CrewId>> = { captain: "captain", xo: "officer", chief: "engineer", sound: "sonar", liaison: "messenger" };
+export function setCrewNames(members: readonly { readonly role: string; readonly name: string }[]): void {
+  for (const m of members) { const id = ROLE_TO_CREW[m.role]; if (id !== undefined) NAMES[id] = m.name; }
+}
+/** A scene told by an absent crew member is told by their successor instead (G4). */
+export function remapCrew(scene: { readonly crew: CrewId; readonly lines: readonly { readonly who: "crew" | "you"; readonly text: string }[] }, absent: CrewId | null, successor: (id: CrewId) => CrewId): { readonly crew: CrewId; readonly lines: readonly { readonly who: "crew" | "you"; readonly text: string }[] } {
+  return absent !== null && scene.crew === absent ? { ...scene, crew: successor(scene.crew) } : scene;
+}
 const ROLES: Readonly<Record<Lang, Readonly<Record<CrewId, string>>>> = {
   en: { captain: "Captain", officer: "First Officer", engineer: "Chief Engineer", sonar: "Sound Man", messenger: "Messenger" },
   vi: { captain: "Thuyền trưởng", officer: "Sĩ quan phó", engineer: "Máy trưởng", sonar: "Lính thủy âm", messenger: "Liên lạc viên" },

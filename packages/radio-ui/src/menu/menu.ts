@@ -2,12 +2,14 @@
 import { h } from "../dom";
 import { LANGS, translate, type Lang } from "../i18n";
 import { sprite } from "../scene/assets";
+import { DIFFICULTIES, MODULE_NAMES, type Difficulty, type ModuleName, type WatchOptions } from "@uboat/sim-core";
 import type { StorageLike } from "../sim/session";
+import { loadEndlessOptions, saveEndlessOptions } from "./endless";
 import { describeSave, formatElapsed, initialSelection, menuItems, parseSeedInput, stepSelection, type MenuId, type MenuItem } from "./model";
 import type { Settings } from "./settings";
 import "./menu.css";
 
-export type MenuChoice = { readonly kind: "continue" } | { readonly kind: "new"; readonly seed: number | null };
+export type MenuChoice = { readonly kind: "continue" } | { readonly kind: "new"; readonly seed: number | null } | { readonly kind: "endless"; readonly seed: number | null; readonly opts: WatchOptions };
 
 export interface MenuDeps {
   readonly storage: StorageLike | null;
@@ -32,7 +34,7 @@ const STEPS: readonly [string, string][] = [
   ["Decide", "Accept or reject. Transmitting a lot gets you direction-found, so silence is a move too."],
 ];
 
-const ICON_FRAME: Record<MenuId, number> = { continue: 0, new: 1, settings: 2, help: 3 };
+const ICON_FRAME: Record<MenuId, number> = { continue: 0, new: 1, endless: 1, settings: 2, help: 3 }; // TEMPORARY: Endless reuses the "new" icon
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 
 /** Integer scale for the 128x180 panel (the menu is not a fixed frame, so crisp integer steps are fine); 2..8 so it stays large on 4K. */
@@ -45,7 +47,7 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
     let settings = deps.settings;
     const save = describeSave(deps.storage);
     const items = menuItems(save !== null);
-    let page: "none" | "settings" | "help" | "new" = "none";
+    let page: "none" | "settings" | "help" | "new" | "endless" = "none";
     let opener: HTMLElement | null = null;
 
     const root = h("div", { class: "menu", attrs: { role: "main", "aria-label": "Main menu" } });
@@ -98,11 +100,11 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
       nav.removeAttribute("inert"); letter.removeAttribute("inert");
       (opener ?? buttons.get("new"))?.focus();
     };
-    const openPage = (p: "settings" | "help" | "new", from: HTMLElement): void => {
+    const openPage = (p: "settings" | "help" | "new" | "endless", from: HTMLElement): void => {
       page = p; opener = from;
       nav.setAttribute("inert", ""); letter.setAttribute("inert", "");
       card.hidden = false;
-      const first = p === "settings" ? buildSettings() : p === "help" ? buildHelp() : buildNew();
+      const first = p === "settings" ? buildSettings() : p === "help" ? buildHelp() : p === "endless" ? buildEndless() : buildNew();
       first.focus();
     };
     const back = (): HTMLButtonElement => h("button", { class: "menu-act", attrs: { type: "button" }, text: "Back", on: { click: closePage } });
@@ -145,6 +147,46 @@ export function mountMenu(app: HTMLElement, deps: MenuDeps): Promise<MenuChoice>
         err, h("div", { class: "mc-row" }, start, back()),
       );
       return input;
+    }
+
+    /** Endless setup: difficulty and the six modules are independent choices; the last choice is remembered (own storage key). */
+    function buildEndless(): HTMLElement {
+      card.setAttribute("aria-labelledby", "mc-title");
+      const L = (k: Parameters<typeof translate>[1]): string => translate(settings.lang, k);
+      let cfg: WatchOptions = loadEndlessOptions(deps.storage);
+      const diffRadio = (d: Difficulty): HTMLElement => {
+        const inp = h("input", { attrs: { id: `mc-d-${d}`, type: "radio", name: "mc-diff", value: d } });
+        inp.checked = cfg.difficulty === d;
+        inp.addEventListener("change", () => { if (inp.checked) cfg = { ...cfg, difficulty: d }; });
+        return h("div", { class: "mc-field mc-check" }, inp, h("label", { attrs: { for: `mc-d-${d}` }, text: L(`endless.diff.${d}` as never) }));
+      };
+      const modCheck = (m: ModuleName): HTMLElement => {
+        const inp = h("input", { attrs: { id: `mc-m-${m}`, type: "checkbox" } });
+        inp.checked = cfg.modules[m];
+        inp.addEventListener("change", () => { cfg = { ...cfg, modules: { ...cfg.modules, [m]: inp.checked } }; });
+        return h("div", { class: "mc-field mc-check" }, inp, h("label", { attrs: { for: `mc-m-${m}` }, text: L(`endless.mod.${m}` as never) }));
+      };
+      const input = h("input", { class: "mc-input", attrs: { id: "mc-eseed", type: "text", inputmode: "numeric", maxlength: "10", autocomplete: "off", spellcheck: "false" } });
+      const err = h("p", { class: "mc-err", attrs: { id: "mc-eerr", role: "alert" } });
+      const start = h("button", { class: "menu-act primary", attrs: { type: "button" }, text: L("endless.start"), on: { click: go } });
+      function go(): void {
+        const r = parseSeedInput(input.value);
+        if (!r.ok) { err.textContent = L("endless.badSeed"); input.setAttribute("aria-invalid", "true"); input.focus(); return; }
+        saveEndlessOptions(deps.storage, cfg);
+        finish({ kind: "endless", seed: r.seed, opts: cfg });
+      }
+      input.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); go(); } });
+      const firstRadio = diffRadio("easy");
+      card.replaceChildren(
+        h("h2", { attrs: { id: "mc-title" }, text: L("endless.title") }),
+        ...(save === null ? [] : [h("p", { class: "mc-warn", text: `${L("endless.replaces")} (seed ${save.seed}, ${formatElapsed(save.tickSec)}).` })]),
+        h("fieldset", { class: "mc-set" }, h("legend", { text: L("endless.difficulty") }), firstRadio, ...DIFFICULTIES.filter((d) => d !== "easy").map(diffRadio)),
+        h("fieldset", { class: "mc-set" }, h("legend", { text: L("endless.modules") }), ...MODULE_NAMES.map(modCheck)),
+        h("label", { attrs: { for: "mc-eseed" }, text: L("endless.seed") }), input,
+        h("p", { class: "mc-hint", text: L("endless.hint") }),
+        err, h("div", { class: "mc-row" }, start, back()),
+      );
+      return firstRadio.querySelector("input") as HTMLElement;
     }
 
     function buildSettings(): HTMLElement {

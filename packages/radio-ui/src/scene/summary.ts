@@ -5,7 +5,7 @@ import type { SceneCtx } from "./scope";
 const mk = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string): HTMLElementTagNameMap[K] => { const e = document.createElement(tag); e.className = cls; return e; };
 
 /** End-of-watch debrief (R8). Correctness is revealed only here, after resolution. */
-export function mountSummary(ctx: SceneCtx, root: HTMLElement): void {
+export function mountSummary(ctx: SceneCtx, root: HTMLElement, extra?: () => readonly (readonly [string, string])[]): void {
   const { store, actions } = ctx;
   const el = mk("div", "sc summary"); el.style.inset = "0"; el.hidden = true;
   const card = mk("div", "scard"); card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "sc-sum-title");
@@ -28,6 +28,7 @@ export function mountSummary(ctx: SceneCtx, root: HTMLElement): void {
     row("Time on the air", formatClock(s.tx.totalSec));
     row("Decisions", s.decisions.length === 0 ? "none taken" : `${right} of ${s.decisions.length} correct`);
     row("Seed", String(ctx.seed));
+    for (const [k, v] of extra?.() ?? []) row(k, v); // G4: the Endless debrief
     const ul = mk("ul", "typ sdec");
     for (const d of s.decisions) { const li = mk("li", d.correct ? "good" : "bad"); li.textContent = `#${d.rxId}: ${d.decision === "accept" ? "accepted" : "rejected"} - ${d.correct ? "correct" : "WRONG"}`; ul.append(li); }
     const row2 = mk("div", "srow");

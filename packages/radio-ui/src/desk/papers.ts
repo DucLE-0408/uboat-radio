@@ -190,7 +190,7 @@ export class PaperModel {
   // ---------------------------------------------------------------- persistence (desk.v1)
 
   serialize(seed: number, extra?: DeskExtra): string {
-    return JSON.stringify({ v: 1, seed, ...(extra ? { mach: extra.mach, ration: extra.ration } : {}), papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed, ...(p.decoded ? { decoded: p.decoded } : {}) })) });
+    return JSON.stringify({ v: 1, seed, ...(extra ? { mach: extra.mach, ration: extra.ration, gone: (extra.gone ?? []).slice(-60) } : {}), papers: this.list().map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, face: p.face, place: p.place, clip: p.clip, stamps: p.stamps, signed: p.signed, ...(p.decoded ? { decoded: p.decoded } : {}) })) });
   }
 
   /** Applies a stored layout to sheets that exist now or appear later (positions are kept until the sheet is created). */
@@ -221,10 +221,11 @@ export type StoredLayout = readonly StoredPaper[];
 export const DESK_KEY = "uboat-radio.desk.v1";
 
 /** G2 additions to desk.v1 (optional fields: a v1 blob without them still loads, an older build ignores them). */
-export interface DeskExtra { readonly mach: MachineState; readonly ration: RationState }
+export interface DeskExtra { readonly mach: MachineState; readonly ration: RationState; readonly gone?: readonly string[] }
+export const NOTE_KEY_RE = /^\d{1,7}:[A-Za-z]{3,10}$/; // a private note is "<tSec>:<topic>"; thrown-away notes are remembered so a reload does not bring them back
 /** Validates the machine and ration parts of a stored blob (untrusted); wrong seed or any malformation gives the defaults. */
 export function parseExtra(raw: string | null, seed: number): DeskExtra {
-  const none: DeskExtra = { mach: MACHINE_DEFAULT, ration: RATION_EMPTY };
+  const none: DeskExtra = { mach: MACHINE_DEFAULT, ration: RATION_EMPTY, gone: [] };
   if (raw === null || raw.length > 32_768) return none;
   let j: unknown;
   try { j = JSON.parse(raw); } catch { return none; }
@@ -240,7 +241,9 @@ export function parseExtra(raw: string | null, seed: number): DeskExtra {
       mach = { power: r["power"] && !r["cover"], cover: r["cover"], pos: r["pos"], plugs };
     }
   }
-  return { mach, ration: parseRation(o["ration"]) };
+  const g = o["gone"];
+  const gone = Array.isArray(g) ? g.filter((x): x is string => typeof x === "string" && NOTE_KEY_RE.test(x)).slice(-60) : [];
+  return { mach, ration: parseRation(o["ration"]), gone };
 }
 const MAX_BYTES = 32_768, MAX_PAPERS = 400;
 const ID_RE = /^(?:mission|orders|manual|(?:in|out):\d{1,6}:\d{1,3})$/;

@@ -9,8 +9,8 @@ const mem = (init: Record<string, string> = {}): StorageLike & { map: Map<string
 };
 
 describe("menu items and navigation", () => {
-  it("lists Continue, New game, Settings, Help; Continue needs a save", () => {
-    expect(menuItems(true).map((i) => i.label)).toEqual(["Continue", "New game", "Settings", "Help"]);
+  it("lists Continue, New game, Endless, Settings, Help; Continue needs a save", () => {
+    expect(menuItems(true).map((i) => i.label)).toEqual(["Continue", "New game", "Endless", "Settings", "Help"]);
     expect(menuItems(false)[0]?.enabled).toBe(false);
     expect(menuItems(false).slice(1).every((i) => i.enabled)).toBe(true);
   });
@@ -20,11 +20,11 @@ describe("menu items and navigation", () => {
   });
   it("arrow keys wrap and skip a disabled Continue", () => {
     const it0 = menuItems(false);
-    expect(stepSelection(it0, 1, -1)).toBe(3);   // up from New game wraps past the disabled Continue to Help
-    expect(stepSelection(it0, 3, 1)).toBe(1);    // down from Help wraps to New game
+    expect(stepSelection(it0, 1, -1)).toBe(4);   // up from New game wraps past the disabled Continue to Help
+    expect(stepSelection(it0, 4, 1)).toBe(1);    // down from Help wraps to New game
     const it1 = menuItems(true);
-    expect(stepSelection(it1, 0, -1)).toBe(3);
-    expect(stepSelection(it1, 2, 1)).toBe(3);
+    expect(stepSelection(it1, 0, -1)).toBe(4);
+    expect(stepSelection(it1, 3, 1)).toBe(4);
   });
   it("stays put when nothing else is enabled", () => {
     const only = [{ id: "new" as const, label: "x", enabled: true }, { id: "help" as const, label: "y", enabled: false }];
