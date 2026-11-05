@@ -10,6 +10,8 @@ Each stage has requirements (EARS), a design and a task list. Later rules are wr
 | `desk-ui-g3/` | G3 | paperwork consequences, paper tells, plugboard | done |
 | `desk-ui-g4/` | G4 | Endless, modules, replies, private notes, roster | done |
 | `desk-ui-g5/` | G5 and G6 | map, movement orders, Helm (`requirements.md`, `design.md`, `tasks.md`) and the addenda below | done |
+| `desk-ui-g7/` | G7 | cabinets, one stamp with two ink pads, stowable machines (UI only) | awaiting approval |
+| `desk-ui-g8/` | G8 | Dashboard screen, WWII map from a German port, ruler and dividers (needs a sim-core gate) | draft, awaiting approval |
 
 ## Addenda in `desk-ui-g5/`
 
