@@ -1,5 +1,5 @@
 // Session = Watch + save file. Vietnamese: save/load CHỈ là seed + commandLog + untilTick; khôi phục bằng replay(). Bản chép dở lưu RIÊNG (transcripts.ts).
-import { replay, Watch, type Command, type LoggedCommand, type PaperAction } from "@uboat/sim-core";
+import { parseOptions, replay, Watch, type Command, type LoggedCommand, type PaperAction, type WatchOptions } from "@uboat/sim-core";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -8,7 +8,9 @@ export interface StorageLike {
 }
 
 export interface SaveFile {
-  readonly v: 2;
+  /** 2 = night watch (no options); 3 = G4 watch with options (Endless, modules, difficulty). Both are read; v2 is still written when there are no options. */
+  readonly v: 2 | 3;
+  readonly opts?: WatchOptions;
   readonly seed: number;
   readonly untilTick: number;
   readonly commands: readonly LoggedCommand[];
@@ -44,6 +46,10 @@ export function parseCommand(x: unknown): Command | null {
     case "dispose":
       return isInt(c["rxId"]) && (c["sheet"] === "input" || c["sheet"] === "output") && (c["how"] === "archive" || c["how"] === "burn")
         ? { kind: "dispose", rxId: c["rxId"], sheet: c["sheet"], how: c["how"] } : null;
+    case "leave": return { kind: "leave" };
+    case "send":
+      return isInt(c["rxId"]) && typeof c["indicator"] === "string" && /^[A-Z]{4}$/.test(c["indicator"]) && typeof c["groups"] === "string" && c["groups"].length <= 300 && /^[A-Z]{4}( [A-Z]{4})*$/.test(c["groups"])
+        ? { kind: "send", rxId: c["rxId"], indicator: c["indicator"], groups: c["groups"] } : null;
     case "timer": return typeof c["on"] === "boolean" ? { kind: "timer", on: c["on"] } : null;
     case "paperwork": {
       const rx = c["rxId"] === null ? null : isInt(c["rxId"]) ? c["rxId"] : undefined;
@@ -80,8 +86,9 @@ export function parseSave(raw: string | null): SaveFile | null {
   if (typeof j !== "object" || j === null) return null;
   const o = j as Record<string, unknown>;
   const ver = o["v"];
-  const until = ver === 2 ? o["untilTick"] : ver === 1 ? o["tick"] : undefined;
-  if ((ver !== 1 && ver !== 2) || !isSeed(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
+  const until = ver === 2 || ver === 3 ? o["untilTick"] : ver === 1 ? o["tick"] : undefined;
+  const opts = ver === 3 ? parseOptions(o["opts"]) : null;
+  if ((ver !== 1 && ver !== 2 && ver !== 3) || (ver === 3 && opts === null) || !isSeed(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
   const commands: LoggedCommand[] = [];
   let prev = 0;
   for (const e of o["commands"] as unknown[]) {
@@ -93,7 +100,7 @@ export function parseSave(raw: string | null): SaveFile | null {
     commands.push({ tick: r["tick"], cmd });
   }
   if (prev > until) return null;
-  return { v: 2, seed: o["seed"], untilTick: until, commands };
+  return opts !== null ? { v: 3, opts, seed: o["seed"], untilTick: until, commands } : { v: 2, seed: o["seed"], untilTick: until, commands };
 }
 
 export class Session {
@@ -104,10 +111,12 @@ export class Session {
     readonly watch: Watch,
     private readonly storage: StorageLike | null,
     private readonly onStorageError: (err: unknown) => void,
+    readonly opts?: WatchOptions,
   ) {}
 
-  static fresh(seed: number, storage: StorageLike | null, onStorageError: (e: unknown) => void = () => {}): Session {
-    const s = new Session(seed, new Watch(seed), storage, onStorageError);
+  /** `opts` (G4) makes it an Endless/modules watch; without it this is the night watch exactly as before. */
+  static fresh(seed: number, storage: StorageLike | null, onStorageError: (e: unknown) => void = () => {}, opts?: WatchOptions): Session {
+    const s = new Session(seed, new Watch(seed, undefined, opts), storage, onStorageError, opts);
     s.save();
     return s;
   }
@@ -119,7 +128,7 @@ export class Session {
       save = parseSave(storage?.getItem(SAVE_KEY) ?? null) ?? parseSave(storage?.getItem(LEGACY_SAVE_KEY) ?? null);
     } catch (e) { onStorageError(e); return null; }
     if (save === null || (wantedSeed !== null && save.seed !== wantedSeed)) return null;
-    const s = new Session(save.seed, replay(save.seed, save.commands, save.untilTick), storage, onStorageError);
+    const s = new Session(save.seed, replay(save.seed, save.commands, save.untilTick, undefined, save.opts), storage, onStorageError, save.opts);
     s.save(); // persists in v2 form (migrates a legacy save) and drops the v1 key
     return s;
   }
@@ -137,7 +146,9 @@ export class Session {
   }
 
   toSave(): SaveFile {
-    return { v: 2, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() };
+    return this.opts === undefined
+      ? { v: 2, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() }
+      : { v: 3, opts: this.opts, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() };
   }
 
   save(): void {

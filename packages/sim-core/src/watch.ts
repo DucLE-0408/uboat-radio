@@ -16,6 +16,11 @@ import {
   generateForgery, generateGenuine, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
 } from "./messages";
 import { applyNoise } from "./morse";
+import { deadlineSec, forgedProbability, gapSec } from "./endless";
+import type { WatchOptions } from "./options";
+import { pmAllowed, resolveSender, toneFor, type PmTopic } from "./pm";
+import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
+import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
 import { SonarField, type Track } from "./sonar";
 import {
@@ -47,9 +52,13 @@ export type Command =
   /** G3: the optional per-message deadline (Settings). Off unless the UI sends it, so P5/classic never get timeout citations. */
   | { readonly kind: "timer"; readonly on: boolean }
   /** G3: archive or burn a sheet after the hand-over; judged against the day's standing order. */
-  | { readonly kind: "dispose"; readonly rxId: number; readonly sheet: "input" | "output"; readonly how: DisposeHow };
+  | { readonly kind: "dispose"; readonly rxId: number; readonly sheet: "input" | "output"; readonly how: DisposeHow }
+  /** G4: send an enciphered reply (groups of 4 letters) for message `rxId`; the sim reads it with the day key. */
+  | { readonly kind: "send"; readonly rxId: number; readonly indicator: string; readonly groups: string }
+  /** G4: the player ends an Endless watch on purpose. */
+  | { readonly kind: "leave" };
 
-export type EndReason = "time" | "sunk" | "executed";
+export type EndReason = "time" | "sunk" | "executed" | "left";
 
 export interface LoggedCommand { readonly tick: number; readonly cmd: Command }
 
@@ -57,6 +66,7 @@ export interface WatchSummary {
   readonly tSec: number;
   readonly endReason: EndReason | null;
   readonly citations: number;
+  readonly mode: "night" | "endless";
   readonly hull: number;
   readonly sunk: boolean;
   readonly intelLevel: number;
@@ -101,7 +111,7 @@ export class Watch {
   private txTotal = 0;
   private lastIntelLevel: number;
   private ended: EndReason | null = null;
-  private timerOn = false;
+  private timerOn: boolean;
   private citations = 0;
   private readonly cited = new Set<string>();
   private readonly items: readonly OrderItem[];
@@ -110,7 +120,21 @@ export class Watch {
   private readonly lost = new Set<string>();
   private ambushes = 0;
 
-  constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE) {
+  private readonly opts: WatchOptions | undefined;
+  private readonly g4: boolean; // G4 features (sending, Private Messages, roster) exist only when options were given: no options = the night watch as before
+  private readonly endless: boolean;
+  private readonly roster0: readonly CrewMember[];
+  private absent: Role | null = null;
+  private readonly pmSent: number[] = [];
+  private longTxSeen = 0;
+  private pendingSends = 0;
+
+  constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE, opts?: WatchOptions) {
+    this.opts = opts;
+    this.g4 = opts !== undefined;
+    this.endless = opts?.mode === "endless";
+    this.timerOn = this.endless && opts?.modules.timer === true;
+    this.roster0 = makeRoster(seed, b);
     this.boat = new Boat(this.bus, { x: 0, y: 0, headingDeg: 0 }, b);
     this.det = new HfdfDetector(derive(seed, "hfdf"), b);
     this.intel = new Intel(b);
@@ -126,7 +150,13 @@ export class Watch {
     this.items = orderItems(seed, b);
     this.lossQueue = lossOrder(seed, this.items);
 
-    this.bus.subscribe((e) => { if (e.type === "BOAT_SUNK") this.onSunk(e.tSec); });
+    this.bus.subscribe((e) => {
+      if (e.type === "BOAT_SUNK") this.onSunk(e.tSec);
+      else if (e.type === "BOAT_DAMAGED" && this.g4 && this.absent === null && e.hull <= this.b.roster.absentHullAt) { // a badly hit boat loses a crew member for the rest of the watch
+        this.absent = absentRole(this.seed);
+        this.emit({ type: "ROSTER_CHANGE", tSec: e.tSec, role: this.absent, present: false });
+      }
+    });
 
     const m = derive(seed, "merchant");
     const kind = b.sonar.kinds.merchant;
@@ -138,7 +168,8 @@ export class Watch {
       shaftRps: lerp(kind.shaftRps, m.next()), blades: kind.blades, srcLevelDb: lerp(kind.srcLevelDb, m.next()),
     });
 
-    b.watch.messages.forEach((msg, i) => this.at(msg.atSec, () => this.inject(i + 1, msg.forged)));
+    if (this.endless) this.at(b.watch.messages[0]?.atSec ?? 60, () => this.endlessNext(0));
+    else b.watch.messages.forEach((msg, i) => this.at(msg.atSec, () => this.inject(i + 1, msg.forged)));
   }
 
   // ---------------------------------------------------------------- observables for the radio room
@@ -191,7 +222,7 @@ export class Watch {
   summary(): WatchSummary {
     const s = this.boat.state();
     return {
-      tSec: this.tSec, endReason: this.ended, citations: this.citations, hull: s.hull, sunk: s.sunk, intelLevel: this.intel.level,
+      tSec: this.tSec, endReason: this.ended, citations: this.citations, mode: this.opts?.mode ?? "night", hull: s.hull, sunk: s.sunk, intelLevel: this.intel.level,
       txTotalSec: this.txTotal, resolved: this.resolved.slice(),
     };
   }
@@ -217,6 +248,8 @@ export class Watch {
       case "paperwork": return this.paperwork(cmd.rxId, cmd.action);
       case "timer": return this.setTimer(cmd.on);
       case "dispose": return this.dispose(cmd.rxId, cmd.sheet, cmd.how);
+      case "send": return this.send(cmd.rxId, cmd.indicator, cmd.groups);
+      case "leave": return this.leave();
     }
   }
 
@@ -245,6 +278,7 @@ export class Watch {
       this.txRemaining = Math.max(0, this.txRemaining - DT);
       this.txTotal += DT;
       this.intel.transmit(DT);
+      if (this.g4 && Math.floor(this.txTotal / this.b.pm.longTxStepSec) > this.longTxSeen) { this.longTxSeen = Math.floor(this.txTotal / this.b.pm.longTxStepSec); this.pm("longTx", null); }
     }
     const hf = this.det.tick(DT, transmitting ? { freqKhz: this.b.watch.freqKhz } : null, { exposure: radio.exposure, intelLevel: this.intel.level });
     for (const e of hf) this.bus.emit(e);
@@ -257,7 +291,7 @@ export class Watch {
     this.intel.tickMinutes(DT / 60);
     this.syncIntel(t);
 
-    if (!this.ended && this.tSec >= this.b.watch.durationSec) {
+    if (!this.ended && !this.endless && this.tSec >= this.b.watch.durationSec) {
       this.ended = "time";
       this.bus.emit({ type: "WATCH_END", tSec: t, reason: "time" });
     }
@@ -271,7 +305,7 @@ export class Watch {
 
   private emit(e: SimEvent): void { this.bus.emit(e); }
 
-  private startTx(seconds: number, purpose: "report" | "repeat" | "challenge" | "ack"): boolean {
+  private startTx(seconds: number, purpose: "report" | "repeat" | "challenge" | "ack" | "send"): boolean {
     if (!this.boat.radio().canTransmit) return false;
     this.txRemaining += seconds;
     this.emit({ type: "TX", tSec: this.tSec, seconds, purpose });
@@ -313,7 +347,9 @@ export class Watch {
     const gen0 = forged
       ? generateForgery(this.seed, id, "ORDER", this.intel.level, ctx, this.b)
       : generateGenuine(this.seed, id, "ORDER", ctx, this.b);
-    const paper = makeProfile(this.seed, id, gen0.msg.from, forged, forged ? this.intel.level : 0, this.orders);
+    const paperOn = !this.g4 || this.opts?.modules.signatures === true; // module off: no paper tells, nothing printed (classic tells still guarantee one)
+    const paper = paperOn ? makeProfile(this.seed, id, gen0.msg.from, forged, forged ? this.intel.level : 0, this.orders)
+      : { authMark: "stamped" as const, markForged: false, signatureVariant: 0, senderId: this.orders.approvedSenders[0] as string, tells: [] as PaperTell[] };
     const gen: Generated = { msg: gen0.msg, truth: { ...gen0.truth, paperTells: paper.tells } };
     const real = trueCheckLetter(this.table, gen.msg.from, gen.msg.plain);
     let letter = real;
@@ -340,10 +376,12 @@ export class Watch {
     this.emit({
       type: "MSG_RX", tSec: this.tSec, rxId, attempt: rx.attempts, from: msg.from, net: msg.net, sentAtMin: msg.sentAtMin,
       indicator, tokens, snrDb: snr, txFist: msg.txFist, dfBearingDeg: msg.dfBearingDeg,
-      paper: { authMark: rx.paper.authMark, signatureVariant: rx.paper.signatureVariant, senderIdCipher: encipherSenderId(this.seed, DAY, indicator, rx.paper.senderId) },
+      ...(!this.g4 || this.opts?.modules.signatures === true
+        ? { paper: { authMark: rx.paper.authMark, signatureVariant: rx.paper.signatureVariant, senderIdCipher: encipherSenderId(this.seed, DAY, indicator, rx.paper.senderId) } } : {}),
+      ...(this.g4 ? { reply: replyKind(this.seed, rxId) } : {}),
     });
     if (rx.attempts === 0) { // the clock for this message starts when it first reaches the desk
-      rx.deadlineAt = this.tSec + this.b.paper.deadlineSec;
+      rx.deadlineAt = this.tSec + (this.endless && this.opts ? deadlineSec(this.b, this.opts.difficulty, rxId - 1) : this.b.paper.deadlineSec);
       this.at(rx.deadlineAt, () => this.timeoutCheck(rxId));
     }
     rx.attempts++;
@@ -359,21 +397,87 @@ export class Watch {
       if (rx === undefined) return false; // a bundle always belongs to a message
       rx.handed = true;
     }
-    for (const f of judge(action)) this.cite(rxId, f);
+    for (const f of judge(action)) if (this.faultOn(f)) this.cite(rxId, f);
     return true;
   }
 
   private dispose(rxId: number, sheet: "input" | "output", how: DisposeHow): boolean {
     const rx = this.rx.get(rxId);
     if (!rx || !rx.handed || (sheet !== "input" && sheet !== "output") || (how !== "archive" && how !== "burn")) return false; // only handed-over sheets are disposed of
-    for (const f of judgeDispose(dayOrder(this.seed, DAY), sheet, how)) this.cite(rxId, f);
+    for (const f of judgeDispose(dayOrder(this.seed, DAY), sheet, how)) if (this.faultOn(f)) this.cite(rxId, f);
     return true;
   }
 
   /** G3: today's standing order on records (printed on the Daily Orders). */
   standingOrder(): DayOrder { return dayOrder(this.seed, DAY); }
 
+  /** With the Stamps module off the sim does not judge sheets, stamps or records (timeouts and bad sends still count). */
+  private faultOn(f: PaperFault): boolean { return !this.g4 || this.opts?.modules.stamps === true || f === "timeout" || f === "badSend"; }
+
+  // ---------------------------------------------------------------- G4: endless stream, sending, leaving, private messages
+
+  private endlessNext(n: number): void {
+    if (this.ended || !this.opts) return;
+    const d = this.opts.difficulty, r = derive(this.seed, "endless", n);
+    const forged = r.chance(forgedProbability(this.b, d, n));
+    const waiting = [...this.rx.entries()].filter(([, x]) => !x.resolved).map(([id]) => id).sort((a, b) => a - b);
+    while (waiting.length >= this.b.endless.maxPending) { // an overloaded desk loses its oldest message
+      const id = waiting.shift() as number;
+      (this.rx.get(id) as RxState).resolved = true;
+      this.emit({ type: "MSG_LOST", tSec: this.tSec, rxId: id });
+    }
+    this.inject(n + 1, forged);
+    this.at(this.tSec + gapSec(this.b, d, n) * (0.8 + 0.4 * r.next()), () => this.endlessNext(n + 1));
+  }
+
+  private leave(): boolean {
+    if (!this.g4) return false;
+    this.ended = "left";
+    this.emit({ type: "WATCH_END", tSec: this.tSec, reason: "left" });
+    return true;
+  }
+
+  private send(rxId: number, indicator: string, groups: string): boolean {
+    const rx = this.rx.get(rxId);
+    if (!this.g4 || !rx || !validSend(indicator, groups, this.b.send.maxChars) || this.pendingSends >= this.b.send.maxPending) return false;
+    const secs = airtimeSec(groups, this.b.send.wpm);
+    if (!this.startTx(secs, "send")) return false; // diving, silence or no antenna: nothing is keyed
+    this.pendingSends++;
+    this.intel.indicator(indicator); // reusing a key is a classic break-in
+    const expected = expectedReply(replyKind(this.seed, rxId), rx.gen.msg.from, this.worldCtx().ownPos, this.b);
+    this.at(this.tSec + secs, () => {
+      this.pendingSends--;
+      if (this.ended) return;
+      const ok = decipherCopy(this.seed, DAY, indicator, groups).plain === expected;
+      this.emit({ type: "SEND_RESULT", tSec: this.tSec, rxId, ok });
+      if (!ok) this.cite(rxId, "badSend");
+    });
+    return true;
+  }
+
+  /** What HQ asks for in reply to message `rxId`, and the plain text it expects now (the position changes as the boat moves). */
+  replyRequest(rxId: number): { readonly kind: ReplyKind; readonly plain: string } | null {
+    const rx = this.rx.get(rxId);
+    if (!this.g4 || !rx) return null;
+    const kind = replyKind(this.seed, rxId);
+    return { kind, plain: expectedReply(kind, rx.gen.msg.from, this.worldCtx().ownPos, this.b) };
+  }
+
+  options(): WatchOptions | undefined { return this.opts; }
+  /** The crew and who is absent (G4). Empty without options. */
+  crew(): { readonly members: readonly CrewMember[]; readonly absent: Role | null } { return { members: this.g4 ? this.roster0 : [], absent: this.absent }; }
+
+  private pm(topic: PmTopic, rxId: number | null): void {
+    if (!this.g4) return;
+    const t = this.tSec;
+    if (!pmAllowed(this.b, t, this.pmSent)) return;
+    const tone = toneFor(this.citations);
+    this.pmSent.push(t);
+    this.emit({ type: "PRIVATE_MSG", tSec: t, fromRole: resolveSender(topic, tone, this.absent), tone, topic, rxId });
+  }
+
   private setTimer(on: boolean): boolean {
+    if (this.endless) return true; // in Endless the timer module decides, not a command
     this.timerOn = on;
     if (on) for (const id of [...this.rx.keys()]) this.timeoutCheck(id); // overdue messages count the moment the clock is switched on
     return true;
@@ -394,7 +498,7 @@ export class Watch {
     const lostItem = p.lostAt.includes(count) ? this.lossQueue.shift() ?? null : null;
     if (lostItem !== null) this.lost.add(lostItem);
     this.emit({ type: "CITATION", tSec: t, rxId, reason, count, lostItem });
-    if (count >= p.executeAt) {
+    if (count >= p.executeAt && !this.endless) { // Endless ends only by sinking or leaving: from the fifth citation on it stays at "severe"
       this.emit({ type: "CONSEQUENCE", tSec: t, level: "executed", count, positionKnown: null });
       this.ended = "executed";
       this.emit({ type: "WATCH_END", tSec: t, reason: "executed" });
@@ -406,6 +510,7 @@ export class Watch {
     this.intel.mark(); // "marked by the enemy": Intel up one level, which also raises the HF/DF hazard
     this.syncIntel(t);
     if (tier !== null) for (const e of this.det.forceFix(this.b.watch.freqKhz, tier.reactSec, tier.etaSec)) this.emit(e);
+    this.pm(tier !== null ? "located" : reason === "timeout" ? "late" : reason === "badSend" ? "badSend" : "citation", rxId);
   }
 
   private requestRepeat(rxId: number): boolean {
@@ -483,8 +588,8 @@ export class Watch {
 }
 
 /** Rebuild a watch from the save file (seed + command log). Same inputs => identical event log. */
-export function replay(seed: number | string, commands: readonly LoggedCommand[], untilTick: number, b: Balance = BALANCE): Watch {
-  const w = new Watch(seed, b);
+export function replay(seed: number | string, commands: readonly LoggedCommand[], untilTick: number, b: Balance = BALANCE, opts?: WatchOptions): Watch {
+  const w = new Watch(seed, b, opts);
   let i = 0;
   for (;;) {
     while (i < commands.length && (commands[i] as LoggedCommand).tick === w.tickCount) w.dispatch((commands[i++] as LoggedCommand).cmd);

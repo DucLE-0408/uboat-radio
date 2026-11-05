@@ -120,6 +120,26 @@ export function decipherCopy(seed: number | string, day: number, indicator: stri
   return { plain, checkLetter, damagedGroups: damaged };
 }
 
+/**
+ * Encipher a reply for sending (G4): padded with X to whole groups of 4, the rotors restart at every group start exactly as
+ * `decipherCopy` does, so `decipherCopy(encipherGroups(x)).plain` is the padded `x`. The player's own plugboard may be given.
+ */
+export function encipherGroups(seed: number | string, day: number, indicator: string, plain: string, plugboard?: readonly string[]): string {
+  const day0 = dayEnigma(seed, day);
+  const base = plugboard === undefined ? day0 : { ...day0, plugboard };
+  const text = normalize(plain);
+  const padded = text + "X".repeat((GROUP - (text.length % GROUP)) % GROUP);
+  const ref = new Enigma({ ...base, positions: indicator });
+  const m = new Enigma({ ...base, positions: indicator });
+  const out: string[] = [];
+  for (let i = 0; i < padded.length; i += GROUP) {
+    m.setPositions(ref.getPositions());
+    out.push(m.process(padded.slice(i, i + GROUP)));
+    ref.process("AAAA");
+  }
+  return out.join(" ");
+}
+
 /** Does the received check letter match the deciphered plaintext? (false for garble OR forgery) */
 export function checkLetterMatches(table: AuthTable, from: string, d: Deciphered): boolean {
   if (d.checkLetter === null) return false;

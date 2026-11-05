@@ -58,7 +58,12 @@ export interface UiState {
   emergency: { untilSec: number; reason: "asdic" | "depth_charge" | null };
   log: LogLine[];
   decisions: Decision[];
-  ended: "time" | "sunk" | "executed" | null;
+  ended: "time" | "sunk" | "executed" | "left" | null;
+  /** G4 observations rebuilt from the event log: replies read by HQ, private notes, crew absence, messages dropped. */
+  sendResults: Map<number, boolean>;
+  privateNotes: { tSec: number; fromRole: string; tone: string; topic: string; rxId: number | null }[];
+  absentRole: string | null;
+  lost: Set<number>;
   /** G3: running number of paperwork citations and the Daily Orders items they took away (rebuilt from CITATION events). */
   citations: number;
   lostItems: Set<string>;
@@ -83,7 +88,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null,
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -212,6 +217,25 @@ export class Store {
         this.log(e.tSec, "alert", `Citation ${e.count}: ${e.reason}${e.rxId === null ? "" : ` (#${e.rxId})`}`);
         this.mark("ui", "log");
         break;
+      case "SEND_RESULT":
+        st.sendResults.set(e.rxId, e.ok);
+        this.log(e.tSec, "info", `Reply for #${e.rxId}: ${e.ok ? "read by HQ" : "unreadable"}`);
+        this.mark("ui", "log");
+        break;
+      case "PRIVATE_MSG":
+        st.privateNotes.push({ tSec: e.tSec, fromRole: e.fromRole, tone: e.tone, topic: e.topic, rxId: e.rxId });
+        if (st.privateNotes.length > 50) st.privateNotes.shift();
+        this.mark("ui", "log");
+        break;
+      case "ROSTER_CHANGE":
+        st.absentRole = e.present ? null : e.role;
+        this.mark("ui", "log");
+        break;
+      case "MSG_LOST":
+        st.lost.add(e.rxId);
+        this.log(e.tSec, "alert", `Message #${e.rxId} was lost`);
+        this.mark("rx", "ui", "log");
+        break;
       case "CONSEQUENCE":
         st.lastConsequence = e.level;
         this.log(e.tSec, "alert", `Consequence: ${e.level}`);
@@ -219,7 +243,7 @@ export class Store {
         break;
       case "WATCH_END":
         st.ended = e.reason;
-        this.log(e.tSec, "alert", e.reason === "sunk" ? "Watch ended: boat lost" : e.reason === "executed" ? "Watch ended: executed" : "Watch ended: dawn");
+        this.log(e.tSec, "alert", e.reason === "sunk" ? "Watch ended: boat lost" : e.reason === "left" ? "Watch ended: you left" : e.reason === "executed" ? "Watch ended: executed" : "Watch ended: dawn");
         this.mark("ended", "ui");
         break;
     }

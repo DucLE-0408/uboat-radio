@@ -17,14 +17,21 @@ export type SimEvent =
   | { readonly type: "BOAT_SUNK"; readonly tSec: number }
   | { readonly type: "AUTH_RESULT"; readonly tSec: number; readonly ok: boolean; readonly reason: "ok" | "wrong" | "replay" }
   | { readonly type: "SONAR_CONTACT"; readonly tSec: number; readonly contactId: number; readonly bearingDeg: number; readonly snrDb: number; readonly bladeRateHz: number; readonly guess: "escort" | "slow" }
-  | { readonly type: "MSG_RX"; readonly tSec: number; readonly rxId: number; readonly attempt: number; readonly from: string; readonly net: string; readonly sentAtMin: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly txFist: Fist; readonly dfBearingDeg: number; readonly paper?: PaperObservable }
-  | { readonly type: "TX"; readonly tSec: number; readonly seconds: number; readonly purpose: "report" | "repeat" | "challenge" | "ack" }
+  | { readonly type: "MSG_RX"; readonly tSec: number; readonly rxId: number; readonly attempt: number; readonly from: string; readonly net: string; readonly sentAtMin: number; readonly indicator: string; readonly tokens: string; readonly snrDb: number; readonly txFist: Fist; readonly dfBearingDeg: number; readonly paper?: PaperObservable; readonly reply?: "ack" | "position" }
+  | { readonly type: "TX"; readonly tSec: number; readonly seconds: number; readonly purpose: "report" | "repeat" | "challenge" | "ack" | "send" }
   | { readonly type: "CHALLENGE_SENT"; readonly tSec: number; readonly rxId: number; readonly row: string; readonly col: string }
   | { readonly type: "CHALLENGE_REPLY"; readonly tSec: number; readonly rxId: number; readonly reply: string }
   | { readonly type: "MSG_RESOLVED"; readonly tSec: number; readonly rxId: number; readonly decision: "accept" | "reject"; readonly forged: boolean; readonly correct: boolean }
-  | { readonly type: "CITATION"; readonly tSec: number; readonly rxId: number | null; readonly reason: "wrongStamp" | "wrongBin" | "badHandover" | "timeout" | "orderBreach"; readonly count: number; readonly lostItem: string | null }
+  | { readonly type: "CITATION"; readonly tSec: number; readonly rxId: number | null; readonly reason: "wrongStamp" | "wrongBin" | "badHandover" | "timeout" | "orderBreach" | "badSend"; readonly count: number; readonly lostItem: string | null }
   | { readonly type: "CONSEQUENCE"; readonly tSec: number; readonly level: "warning" | "located" | "severe" | "executed"; readonly count: number; readonly positionKnown: number | null }
-  | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" };
+  /** G4: a message dropped off the pile because too many were waiting (Endless). */
+  | { readonly type: "MSG_LOST"; readonly tSec: number; readonly rxId: number }
+  /** G4: HQ read (or could not read) a reply the player sent. */
+  | { readonly type: "SEND_RESULT"; readonly tSec: number; readonly rxId: number; readonly ok: boolean }
+  /** G4: a crew member's private note. Who, tone and topic only; the words are the desk's. */
+  | { readonly type: "PRIVATE_MSG"; readonly tSec: number; readonly fromRole: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly tone: "remind" | "threat"; readonly topic: "citation" | "late" | "longTx" | "located" | "badSend"; readonly rxId: number | null }
+  | { readonly type: "ROSTER_CHANGE"; readonly tSec: number; readonly role: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly present: boolean }
+  | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" | "left" };
 
 export type Handler = (e: SimEvent) => void;
 
