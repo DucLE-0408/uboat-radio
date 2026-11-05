@@ -242,5 +242,99 @@
       "resupply": 2,
       "rangeKm": 150
     }
+  },
+  "endless": {
+    "maxPending": 6,
+    "difficulties": {
+      "easy": {
+        "gap0": 150,
+        "gapDecay": 0.97,
+        "gapMin": 60,
+        "pForged0": 0.2,
+        "pForgedStep": 0.01,
+        "pForgedMax": 0.5,
+        "deadline0": 180,
+        "deadlineStep": 3,
+        "deadlineMin": 120
+      },
+      "normal": {
+        "gap0": 100,
+        "gapDecay": 0.96,
+        "gapMin": 45,
+        "pForged0": 0.35,
+        "pForgedStep": 0.015,
+        "pForgedMax": 0.65,
+        "deadline0": 120,
+        "deadlineStep": 3,
+        "deadlineMin": 75
+      },
+      "hard": {
+        "gap0": 60,
+        "gapDecay": 0.95,
+        "gapMin": 30,
+        "pForged0": 0.5,
+        "pForgedStep": 0.02,
+        "pForgedMax": 0.8,
+        "deadline0": 90,
+        "deadlineStep": 2,
+        "deadlineMin": 50
+      }
+    }
+  },
+  "send": {
+    "wpm": 18,
+    "maxChars": 200,
+    "maxPending": 3
+  },
+  "pm": {
+    "gapSec": 240,
+    "capCount": 6,
+    "capWindowSec": 1800,
+    "longTxStepSec": 120
+  },
+  "roster": {
+    "absentHullAt": 50,
+    "names": [
+      "Brandt",
+      "Keller",
+      "Vogt",
+      "Lorenz",
+      "Hahn",
+      "Reiter",
+      "Sommer",
+      "Falk",
+      "Ebner",
+      "Wirth",
+      "Kramer",
+      "Lindt",
+      "Moser",
+      "Nagel",
+      "Ostertag",
+      "Pfeil",
+      "Quast",
+      "Rauch",
+      "Seidel",
+      "Thiel",
+      "Ullmann",
+      "Volk",
+      "Weiss",
+      "Zeller",
+      "Arndt",
+      "Bauer",
+      "Conrad",
+      "Dietz",
+      "Eckart",
+      "Fuchs",
+      "Gerlach",
+      "Hartl",
+      "Immel",
+      "Jaeger",
+      "Kessler",
+      "Lenz",
+      "Maurer",
+      "Neumann",
+      "Obermann",
+      "Pohl"
+    ]
   }
 }

@@ -5,8 +5,8 @@ import { Enigma } from "./enigma";
 import { derive } from "./rng";
 import { dayEnigma } from "./traffic";
 
-export type PaperFault = "wrongStamp" | "wrongBin" | "badHandover" | "timeout" | "orderBreach";
-export const PAPER_FAULTS: readonly PaperFault[] = ["wrongStamp", "wrongBin", "badHandover", "timeout", "orderBreach"];
+export type PaperFault = "wrongStamp" | "wrongBin" | "badHandover" | "timeout" | "orderBreach" | "badSend";
+export const PAPER_FAULTS: readonly PaperFault[] = ["wrongStamp", "wrongBin", "badHandover", "timeout", "orderBreach", "badSend"];
 
 /** What the player just did, as the desk saw it. All counts are small non-negative integers (validated by `validAction`). */
 export type PaperAction =

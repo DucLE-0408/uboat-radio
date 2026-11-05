@@ -52,6 +52,15 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G4: Endless pacing per difficulty, replies the player sends, Private Message pacing, crew roster. */
+  readonly endless: { readonly maxPending: number; readonly difficulties: Readonly<Record<"easy" | "normal" | "hard", {
+    readonly gap0: number; readonly gapDecay: number; readonly gapMin: number;
+    readonly pForged0: number; readonly pForgedStep: number; readonly pForgedMax: number;
+    readonly deadline0: number; readonly deadlineStep: number; readonly deadlineMin: number;
+  }>> };
+  readonly send: { readonly wpm: number; readonly maxChars: number; readonly maxPending: number };
+  readonly pm: { readonly gapSec: number; readonly capCount: number; readonly capWindowSec: number; readonly longTxStepSec: number };
+  readonly roster: { readonly absentHullAt: number; readonly names: readonly string[] };
   /** G3 (desk UI): paperwork citations. Counts are the running number of citations in one watch. */
   readonly paper: {
     readonly deadlineSec: number;
