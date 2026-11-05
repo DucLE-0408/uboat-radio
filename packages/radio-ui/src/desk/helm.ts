@@ -6,6 +6,7 @@ import { h, setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { place } from "../scene/px";
 import { formatClock } from "../store";
+import { tempColor } from "./water";
 
 const NS = "http://www.w3.org/2000/svg";
 const sv = (tag: string, attrs: Record<string, string | number> = {}, text?: string): SVGElement => {
@@ -49,6 +50,9 @@ export function mountHelm(d: HelmDeps): Helm {
   chartBox.append(svg as unknown as Node);
   let zoom = 0;
   const zoomBtn = h("button", { class: "dkey dhbtn", attrs: { type: "button" }, text: "" }); place(zoomBtn, 8, 308, 88, 14);
+  let tempOn = false;
+  const hasWater = watch.chartWater(0, 0) !== null;
+  const tempBtn = h("button", { class: "dkey dhbtn", attrs: { type: "button", "aria-pressed": "false" }, text: t("desk.helm.temp") }); place(tempBtn, 100, 308, 62, 14); tempBtn.hidden = !d.mapOn || !hasWater;
   const recenter = { x: 0, y: 0, k: 1, cx: 0, cy: 0 }; // last transform, to turn a click into a position
   const trail: { x: number; y: number }[] = [];
   let lastTrailT = -1e9, lastDraw = 0;
@@ -73,6 +77,21 @@ export function mountHelm(d: HelmDeps): Helm {
         if (sx < -20 || sx > CW + 20 || sy < -20 || sy > CH + 20) continue;
         kids.push(sv("circle", { cx: sx, cy: sy, r: Math.max(2, sh.radiusKm * k), fill: "none", stroke: "#d9b878", "stroke-width": 0.6, "stroke-dasharray": "3 2" }), sv("text", { x: sx, y: sy + 2, "text-anchor": "middle", "font-size": 7, fill: "#d9b878" }, `${least ?? "?"}m`));
       }
+    }
+    if (tempOn && zoom < 2 && hasWater) { // surveyed water temperature (climatology) under the readings the boat has taken itself
+      const n = 18, cell = w / n, rows = Math.ceil((CH / CW) * n) + 1;
+      for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) {
+        const mx = cx - w / 2 + (i + 0.5) * cell, my = cy - halfH0(w) + (j + 0.5) * cell, c = watch.chartWater(mx, my);
+        if (c !== null && mx < coastKm()) kids.push(sv("rect", { x: X(mx - cell / 2), y: Y(my + cell / 2), width: cell * k + 0.5, height: cell * k + 0.5, fill: tempColor(c.tempC), opacity: 0.38 }));
+      }
+      for (const sm of store.state.waterSamples) {
+        const sx = X(sm.xKm), sy = Y(sm.yKm);
+        if (sx < -6 || sx > CW + 6 || sy < -6 || sy > CH + 6) continue;
+        kids.push(sv("circle", { cx: sx, cy: sy, r: 3, fill: tempColor(sm.tempC), stroke: "#f2ece0", "stroke-width": 0.8 }));
+        if (zoom === 0) kids.push(sv("text", { x: sx + 4.5, y: sy + 2.5, "font-size": 6, fill: "#f2ece0" }, String(Math.round(sm.tempC))));
+      }
+      for (let i = 0; i < 5; i++) kids.push(sv("rect", { x: 6 + i * 10, y: CH - 12, width: 10, height: 5, fill: tempColor(BALANCE.water.coldC + (i / 4) * (BALANCE.water.warmC - BALANCE.water.coldC)) }));
+      kids.push(sv("text", { x: 6, y: CH - 15, "font-size": 6, fill: "#f2ece0" }, `${BALANCE.water.coldC}°`), sv("text", { x: 56, y: CH - 15, "font-size": 6, fill: "#f2ece0", "text-anchor": "end" }, `${BALANCE.water.warmC}°`));
     }
     const nearCoast = coastKm() - f.x <= BALANCE.coast.warnKm || store.state.tSec - store.state.coastWarnAt < 120; // the estimate says so, or the sim warned just now
     kids.push(sv("line", { x1: X(landX0), y1: Y(WORLD), x2: X(landX0), y2: Y(0), stroke: nearCoast ? "#e06a72" : "#7d8f6a", "stroke-width": nearCoast ? 1.6 : 1 }));
@@ -126,7 +145,8 @@ export function mountHelm(d: HelmDeps): Helm {
     steerTo(bearingTo({ x: f.x, y: f.y }, { x, y })); // a click orders the course to that point; no autopilot
   });
   zoomBtn.addEventListener("click", () => { zoom = (zoom + 1) % ZOOM_KM.length; draw(); });
-  const posTxt = h("div", { class: "dhtxt typ" }); place(posTxt, 100, 308, 268, 14);
+  tempBtn.addEventListener("click", () => { tempOn = !tempOn; tempBtn.setAttribute("aria-pressed", String(tempOn)); setClass(tempBtn, "on", tempOn); draw(); });
+  const posTxt = h("div", { class: "dhtxt typ" }); place(posTxt, 168, 308, 200, 14);
 
   // ---- compass
   const compass = sv("svg", { viewBox: "-60 -60 120 120", width: "100%", height: "100%", role: "img", "aria-label": t("desk.helm.compass") }) as SVGSVGElement;
@@ -181,7 +201,7 @@ export function mountHelm(d: HelmDeps): Helm {
   const orderTxt = h("div", { class: "dhtxt typ dhorder" }); place(orderTxt, 8, 326, 624, 28);
   const closeBtn = h("button", { class: "dkey dhbtn dhclose", attrs: { type: "button" }, text: t("desk.helm.close") }); place(closeBtn, 560, 332, 72, 20);
   closeBtn.addEventListener("click", () => api.close());
-  el.append(chartBox, zoomBtn, posTxt, compassBox, wheelBox, nudge("−10°", -10, 380), nudge("−1°", -1, 410), nudge("+1°", 1, 440), nudge("+10°", 10, 470),
+  el.append(chartBox, zoomBtn, tempBtn, posTxt, compassBox, wheelBox, nudge("−10°", -10, 380), nudge("−1°", -1, 410), nudge("+1°", 1, 440), nudge("+10°", 10, 470),
     slower, spd, faster, ...modes.map((x) => x.b), readout, orderTxt, closeBtn);
   chartBox.hidden = !d.mapOn; zoomBtn.hidden = !d.mapOn; posTxt.hidden = !d.mapOn;
 
@@ -207,8 +227,9 @@ export function mountHelm(d: HelmDeps): Helm {
     const wx0 = store.state.weather, wxLine = wx0 === null ? "" : `\n${t("desk.helm.wx", { vis: String(wx0.visKm), force: String(wx0.force), dir: String(wx0.windDeg).padStart(3, "0") })}`;
     const capKn = wx0 === null || st.tSec - wx0.tSec > 2400 ? null : Math.round(BALANCE.boat.maxSpeedSurfaceKn * seaSpeedFactor(BALANCE, wx0.seaState)); // from the REPORTED sea state only
     const seaLine = capKn !== null && capKn < BALANCE.boat.maxSpeedSurfaceKn ? `\n${t(wx0 !== null && wx0.force >= BALANCE.weather.stormForce ? "desk.helm.storm" : "desk.helm.seaCap", { kn: String(capKn) })}` : "";
+    const ws = st.waterSamples[st.waterSamples.length - 1], waterLine = ws !== undefined && st.tSec - ws.tSec < 600 ? `\n${t("desk.helm.water", { c: ws.tempC.toFixed(1), m: String(ws.layerM) })}` : ""; // our own thermometer
     const radarLine = st.radarWarnAt > st.radarClearAt && st.tSec - st.radarWarnAt < 1200 ? `\n${t("desk.helm.radar")}` : ""; // the Metox heard it; nothing is known about whether we were picked up
-    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}${seaLine}${radarLine}`);
+    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}${wxLine}${seaLine}${radarLine}${waterLine}`);
     const ord = store.state.moveOrder, f = fix();
     if (ord === null) setText(orderTxt, t("desk.helm.noOrder"));
     else { const c = parseGrid(ord.grid); const dist = c === null ? 0 : Math.hypot(c.x - f.x, c.y - f.y), brg = c === null ? 0 : bearingTo({ x: f.x, y: f.y }, c);

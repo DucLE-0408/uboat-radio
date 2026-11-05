@@ -4,4 +4,4 @@
  * game. Bump this integer in the same change; `test/simversion.test.ts` fails when behaviour changes without a bump.
  * Not the product version (root `VERSION`).
  */
-export const SIM_VERSION = 4;
+export const SIM_VERSION = 5;

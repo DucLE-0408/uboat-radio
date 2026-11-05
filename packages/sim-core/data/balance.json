@@ -357,6 +357,22 @@
     "moveMarginKm": 15,
     "itemMarginKm": 5
   },
+  "water": {
+    "baseC": 14,
+    "southGradCPer100Km": 1.5,
+    "coastCoolC": 3,
+    "coastScaleKm": 25,
+    "eddies": { "count": 8, "spreadKm": 70, "minRadiusKm": 8, "maxRadiusKm": 25, "maxAmpC": 3.5 },
+    "coldC": 8,
+    "warmC": 20,
+    "layerMinM": 30,
+    "layerMaxM": 90,
+    "hydroLossDb": 20,
+    "asdicBelowLayerFactor": 0.35,
+    "sampleEverySec": 60,
+    "sampleNoiseC": 0.3,
+    "sampleNoiseM": 5
+  },
   "radar": {
     "windowCount": 48,
     "firstGapSec": 1800,

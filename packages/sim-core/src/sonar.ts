@@ -120,10 +120,10 @@ export class SonarField {
   }
 
   /** What the operator actually hears this instant. One fixed-size draw block per audible track. */
-  observe(l: Listener, seaState: number, rng: Rng, b: Balance = BALANCE): Observation[] {
+  observe(l: Listener, seaState: number, rng: Rng, b: Balance = BALANCE, extraLossDb = 0): Observation[] {
     const out: Observation[] = [];
     for (const t of this.tracks) {
-      const snr = snrDb(t, l, seaState, b);
+      const snr = snrDb(t, l, seaState, b) - extraLossDb; // G6: below the thermocline surface ships are muffled
       if (snr < b.sonar.detectThresholdDb) continue;
       const sigma = bearingSigmaDeg(snr, b);
       const rb = rangeAndBearing(l, t);
@@ -138,7 +138,7 @@ export class SonarField {
    * Fixed-step update: move tracks, then let escorts in range try for an ASDIC lock.
    * A ping means the boat is LOCKED; the Bridge is alerted immediately (see boat.ts).
    */
-  tick(dtSec: number, tSec: number, l: Listener, rng: Rng, b: Balance = BALANCE, seaState?: number): SimEvent[] {
+  tick(dtSec: number, tSec: number, l: Listener, rng: Rng, b: Balance = BALANCE, seaState?: number, asdicScale = 1): SimEvent[] {
     const out: SimEvent[] = [];
     for (const t of this.tracks) {
       const a = (t.courseDeg * Math.PI) / 180;
@@ -147,7 +147,7 @@ export class SonarField {
       if (t.kind !== "escort") continue;
       const rb = rangeAndBearing(l, t);
       if (rb.rangeM > b.sonar.asdicRangeM) continue;
-      const rate = b.sonar.asdicLockPerSec * (1 + l.speedKn / b.sonar.asdicSpeedFactorKn) * (seaState === undefined ? 1 : asdicSeaFactor(b, seaState));
+      const rate = b.sonar.asdicLockPerSec * (1 + l.speedKn / b.sonar.asdicSpeedFactorKn) * (seaState === undefined ? 1 : asdicSeaFactor(b, seaState)) * asdicScale;
       if (rng.chance(1 - Math.exp(-rate * dtSec))) {
         out.push({ type: "ASDIC_PING", tSec, contactId: t.id, bearingDeg: rb.bearing, rangeM: rb.rangeM });
       }

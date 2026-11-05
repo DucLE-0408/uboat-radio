@@ -8,7 +8,7 @@ import type { SimEvent } from "../src/events";
 
 const ev = <T extends SimEvent["type"]>(w: Watch, type: T): Extract<SimEvent, { type: T }>[] =>
   w.bus.getLog().filter((e): e is Extract<SimEvent, { type: T }> => e.type === type);
-const endless = (over: Partial<WatchOptions> = {}): WatchOptions => ({ ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, weather: false, radar: false }, ...over });
+const endless = (over: Partial<WatchOptions> = {}): WatchOptions => ({ ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, weather: false, radar: false, water: false }, ...over });
 const trueX = (w: Watch): number => w.worldCtx().ownPos.x;
 const eastFast = (w: Watch): void => { w.dispatch({ kind: "heading", deg: 90 }); w.dispatch({ kind: "speed", kn: 17 }); };
 

@@ -1,6 +1,7 @@
 // UI state derived ONLY from SimEvents plus the player's own input and the public observation helpers.
 // Vietnamese: không trường nào ở đây đến từ ground truth của sim; hazard/Intel không bao giờ được lưu hay hiển thị.
 import type { Fist, LoggedCommand, PaperObservable, SimEvent, Tell } from "@uboat/sim-core";
+import { SAMPLE_MAX } from "./desk/water";
 import { HIST_MAX, HIST_SEC } from "./scene/sonarview";
 
 export type Topic = "drawer" | "view" | "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
@@ -85,6 +86,8 @@ export interface UiState {
   weather: { tSec: number; visKm: number; windDeg: number; force: number; seaState: number } | null;
   sightedAt: number;
   /** G6 Metox: when it last warned of enemy radar and when it last cleared (the radar is active while warnAt > clearAt). */
+  /** G6 thermometer readings at the ESTIMATED position (the last SAMPLE_MAX of them). */
+  waterSamples: { tSec: number; tempC: number; layerM: number; xKm: number; yKm: number }[];
   radarWarnAt: number;
   radarClearAt: number;
   /** Replies HQ could read, counted over the whole watch (a message may be answered more than once). */
@@ -116,7 +119,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(), sonarHist: [], asdicAt: -1e9,
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, groundings: 0, coastWarnAt: -1e9, shoalWarnAt: -1e9, bottomings: 0, shallowHitAt: -1e9, weather: null, sightedAt: -1e9, radarWarnAt: -1e9, radarClearAt: -1e9, privateNotes: [], absentRole: null, lost: new Set<number>(),
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, groundings: 0, coastWarnAt: -1e9, shoalWarnAt: -1e9, bottomings: 0, shallowHitAt: -1e9, weather: null, sightedAt: -1e9, waterSamples: [], radarWarnAt: -1e9, radarClearAt: -1e9, privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -289,6 +292,11 @@ export class Store {
         break;
       case "WEATHER_REPORT":
         st.weather = { tSec: e.tSec, visKm: e.visKm, windDeg: e.windDeg, force: e.force, seaState: e.seaState };
+        this.mark("ui");
+        break;
+      case "WATER_SAMPLE":
+        st.waterSamples.push({ tSec: e.tSec, tempC: e.tempC, layerM: e.layerM, xKm: e.xKm, yKm: e.yKm });
+        if (st.waterSamples.length > SAMPLE_MAX) st.waterSamples.splice(0, st.waterSamples.length - SAMPLE_MAX);
         this.mark("ui");
         break;
       case "RADAR_WARNING":

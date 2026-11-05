@@ -5,7 +5,7 @@ import { detectRangeKm, noiseLevelDb, transmissionLossDb } from "../src/sonar";
 import { asdicSeaFactor, makeWeather } from "../src/weather";
 import { BALANCE } from "../src/balance";
 
-const opts: WatchOptions = { ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, radar: false } };
+const opts: WatchOptions = { ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, radar: false, water: false } };
 const noWx: WatchOptions = { ...opts, modules: { ...opts.modules, weather: false } };
 
 describe("detection range", () => {

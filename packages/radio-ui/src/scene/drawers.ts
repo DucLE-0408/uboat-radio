@@ -3,6 +3,7 @@ import { setClass, setText } from "../dom";
 import { t } from "../i18n";
 import { formatClock, type Drawer } from "../store";
 import { place, sliceVars } from "./px";
+import { layerAdvice } from "../desk/water";
 import { ASDIC_BANNER_SEC, conditions, HIST_SEC, strengthLevel } from "./sonarview";
 import type { SceneCtx } from "./scope";
 
@@ -179,6 +180,8 @@ function buildSonar(ctx: SceneCtx): Shell {
     const c = conditions(s.boat.speedKn, wx);
     const adv = c.cavitating ? t("sonar.advice.cav", { kn: String(BALANCE.sonar.cavitationSpeedKn) }) : c.selfLimited && c.verdict !== "good" ? t("sonar.advice.slow") : "";
     setText(cond, `${t("sonar.cond.noise", { own: String(c.selfDb), sea: String(c.seaDb), state: String(Math.round(c.seaState)) })}\n${t("sonar.cond.reach", { km: String(c.rangeKm), best: String(c.bestKm) })}\n${t(`sonar.verdict.${c.verdict}`)}${adv === "" ? "" : ` · ${adv}`}`);
+    const lastW = s.waterSamples[s.waterSamples.length - 1], lay = layerAdvice(s.boat.depthM, lastW === undefined ? null : { tSec: lastW.tSec, layerM: lastW.layerM }, s.tSec);
+    if (lay !== null && lastW !== undefined) setText(cond, `${cond.textContent}\n${t(lay === "below" ? "sonar.layer.below" : "sonar.layer.above", { m: String(lastW.layerM) })}`);
     setClass(cond, "bad", c.verdict === "poor");
     asdic.hidden = s.tSec - s.asdicAt > ASDIC_BANNER_SEC;
     drawTrace();
