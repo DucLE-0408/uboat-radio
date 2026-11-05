@@ -5,7 +5,8 @@ import { validPlugboard } from "@uboat/sim-core";
 import { isPositions, MACHINE_DEFAULT, type MachineState } from "./machine";
 import { parseRation, RATION_EMPTY, type RationState } from "./ration";
 
-export type PaperKind = "input" | "output" | "mission" | "orders" | "manual";
+/** "slip": the deciphered Sender ID of one Input attempt; "encode": the cipher the machine produced for the reply to one message (Endless). */
+export type PaperKind = "input" | "output" | "slip" | "encode" | "mission" | "orders" | "manual";
 /** Desk furniture: no rxId, never stamped, signed, clipped, handed over or binned. */
 export const isReference = (k: PaperKind): boolean => k === "mission" || k === "orders" || k === "manual";
 export type Face = "front" | "back";
@@ -46,18 +47,21 @@ export interface Rect { readonly x: number; readonly y: number; readonly w: numb
 /** Free area of the desk top where papers may lie (logical px). */
 export const DESK_AREA: Rect = { x: 144, y: 104, w: 280, h: 248 };
 export const SIZE: Readonly<Record<PaperKind, { readonly w: number; readonly h: number }>> = {
-  input: { w: 112, h: 148 }, output: { w: 112, h: 148 }, mission: { w: 128, h: 104 }, orders: { w: 128, h: 150 }, manual: { w: 128, h: 150 },
+  input: { w: 112, h: 148 }, output: { w: 112, h: 148 }, slip: { w: 80, h: 44 }, encode: { w: 112, h: 104 }, mission: { w: 128, h: 104 }, orders: { w: 128, h: 150 }, manual: { w: 128, h: 150 },
 };
 /** Spawn points: new sheets cascade from here so a stack never hides a sheet completely (R2.5). */
 const SPAWN: Readonly<Record<PaperKind, { readonly x: number; readonly y: number }>> = {
-  input: { x: 262, y: 150 }, output: { x: 168, y: 176 }, mission: { x: 150, y: 112 }, orders: { x: 262, y: 108 }, manual: { x: 278, y: 116 },
+  input: { x: 262, y: 150 }, output: { x: 168, y: 176 }, slip: { x: 344, y: 286 }, encode: { x: 150, y: 244 }, mission: { x: 150, y: 112 }, orders: { x: 262, y: 108 }, manual: { x: 278, y: 116 },
 };
 const CASCADE = 8, CASCADE_STEPS = 6, COLUMN = 20, SPAWN_TRIES = 60;
 /** A sheet may hang over the desk edge but always keeps this much on the desk, so it can be grabbed again. */
 const KEEP = 24;
 
 export const paperId = (kind: PaperKind, rxId: number | null, attempt: number | null): string =>
-  isReference(kind) ? kind : `${kind === "input" ? "in" : "out"}:${rxId}:${attempt}`;
+  isReference(kind) ? kind : `${ID_PREFIX[kind as MessageKind]}:${rxId}:${attempt}`;
+
+type MessageKind = "input" | "output" | "slip" | "encode";
+const ID_PREFIX: Readonly<Record<MessageKind, string>> = { input: "in", output: "out", slip: "slip", encode: "enc" };
 
 export class PaperModel {
   private readonly byId = new Map<string, Paper>();
@@ -246,7 +250,7 @@ export function parseExtra(raw: string | null, seed: number): DeskExtra {
   return { mach, ration: parseRation(o["ration"]), gone };
 }
 const MAX_BYTES = 32_768, MAX_PAPERS = 400;
-const ID_RE = /^(?:mission|orders|manual|(?:in|out):\d{1,6}:\d{1,3})$/;
+const ID_RE = /^(?:mission|orders|manual|(?:in|out|slip|enc):\d{1,6}:\d{1,3})$/;
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
 const WORD_RE = /^[A-Z0-9?]*$/;
