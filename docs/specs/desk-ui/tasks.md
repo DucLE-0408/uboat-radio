@@ -74,7 +74,7 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-04**. `R#` là yêu cầu trong `requireme
 - Tell dạng giấy tờ: dấu xác thực in sẵn (không có / thật / giả y hệt), chữ ký so mẫu, người gửi được duyệt, Sender ID mã hóa; giữ bất biến "tin giả luôn có ít nhất một tell".
 - Plugboard cắm dây; lưu trữ hoặc hủy giấy theo lệnh; tin tức dùng để soát nội dung.
 
-## G4 — Sau G3
+## G4 — Sau G3 (spec DRAFT: `docs/specs/desk-ui-g4/`, chờ duyệt, chưa sửa sim-core)
 - Endless (mô-đun + độ khó), mã hóa và gửi tin, Private Message, Roster.
 
 ## Thứ tự
