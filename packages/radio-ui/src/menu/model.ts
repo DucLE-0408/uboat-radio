@@ -1,13 +1,14 @@
 // Pure menu logic (no DOM): item list, keyboard navigation, seed input parsing, a safe description of the saved watch.
 import { parseSave, isSeed, SAVE_KEY, LEGACY_SAVE_KEY, type StorageLike } from "../sim/session";
 
-export type MenuId = "continue" | "new" | "settings" | "help";
+export type MenuId = "continue" | "new" | "endless" | "settings" | "help";
 export interface MenuItem { readonly id: MenuId; readonly label: string; readonly enabled: boolean }
 
 export function menuItems(hasSave: boolean): MenuItem[] {
   return [
     { id: "continue", label: "Continue", enabled: hasSave },
     { id: "new", label: "New game", enabled: true },
+    { id: "endless", label: "Endless", enabled: true },
     { id: "settings", label: "Settings", enabled: true },
     { id: "help", label: "Help", enabled: true },
   ];

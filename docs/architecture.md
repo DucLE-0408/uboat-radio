@@ -142,3 +142,15 @@ The spec is `docs/specs/desk-ui-g3/` (approved 2026-11-04). Unlike G1/G2 it chan
 - **Plugboard.** `decipherCopy`/`Watch.decipher` accept the plugboard the player wired (`validPlugboard`); the desk machine, the sender id and Output all use it. The day plugboard is printed on the Orders; omitting the argument keeps P5/classic unchanged.
 - **Save.** Still v2: the new commands are additive in the command log; `parseCommand` validates them; citations and lost items are rebuilt from the event log.
 - **Limit.** The client reports the facts, so a modified client can under-report (accepted, spec R7.4).
+
+### G4: Endless, modules, replies, private notes, roster (`packages/sim-core`, desk, menu)
+
+The spec is `docs/specs/desk-ui-g4/` (approved 2026-11-05). All G4 behaviour exists only when `Watch` is built with `WatchOptions`; without them the night watch is bit-identical to before.
+
+- **Options and save.** `WatchOptions { mode, modules (timer, rotors, stamps, signatures, cables, teletyper), difficulty }`, validated by `parseOptions`. Modules are independent of difficulty. A watch with options saves as v3 `{opts, seed, untilTick, commands}`; without options it stays v2; v2 and v3 are both read. The menu stores the last Endless setup under `uboat-radio.endless.v1` and high scores under `uboat-radio.endless.scores.v1` (per difficulty and module set), neither part of the save.
+- **Endless.** `endless.ts` gives gap, forged probability and deadline per difficulty from `balance.json` `endless`; the generator draws from `derive(seed, "endless", n)`. More than `maxPending` unresolved messages drops the oldest (`MSG_LOST`). It ends only by sinking or `leave` (`WATCH_END "left"`); the fifth citation stays at "severe" instead of executing.
+- **Modules in the sim.** `signatures` off prints no paper profile; `stamps` off stops judging sheets, stamps and records (timeouts and bad sends still count); `timer` is the module in Endless. `rotors`, `cables` and `teletyper` change only the desk (self-set machine, day plugboard, instant printing). The classic tells still guarantee one tell per forgery (D8, tested over all module sets).
+- **Replies.** `MSG_RX.reply` says whether HQ wants an acknowledgement ("ACK" + callsign) or a position (two map-cell letters). The desk Outbox enciphers with the player's own machine setting (`encipherGroups`), `send` is checked by the sim with the day key, airtime goes through `startTx` (HF/DF, Intel, antenna rules), and `SEND_RESULT` pays Ration or a `badSend` citation.
+- **Private notes and roster.** `pm.ts` emits only who, tone and topic (spaced at least 240 s, at most 6 per 30 minutes); the texts live in `desk/pmtext.ts`. The roster (`roster.ts`, 40 invented names) replaces the fixed crew names; a badly hit hull makes one member absent and their scenes and notes go to the next one.
+- **Presentation.** Outbox, Notes and Roster are TEMPORARY DOM panels on the existing desk style, not new paper sheets. Thrown-away notes are remembered in `desk.v1` (`gone`).
+

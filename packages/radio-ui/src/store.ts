@@ -23,6 +23,8 @@ export interface RxView {
   readonly sentAtMin: number;
   readonly txFist: Fist;
   readonly dfBearingDeg: number;
+  /** G4: which reply HQ asks for (undefined in the night watch). */
+  readonly reply?: "ack" | "position";
   readonly attempts: AttemptView[];
   readonly copy: Map<number, string>;
   readonly analysis: Map<number, Analysis>;
@@ -61,6 +63,8 @@ export interface UiState {
   ended: "time" | "sunk" | "executed" | "left" | null;
   /** G4 observations rebuilt from the event log: replies read by HQ, private notes, crew absence, messages dropped. */
   sendResults: Map<number, boolean>;
+  /** Replies HQ could read, counted over the whole watch (a message may be answered more than once). */
+  sendOk: number;
   privateNotes: { tSec: number; fromRole: string; tone: string; topic: string; rxId: number | null }[];
   absentRole: string | null;
   lost: Set<number>;
@@ -88,7 +92,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), privateNotes: [], absentRole: null, lost: new Set<number>(),
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -219,6 +223,7 @@ export class Store {
         break;
       case "SEND_RESULT":
         st.sendResults.set(e.rxId, e.ok);
+        if (e.ok) st.sendOk++;
         this.log(e.tSec, "info", `Reply for #${e.rxId}: ${e.ok ? "read by HQ" : "unreadable"}`);
         this.mark("ui", "log");
         break;
@@ -254,7 +259,7 @@ export class Store {
     let rx = st.rx.get(e.rxId);
     if (!rx) {
       rx = {
-        rxId: e.rxId, from: e.from, net: e.net, sentAtMin: e.sentAtMin, txFist: e.txFist, dfBearingDeg: e.dfBearingDeg,
+        rxId: e.rxId, from: e.from, net: e.net, sentAtMin: e.sentAtMin, txFist: e.txFist, dfBearingDeg: e.dfBearingDeg, ...(e.reply ? { reply: e.reply } : {}),
         attempts: [], copy: new Map(), analysis: new Map(), challenge: null, resolved: null, unread: true,
       };
       st.rx.set(e.rxId, rx);

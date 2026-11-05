@@ -55,6 +55,13 @@ export function penalize(s: RationState, citations: number): RationState {
   return { score: Math.max(-SCORE_LIM, s.score - CITATION_PENALTY * citations), scored: s.scored, bonus: s.bonus };
 }
 
+/** G4: a reply HQ could read pays rations (the sim reports it; the score stays the desk's). */
+export const SEND_REWARD = 20;
+export function reward(s: RationState, n: number): RationState {
+  if (n <= 0) return s;
+  return { score: Math.min(SCORE_LIM, s.score + SEND_REWARD * n), scored: s.scored, bonus: s.bonus };
+}
+
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
 /** Validates a stored ration (untrusted). Anything malformed yields the empty state; single bad entries are dropped. */

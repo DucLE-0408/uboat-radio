@@ -18,6 +18,8 @@ import { CopyPersistence, loadCopies } from "./sim/transcripts";
 import { Diag, mountDiagOverlay } from "./diag";
 import { registerServiceWorker } from "./pwa";
 import { mountMenu, type MenuChoice } from "./menu/menu";
+import { loadEndlessOptions } from "./menu/endless";
+import type { WatchOptions } from "@uboat/sim-core";
 import { defaultSettings, loadSettings, saveSettings, type Settings } from "./menu/settings";
 import { HELP } from "./input/keymap";
 import { clearCopies } from "./sim/transcripts";
@@ -71,17 +73,18 @@ const persistSettings = (s: Settings): void => {
 // ?seed=N (tests, shared links): resume a matching save or start that seed. ?play=new / ?play=continue skip the menu ("play again").
 // Otherwise the main menu decides.
 const play = params.get("play");
-const startNew = (seed: number | null): Session => {
+const modeParam = params.get("mode"); // ?mode=endless: an Endless watch with the last saved configuration (used by "play again")
+const startNew = (seed: number | null, opts?: WatchOptions): Session => {
   Session.clear(storage); clearCopies(storage);
-  return Session.fresh(seed ?? randomSeed(), storage, onStorageError);
+  return Session.fresh(seed ?? randomSeed(), storage, onStorageError, opts);
 };
 let restored: Session | null = null;
 let session: Session;
 if (seedParam !== null) {
   restored = Session.restore(storage, seedParam, onStorageError);
-  session = restored ?? Session.fresh(seedParam, storage, onStorageError);
+  session = restored ?? Session.fresh(seedParam, storage, onStorageError, modeParam === "endless" ? loadEndlessOptions(storage) : undefined);
 } else if (play === "new") {
-  session = startNew(null);
+  session = startNew(null, modeParam === "endless" ? loadEndlessOptions(storage) : undefined);
 } else if (play === "continue") {
   restored = Session.restore(storage, null, onStorageError);
   session = restored ?? startNew(null);
@@ -90,6 +93,8 @@ if (seedParam !== null) {
   if (choice.kind === "continue") {
     restored = Session.restore(storage, null, onStorageError);
     session = restored ?? startNew(null); // the save vanished or became invalid between the menu and now
+  } else if (choice.kind === "endless") {
+    session = startNew(choice.seed, choice.opts);
   } else {
     session = startNew(choice.seed);
   }

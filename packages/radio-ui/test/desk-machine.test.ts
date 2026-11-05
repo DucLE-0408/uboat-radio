@@ -118,7 +118,7 @@ describe("desk.v1 G2 fields, Obscura page, timer setting", () => {
   it("round-trips the machine and ration and rejects bad data", () => {
     const m = new PaperModel();
     const raw = m.serialize(5, { mach: { power: true, cover: false, pos: "QWER" }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
-    expect(parseExtra(raw, 5)).toEqual({ mach: { power: true, cover: false, pos: "QWER", plugs: [] }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } } });
+    expect(parseExtra(raw, 5)).toEqual({ mach: { power: true, cover: false, pos: "QWER", plugs: [] }, ration: { score: 9, scored: { "1:0": 4 }, bonus: { "1": 3 } }, gone: [] });
     expect(parseExtra(raw, 6).mach.pos).toBe("AAAA");                      // another watch
     expect(parseExtra(raw.replace("QWER", "qwer"), 5).mach.pos).toBe("AAAA");
     expect(parseExtra(raw.replace('"power":true,"cover":false', '"power":true,"cover":true'), 5).mach.power).toBe(false); // interlock survives storage
@@ -186,5 +186,17 @@ describe("G3 plugboard on the desk machine", () => {
     (h.hooks as { decodePlugs?: () => readonly string[] }).decodePlugs = () => [];
     h.ctl.handle({ t: "confirm" });
     expect(h.store.activeView()?.analysis.get(h.store.state.activeAttempt)?.plain).not.toBe(right);
+  });
+});
+
+describe("G4 thrown-away private notes in desk.v1", () => {
+  it("round-trip, are validated and bounded", () => {
+    const m = new PaperModel(), base = { mach: { power: false, cover: false, pos: "AAAA", plugs: [] as string[] }, ration: { score: 0, scored: {}, bonus: {} } };
+    const raw = m.serialize(5, { ...base, gone: ["120:citation", "480:badSend"] });
+    expect(parseExtra(raw, 5).gone).toEqual(["120:citation", "480:badSend"]);
+    expect(parseExtra(raw.replace("120:citation", "../../x"), 5).gone).toEqual(["480:badSend"]);
+    const many = Array.from({ length: 100 }, (_, i) => `${i}:citation`);
+    expect(parseExtra(m.serialize(5, { ...base, gone: many }), 5).gone).toHaveLength(60);
+    expect(parseExtra(m.serialize(5), 5).gone).toEqual([]);
   });
 });
