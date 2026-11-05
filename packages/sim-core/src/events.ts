@@ -29,7 +29,7 @@ export type SimEvent =
   /** G4: HQ read (or could not read) a reply the player sent. */
   | { readonly type: "SEND_RESULT"; readonly tSec: number; readonly rxId: number; readonly ok: boolean }
   /** G4: a crew member's private note. Who, tone and topic only; the words are the desk's. */
-  | { readonly type: "PRIVATE_MSG"; readonly tSec: number; readonly fromRole: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly tone: "remind" | "threat"; readonly topic: "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed" | "grounded"; readonly rxId: number | null }
+  | { readonly type: "PRIVATE_MSG"; readonly tSec: number; readonly fromRole: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly tone: "remind" | "threat"; readonly topic: "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed" | "grounded" | "bottomed"; readonly rxId: number | null }
   /** G5: the player accepted a movement order: the ordered cell and the deadline (sim seconds from now). */
   | { readonly type: "ORDER_ACCEPTED"; readonly tSec: number; readonly rxId: number; readonly grid: string; readonly deadlineSec: number }
   | { readonly type: "ORDER_REACHED"; readonly tSec: number; readonly rxId: number }
@@ -38,6 +38,10 @@ export type SimEvent =
   | { readonly type: "COAST_WARNING"; readonly tSec: number; readonly distKm: number }
   /** G5: the boat ran aground; it is held at the coast, hull damage follows as BOAT_DAMAGED. */
   | { readonly type: "BOAT_GROUNDED"; readonly tSec: number }
+  /** G5: the water under the keel is getting thin (true seabed; the chart shows the surveyed depth). */
+  | { readonly type: "SHOAL_WARNING"; readonly tSec: number; readonly underKeelM: number }
+  /** G5: the keel touched the bottom: hull damage follows as BOAT_DAMAGED and the boat is forced up. */
+  | { readonly type: "BOAT_BOTTOMED"; readonly tSec: number }
   | { readonly type: "ROSTER_CHANGE"; readonly tSec: number; readonly role: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly present: boolean }
   | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" | "left" };
 
