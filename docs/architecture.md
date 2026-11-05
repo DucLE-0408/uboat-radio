@@ -163,3 +163,7 @@ The spec is `docs/specs/desk-ui-g5/` (approved 2026-11-05).
 - **Helm.** A full-frame overlay (button HELM on the ship panel, Esc closes) holds the chart (three zoom levels, `AB12` references, estimate with error circle, trail, ordered cell with arrival ring and deadline, safe and resupply points still on the Orders, click to order a course), a compass, a draggable wheel and heading nudges, speed and surface/periscope/dive controls. It reuses `steerHeading`, `steerSpeed` and `setMode`; no new sim command. The dive lever and speed buttons are hidden on the radio desk.
 - **Save.** Unchanged (v3); `parseOptions` treats a missing `map` as on. Score labels carry 7 module bits; older 6-bit labels still load.
 
+### G5 addendum: coast collision (`docs/specs/desk-ui-g5/coast.md`)
+
+With options, `Watch.checkCoast` compares the TRUE position with the coast (`coastKm`, the first land column): `COAST_WARNING` within 10 km, then `BOAT_GROUNDED` on contact (the boat is held at the shore with its way lost but its ordered speed kept, hull -25 through `BOAT_DAMAGED`, Intel up one level, a note from the chief; one grounding per episode, which ends 1 km off). Endless starts 40 km off the coast; Orders points and ordered cells keep their margins from it; the plain night watch is unchanged. The Helm colours the coast line red near it and shows the estimated distance; the desk takes 20 rations per grounding.
+

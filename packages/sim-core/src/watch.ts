@@ -13,7 +13,7 @@ import {
   type DayOrder, type DisposeHow, type OrderItem, type PaperAction, type PaperFault, type PaperObservable, type PaperOrders, type PaperTell, type PaperTruth,
 } from "./paper";
 import {
-  generateForgery, generateGenuine, gridToPos, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
+  coastKm, generateForgery, generateGenuine, gridToPos, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
 } from "./messages";
 import { applyNoise } from "./morse";
 import { deadlineSec, forgedProbability, gapSec } from "./endless";
@@ -129,6 +129,9 @@ export class Watch {
   private readonly pmSent: number[] = [];
   private longTxSeen = 0;
   private pendingSends = 0;
+  private readonly origin: { readonly x: number; readonly y: number }; // world km of the boat's start (Endless starts near the coast)
+  private aground = false;
+  private coastWarned = false;
   // G5: the active movement order and dead-reckoning (the sim knows the true position; players only get `navFix()`)
   private order: { readonly rxId: number; readonly target: { readonly x: number; readonly y: number }; readonly deadlineAt: number } | null = null;
   private readonly driftRng: Rng;
@@ -140,6 +143,7 @@ export class Watch {
 
   constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE, opts?: WatchOptions) {
     this.opts = opts;
+    this.origin = opts !== undefined ? { x: coastKm(b) - b.coast.endlessStartKm, y: b.watch.originKm.y } : b.watch.originKm; // the plain night watch keeps its start
     this.g4 = opts !== undefined;
     this.endless = opts?.mode === "endless";
     this.timerOn = this.endless && opts?.modules.timer === true;
@@ -157,7 +161,7 @@ export class Watch {
     this.asdicRng = derive(seed, "asdic");
     this.challengeRng = derive(seed, "challenge");
     this.orders = paperOrders(seed, this.callsigns);
-    this.items = orderItems(seed, b);
+    this.items = orderItems(seed, b, opts !== undefined ? { originX: this.origin.x, maxX: coastKm(b) - b.coast.itemMarginKm } : undefined);
     this.lossQueue = lossOrder(seed, this.items);
 
     this.bus.subscribe((e) => {
@@ -196,7 +200,7 @@ export class Watch {
   worldCtx(): WorldCtx {
     const s = this.boat.state();
     return {
-      ownPos: { x: this.b.watch.originKm.x + s.x / 1000, y: this.b.watch.originKm.y + s.y / 1000 },
+      ownPos: { x: this.origin.x + s.x / 1000, y: this.origin.y + s.y / 1000 },
       nowMin: this.b.watch.startMin + this.tSec / 60,
       knownFists: this.knownFists,
       callsigns: this.callsigns,
@@ -281,6 +285,7 @@ export class Watch {
 
     this.boat.tick(DT);
     this.deadReckon();
+    this.checkCoast(t);
     this.checkOrder(t);
 
     const radio = this.boat.radio();
@@ -431,7 +436,7 @@ export class Watch {
   // ---------------------------------------------------------------- G5: movement orders and dead-reckoning
 
   /** Where the boat is (world km) and where the player's navigation estimates it to be; the true position stays here. */
-  private trueKm(): { x: number; y: number } { const s = this.boat.state(); return { x: this.b.watch.originKm.x + s.x / 1000, y: this.b.watch.originKm.y + s.y / 1000 }; }
+  private trueKm(): { x: number; y: number } { const s = this.boat.state(); return { x: this.origin.x + s.x / 1000, y: this.origin.y + s.y / 1000 }; }
 
   /** Drift grows with distance sailed: a small seeded random walk added to the true position (no stream is touched while the boat stands still). */
   private deadReckon(): void {
@@ -448,6 +453,29 @@ export class Watch {
   navFix(): { readonly xKm: number; readonly yKm: number; readonly errKm: number; readonly headingDeg: number } {
     const t = this.trueKm(), s = this.boat.state();
     return { xKm: t.x + this.driftXm / 1000, yKm: t.y + this.driftYm / 1000, errKm: this.b.nav.baseErrKm + this.b.nav.driftPerKm * (this.travelM / 1000), headingDeg: s.headingDeg };
+  }
+
+  /** World km of the boat's start: the chart and the Orders items are offsets from here. */
+  originKm(): { readonly x: number; readonly y: number } { return this.origin; }
+
+  /** The coast rule (Endless only): a warning near the land, then running aground (held at the shore, hull damage, Intel up, a note from the chief). */
+  private checkCoast(t: number): void {
+    if (!this.g4 || this.ended) return;
+    const edge = coastKm(this.b), dist = edge - this.trueKm().x;
+    if (dist <= 0) {
+      this.boat.hold((edge - this.origin.x) * 1000 - 1);
+      if (!this.aground) {
+        this.aground = true;
+        this.emit({ type: "BOAT_GROUNDED", tSec: t });
+        this.boat.takeDamage(this.b.coast.groundHull, t);
+        this.intel.mark(); this.syncIntel(t); // grinding on the rocks is heard far and wide
+        this.pm("grounded", null);
+      }
+      return;
+    }
+    if (this.aground && dist > this.b.coast.clearKm) this.aground = false;
+    if (dist <= this.b.coast.warnKm) { if (!this.coastWarned) { this.coastWarned = true; this.emit({ type: "COAST_WARNING", tSec: t, distKm: Math.round(dist * 10) / 10 }); } }
+    else if (dist > this.b.coast.warnKm + 5) this.coastWarned = false; // hysteresis: warn again on the next approach
   }
 
   private takeOrder(rxId: number, mv: { readonly grid: string; readonly minutes: number }): void {

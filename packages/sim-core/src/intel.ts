@@ -48,7 +48,7 @@ export class Intel {
   /** "Marked" by the enemy (G3 citation): jump to the next Intel threshold, or add the pattern bonus at the top level. */
   mark(): void {
     const next = this.b.intel.thresholds[this.level];
-    if (next !== undefined) this.score = Math.max(this.score, next);
+    if (next !== undefined) this.score = Math.max(this.score, next + 5); // a little above the threshold so the new level is not decayed away at once
     else this.score += this.b.intel.repeatedPattern;
   }
 

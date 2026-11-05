@@ -2,7 +2,7 @@
 // tin nào đúng hay giả, chỉ nói về hành vi quan sát được của người chơi (D4).
 import type { Lang } from "../i18n";
 
-export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed";
+export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed" | "grounded";
 export type PmTone = "remind" | "threat";
 
 const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, readonly string[]>>>>>> = {
@@ -22,6 +22,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Something changed out there. Stay sharp.", "I do not like the silence. Watch your instruments."],
       threat: ["They have us. If this is your doing, I will remember it.", "Whatever you sent, they heard. Brace."],
+    },
+    grounded: {
+      remind: ["We touched bottom. The hull held, but check your chart before the next run at the coast.", "That scraping was the keel on rock. Keep us off the shore."],
+      threat: ["You put us on the rocks, operator. The whole coast heard it. Not again.", "Every plate groaned. Whoever plotted that course answers to me."],
     },
     orderFailed: {
       remind: ["We missed the position HQ ordered. The supply point is gone with it.", "The deadline passed with us still at sea. Plan the next leg better."],
@@ -48,6 +52,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Ngoài kia có gì đó khác rồi. Tỉnh táo vào.", "Tôi không thích sự im lặng này. Để mắt tới thiết bị."],
       threat: ["Chúng biết chỗ ta. Nếu là do cậu, tôi sẽ nhớ.", "Cậu phát cái gì thì chúng nghe cái đó. Bám chắc vào."],
+    },
+    grounded: {
+      remind: ["Ta vừa chạm đáy. Thân tàu còn chịu được, nhưng xem lại hải đồ trước khi sát bờ lần nữa.", "Tiếng cào đó là sống tàu trên đá. Giữ ta tránh xa bờ."],
+      threat: ["Cậu đưa ta lên đá rồi, điện báo viên. Cả bờ biển nghe thấy. Đừng để lặp lại.", "Từng tấm thép rên lên. Ai vạch đường đó thì trả lời với tôi."],
     },
     orderFailed: {
       remind: ["Ta trễ vị trí HQ ra lệnh. Điểm tiếp tế mất theo luôn.", "Quá hạn mà tàu vẫn ngoài khơi. Lần sau tính đường cho kỹ."],

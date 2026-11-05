@@ -52,6 +52,8 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G5: the coast (the land columns on the east edge): warning distance, hull damage on grounding, how far off it Endless starts, margins for ordered cells and Orders items. */
+  readonly coast: { readonly warnKm: number; readonly groundHull: number; readonly clearKm: number; readonly endlessStartKm: number; readonly moveMarginKm: number; readonly itemMarginKm: number };
   /** G5: movement orders (distance to the ordered cell, deadline arithmetic, arrival radius) and dead-reckoning drift. */
   readonly move: { readonly chance: number; readonly minKm: number; readonly maxKm: number; readonly assumedKn: number; readonly marginFactor: number; readonly arriveKm: number };
   readonly nav: { readonly driftPerKm: number; readonly baseErrKm: number };
