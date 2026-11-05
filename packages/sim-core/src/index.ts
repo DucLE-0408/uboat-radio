@@ -17,3 +17,4 @@ export * from "./roster";
 export * from "./pm";
 export * from "./send";
 export * from "./watch";
+export * from "./simversion";

@@ -1,5 +1,5 @@
 // Session = Watch + save file. Vietnamese: save/load CHỈ là seed + commandLog + untilTick; khôi phục bằng replay(). Bản chép dở lưu RIÊNG (transcripts.ts).
-import { parseOptions, replay, Watch, type Command, type LoggedCommand, type PaperAction, type WatchOptions } from "@uboat/sim-core";
+import { parseOptions, replay, SIM_VERSION, Watch, type Command, type LoggedCommand, type PaperAction, type WatchOptions } from "@uboat/sim-core";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -11,6 +11,8 @@ export interface SaveFile {
   /** 2 = night watch (no options); 3 = G4 watch with options (Endless, modules, difficulty). Both are read; v2 is still written when there are no options. */
   readonly v: 2 | 3;
   readonly opts?: WatchOptions;
+  /** Behaviour version of the sim that wrote the save (SIM_VERSION). Absent in saves from before it existed: those are read as the current one. A different value is never replayed. */
+  readonly sim?: number;
   readonly seed: number;
   readonly untilTick: number;
   readonly commands: readonly LoggedCommand[];
@@ -89,6 +91,8 @@ export function parseSave(raw: string | null): SaveFile | null {
   const until = ver === 2 || ver === 3 ? o["untilTick"] : ver === 1 ? o["tick"] : undefined;
   const opts = ver === 3 ? parseOptions(o["opts"]) : null;
   if ((ver !== 1 && ver !== 2 && ver !== 3) || (ver === 3 && opts === null) || !isSeed(o["seed"]) || !isInt(until) || until > MAX_TICK || !Array.isArray(o["commands"]) || o["commands"].length > MAX_COMMANDS) return null;
+  const simRaw = o["sim"];
+  if (simRaw !== undefined && !isInt(simRaw)) return null;
   const commands: LoggedCommand[] = [];
   let prev = 0;
   for (const e of o["commands"] as unknown[]) {
@@ -100,8 +104,12 @@ export function parseSave(raw: string | null): SaveFile | null {
     commands.push({ tick: r["tick"], cmd });
   }
   if (prev > until) return null;
-  return opts !== null ? { v: 3, opts, seed: o["seed"], untilTick: until, commands } : { v: 2, seed: o["seed"], untilTick: until, commands };
+  const sim = simRaw === undefined ? {} : { sim: simRaw };
+  return opts !== null ? { v: 3, opts, ...sim, seed: o["seed"], untilTick: until, commands } : { v: 2, ...sim, seed: o["seed"], untilTick: until, commands };
 }
+
+/** A save written by a different simulation version replays into a different game, so it is not loaded (and never rewritten). */
+export const isCompatible = (s: SaveFile): boolean => s.sim === undefined || s.sim === SIM_VERSION;
 
 export class Session {
   private storageFailed = false;
@@ -127,7 +135,7 @@ export class Session {
     try {
       save = parseSave(storage?.getItem(SAVE_KEY) ?? null) ?? parseSave(storage?.getItem(LEGACY_SAVE_KEY) ?? null);
     } catch (e) { onStorageError(e); return null; }
-    if (save === null || (wantedSeed !== null && save.seed !== wantedSeed)) return null;
+    if (save === null || !isCompatible(save) || (wantedSeed !== null && save.seed !== wantedSeed)) return null;
     const s = new Session(save.seed, replay(save.seed, save.commands, save.untilTick, undefined, save.opts), storage, onStorageError, save.opts);
     s.save(); // persists in v2 form (migrates a legacy save) and drops the v1 key
     return s;
@@ -147,8 +155,8 @@ export class Session {
 
   toSave(): SaveFile {
     return this.opts === undefined
-      ? { v: 2, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() }
-      : { v: 3, opts: this.opts, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() };
+      ? { v: 2, sim: SIM_VERSION, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() }
+      : { v: 3, opts: this.opts, sim: SIM_VERSION, seed: this.seed, untilTick: this.watch.tickCount, commands: this.watch.commandLog() };
   }
 
   save(): void {
