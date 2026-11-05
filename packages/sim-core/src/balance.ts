@@ -52,6 +52,12 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G6: enemy radar. Patrol windows (a pure function of the seed) during which a surfaced boat may be picked up; sea clutter hides us, the enemy improves with the hours; the Metox receiver warns before a window with probability `metoxReliability`. */
+  readonly radar: {
+    readonly windowCount: number; readonly firstGapSec: number; readonly windowSec: Range; readonly gapSec: Range; readonly warnLeadSec: Range;
+    readonly metoxReliability: number; readonly hazardPerSecSurface: number; readonly periscopeFactor: number; readonly seaMinFactor: number;
+    readonly eraGrowthPerHour: number; readonly eraCap: number; readonly reactSec: Range; readonly etaSec: Range;
+  };
   /** G6: weather as a function of time (visibility, wind), the bridge report cadence, and visual sighting by escorts (hazard scales with visibility and exposure). */
   readonly weather: {
     readonly knotSec: number; readonly knotCount: number; readonly minVisKm: number; readonly maxVisKm: number; readonly visSkew: number;

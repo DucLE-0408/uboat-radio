@@ -45,6 +45,9 @@ export type SimEvent =
   /** G5: a depth charge burst near the boat over a shallow bottom (only watches with options): where, whether the bottom threw the blast back, and whether it was close enough to hurt. */
   | { readonly type: "CHARGE_EFFECT"; readonly tSec: number; readonly dropM: number; readonly shallow: boolean; readonly reflected: boolean; readonly hit: boolean }
   | { readonly type: "WEATHER_REPORT"; readonly tSec: number; readonly visKm: number; readonly windDeg: number; readonly force: number; readonly seaState: number }
+  | { readonly type: "RADAR_WARNING"; readonly tSec: number }
+  | { readonly type: "RADAR_CLEAR"; readonly tSec: number }
+  | { readonly type: "RADAR_DETECTED"; readonly tSec: number }
   | { readonly type: "SIGHTED"; readonly tSec: number; readonly visKm: number }
   | { readonly type: "ROSTER_CHANGE"; readonly tSec: number; readonly role: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly present: boolean }
   | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" | "left" };

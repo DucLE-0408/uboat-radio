@@ -7,7 +7,7 @@ import type { SimEvent } from "../src/events";
 
 const ev = <T extends SimEvent["type"]>(w: Watch, type: T): Extract<SimEvent, { type: T }>[] =>
   w.bus.getLog().filter((e): e is Extract<SimEvent, { type: T }> => e.type === type);
-const opts: WatchOptions = { ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, weather: false } };
+const opts: WatchOptions = { ...defaultOptions("endless"), modules: { ...ALL_MODULES, timer: false, weather: false, radar: false } };
 
 describe("chargeEffect", () => {
   it("deep water keeps the legacy pattern depth; shallow water caps it above the floor", () => {

@@ -82,7 +82,7 @@ describe("endless", () => {
 
 describe("modules", () => {
   it("signatures off: nothing printed on the paper, and forged messages still carry a tell (D8) for every module set, difficulty and seed", () => {
-    const sets: ModuleSet[] = [ALL_MODULES, { ...ALL_MODULES, signatures: false }, { ...ALL_MODULES, stamps: false, signatures: false }, { timer: false, rotors: false, stamps: false, signatures: false, cables: false, teletyper: false, map: false, weather: false }];
+    const sets: ModuleSet[] = [ALL_MODULES, { ...ALL_MODULES, signatures: false }, { ...ALL_MODULES, stamps: false, signatures: false }, { timer: false, rotors: false, stamps: false, signatures: false, cables: false, teletyper: false, map: false, weather: false, radar: false }];
     for (const modules of sets) for (const difficulty of DIFFICULTIES) for (let seed = 1; seed <= 25; seed++) {
       const w = new Watch(seed, BALANCE, { mode: "endless", modules, difficulty }); w.runUntil(1500);
       const rxs = ev(w, "MSG_RX").filter((e) => e.attempt === 0);

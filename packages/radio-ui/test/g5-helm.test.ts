@@ -74,4 +74,11 @@ describe("seabed events in the store and ration", () => {
     rebuildStore(s, [ev({ type: "WEATHER_REPORT", tSec: 0, visKm: 12, windDeg: 90, force: 3, seaState: 3 }), ev({ type: "WEATHER_REPORT", tSec: 600, visKm: 4, windDeg: 100, force: 5, seaState: 4 }), ev({ type: "SIGHTED", tSec: 700, visKm: 5 })], [], 800);
     expect(s.state.weather).toEqual({ tSec: 600, visKm: 4, windDeg: 100, force: 5, seaState: 4 }); expect(s.state.sightedAt).toBe(700);
   });
+  it("keeps the Metox warning and clear times; the radar is active while the warning is newer", () => {
+    const s = new Store();
+    rebuildStore(s, [ev({ type: "RADAR_WARNING", tSec: 1800 })], [], 1900);
+    expect(s.state.radarWarnAt).toBe(1800); expect(s.state.radarClearAt).toBe(-1e9);
+    rebuildStore(s, [ev({ type: "RADAR_WARNING", tSec: 1800 }), ev({ type: "RADAR_CLEAR", tSec: 2100 })], [], 2200);
+    expect(s.state.radarClearAt).toBe(2100); expect(s.state.radarWarnAt > s.state.radarClearAt).toBe(false);
+  });
 });

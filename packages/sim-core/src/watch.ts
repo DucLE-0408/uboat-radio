@@ -23,6 +23,7 @@ import { chargeEffect, makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
+import { makeRadar, radarEra, radarSeaFactor, type Radar } from "./radar";
 import { clearness, makeWeather, seaSpeedFactor, type Weather } from "./weather";
 import { SonarField, type Track } from "./sonar";
 import {
@@ -127,6 +128,9 @@ export class Watch {
   private readonly g4: boolean; // G4 features (sending, Private Messages, roster) exist only when options were given: no options = the night watch as before
   private readonly endless: boolean;
   private readonly weather: Weather | null; // G6: only with options and the weather module
+  private readonly radar: Radar | null; // G6: only with options and the radar module
+  private readonly radarRng: Rng;
+  private radarWarned: number | null = null; // cycle * 1000 + window index of the window the Metox has announced and not yet cleared
   private readonly sightRng: Rng;
   private readonly reportRng: Rng;
   private nextReportSec = 0;
@@ -156,6 +160,8 @@ export class Watch {
     this.seabed = opts !== undefined ? makeSeabed(seed, b, this.origin) : null; // the sea floor exists only for watches with options
     this.g4 = opts !== undefined;
     this.weather = opts !== undefined && opts.modules.weather ? makeWeather(seed, b) : null;
+    this.radar = opts !== undefined && opts.modules.radar ? makeRadar(seed, b) : null;
+    this.radarRng = derive(seed, "radarhit");
     this.sightRng = derive(seed, "sight");
     this.reportRng = derive(seed, "wxreport");
     this.endless = opts?.mode === "endless";
@@ -307,6 +313,7 @@ export class Watch {
     this.checkCoast(t);
     this.checkSeabed(t);
     this.checkWeather(t);
+    this.checkRadar(t);
     this.checkOrder(t);
 
     const radio = this.boat.radio();
@@ -500,6 +507,22 @@ export class Watch {
     if (expo <= 0) return;
     const h = w.sightHazardPerSecClear * clearness(this.b, s.visKm) * expo * (1 + this.b.detection.intelHazardStep * this.intel.level);
     if (this.sightRng.chance(1 - Math.exp(-h * DT)) && this.det.visualContact(w.reactSec, w.etaSec)) this.bus.emit({ type: "SIGHTED", tSec: t, visKm: Math.round(s.visKm) });
+  }
+
+  /** G6: enemy radar patrols. The Metox warns (usually) before a window; during one a surfaced boat may be picked up unannounced, which sends an escort. */
+  private checkRadar(t: number): void {
+    const rd = this.radar;
+    if (rd === null) return;
+    const w = this.b.radar, depth = this.boat.state().depthM, seen = depth <= this.b.boat.periscopeDepthM + 1; // the mast must be up to hear the Metox
+    const cur = rd.at(t), key = cur === null ? null : cur.cycle * 1000 + cur.index;
+    if (this.radarWarned !== null && key !== this.radarWarned) { this.bus.emit({ type: "RADAR_CLEAR", tSec: t }); this.radarWarned = null; }
+    if (cur === null) return;
+    if (cur.window.warnAt !== null && t >= cur.window.warnAt && seen && this.radarWarned !== key) { this.bus.emit({ type: "RADAR_WARNING", tSec: t }); this.radarWarned = key; }
+    if (!cur.active) return;
+    const expo = depth < 0.5 ? 1 : seen ? w.periscopeFactor : 0;
+    if (expo <= 0) return;
+    const h = w.hazardPerSecSurface * expo * radarSeaFactor(this.b, this.seaNow()) * radarEra(this.b, t);
+    if (this.radarRng.chance(1 - Math.exp(-h * DT)) && this.det.visualContact(w.reactSec, w.etaSec)) this.bus.emit({ type: "RADAR_DETECTED", tSec: t });
   }
 
   private checkSeabed(t: number): void {
