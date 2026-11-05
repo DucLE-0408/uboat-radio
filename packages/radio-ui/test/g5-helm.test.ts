@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { posToGrid, gridToPos, type SimEvent } from "@uboat/sim-core";
 import { angDelta, bearingTo, parseGrid, ZOOM_KM } from "../src/desk/helm";
-import { adjust, MOVE_PENALTY, MOVE_REWARD, RATION_EMPTY } from "../src/desk/ration";
+import { adjust, GROUND_PENALTY, MOVE_PENALTY, MOVE_REWARD, RATION_EMPTY } from "../src/desk/ration";
 import { rebuildStore, Store } from "../src/store";
 
 describe("helm geometry", () => {
@@ -40,5 +40,17 @@ describe("movement orders in the store and ration", () => {
     expect(adjust(RATION_EMPTY, MOVE_REWARD).score).toBe(MOVE_REWARD);
     expect(adjust(RATION_EMPTY, -MOVE_PENALTY).score).toBe(-MOVE_PENALTY);
     expect(adjust(RATION_EMPTY, 0)).toBe(RATION_EMPTY);
+  });
+});
+
+describe("coast events in the store and ration", () => {
+  const ev = (e: Partial<SimEvent> & { type: SimEvent["type"] }): SimEvent => e as SimEvent;
+  it("rebuilds the last coast warning and the number of groundings from the log", () => {
+    const s = new Store();
+    rebuildStore(s, [ev({ type: "COAST_WARNING", tSec: 4000, distKm: 9.8 }), ev({ type: "BOAT_GROUNDED", tSec: 4300 }), ev({ type: "BOAT_GROUNDED", tSec: 9000 })], [], 9100);
+    expect(s.state.coastWarnAt).toBe(4000); expect(s.state.groundings).toBe(2);
+  });
+  it("running aground costs rations", () => {
+    expect(adjust(RATION_EMPTY, -GROUND_PENALTY).score).toBe(-GROUND_PENALTY);
   });
 });

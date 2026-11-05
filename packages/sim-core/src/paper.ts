@@ -73,12 +73,14 @@ export interface OrderItem {
 }
 
 /** The "important information" printed on the Daily Orders: safe coordinates and resupply points. Seed-derived. */
-export function orderItems(seed: number | string, b: Balance): OrderItem[] {
+export function orderItems(seed: number | string, b: Balance, within?: { readonly originX: number; readonly maxX: number }): OrderItem[] {
   const r = derive(seed, "paper", "items");
   const items: OrderItem[] = [];
   const mk = (kind: OrderItemKind, n: number): void => {
     for (let i = 0; i < n; i++) {
-      const xKm = Math.round((r.next() * 2 - 1) * b.paper.items.rangeKm), yKm = Math.round((r.next() * 2 - 1) * b.paper.items.rangeKm);
+      let xKm = Math.round((r.next() * 2 - 1) * b.paper.items.rangeKm);
+      const yKm = Math.round((r.next() * 2 - 1) * b.paper.items.rangeKm);
+      if (within !== undefined && within.originX + xKm > within.maxX) xKm = Math.floor(within.maxX - within.originX); // an Endless start sits near the coast: keep the points at sea
       items.push({ id: `${kind === "safeCoords" ? "safe" : "supply"}${i + 1}`, kind, xKm, yKm });
     }
   };

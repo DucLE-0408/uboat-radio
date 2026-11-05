@@ -153,6 +153,24 @@ export class Boat {
     }
   }
 
+  /** Held at the coast (G5): the boat cannot go east of `xM` and loses all way; the player must turn away and give speed again. */
+  hold(xM: number): void {
+    if (this.sunk) return;
+    if (this.x > xM) this.x = xM;
+    this.speed = 0; // the ordered speed stays: the boat is free again as soon as the heading points away from the land
+  }
+
+  /** Hull damage from something other than a depth charge (running aground). */
+  takeDamage(amount: number, tSec: number): void {
+    if (this.sunk) return;
+    this.hull = Math.max(0, this.hull - amount);
+    this.bus.emit({ type: "BOAT_DAMAGED", tSec, hull: this.hull });
+    if (this.hull <= 0) {
+      this.sunk = true;
+      this.bus.emit({ type: "BOAT_SUNK", tSec });
+    }
+  }
+
   // Damage falls off linearly with the depth gap to the pattern; outside the lethal radius it misses.
   private takeDepthCharge(tSec: number): void {
     const d = this.b.boat;

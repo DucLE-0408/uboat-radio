@@ -1,6 +1,6 @@
 // Helm screen (G5): chart, compass, wheel, speed and depth controls, taken off the radio desk. Presentation only: the position it
 // shows is the navigator's ESTIMATE (Watch.navFix), steering goes through the existing Actions (D3: no true position, no enemy).
-import { BALANCE, posToGrid } from "@uboat/sim-core";
+import { BALANCE, coastKm, posToGrid } from "@uboat/sim-core";
 import type { Ctx } from "../ctx";
 import { h, setClass, setText } from "../dom";
 import { t } from "../i18n";
@@ -60,6 +60,8 @@ export function mountHelm(d: HelmDeps): Helm {
     const kids: SVGElement[] = [sv("rect", { x: 0, y: 0, width: CW, height: CH, fill: "#0e2a3a" })];
     const landX0 = (BALANCE.world.cols - BALANCE.world.landCols.length) * CELL; // land cells are the last columns
     kids.push(sv("rect", { x: X(landX0), y: Y(WORLD), width: Math.max(0, (WORLD - landX0) * k), height: WORLD * k, fill: "#3b4a35", opacity: 0.9 }));
+    const nearCoast = coastKm() - f.x <= BALANCE.coast.warnKm || store.state.tSec - store.state.coastWarnAt < 120; // the estimate says so, or the sim warned just now
+    kids.push(sv("line", { x1: X(landX0), y1: Y(WORLD), x2: X(landX0), y2: Y(0), stroke: nearCoast ? "#e06a72" : "#7d8f6a", "stroke-width": nearCoast ? 1.6 : 1 }));
     const step = zoom === 0 ? CELL / 9 : CELL, halfH = (CH / CW) * w / 2;
     const gx0 = Math.max(0, Math.floor((cx - w / 2) / step)), gx1 = Math.min(WORLD / step, Math.ceil((cx + w / 2) / step));
     const gy0 = Math.max(0, Math.floor((cy - halfH) / step)), gy1 = Math.min(WORLD / step, Math.ceil((cy + halfH) / step));
@@ -74,7 +76,7 @@ export function mountHelm(d: HelmDeps): Helm {
       for (let i = 0; i < BALANCE.world.cols; i++) kids.push(sv("text", { x: X((i + 0.5) * CELL), y: 8, "text-anchor": "middle", "font-size": 7, fill: "#6f9bb0" }, String.fromCharCode(65 + i)));
       for (let j = 0; j < BALANCE.world.rows; j++) kids.push(sv("text", { x: 3, y: Y((j + 0.5) * CELL) + 2, "font-size": 7, fill: "#6f9bb0" }, String.fromCharCode(65 + j)));
     }
-    const o = BALANCE.watch.originKm;
+    const o = watch.originKm();
     for (const it of d.items()) {
       const px = X(o.x + it.xKm), py = Y(o.y + it.yKm), safe = it.kind === "safeCoords";
       kids.push(sv("rect", { x: px - 3, y: py - 3, width: 6, height: 6, fill: safe ? "#6fbf8a" : "#d9b878" }), sv("text", { x: px + 5, y: py + 2, "font-size": 7, fill: safe ? "#6fbf8a" : "#d9b878" }, `${safe ? "S" : "R"}${it.n}`));
@@ -96,7 +98,8 @@ export function mountHelm(d: HelmDeps): Helm {
       sv("path", { d: "M0,-7 L4,5 L0,3 L-4,5 Z", fill: "#f3dfe1", transform: `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${f.hdg.toFixed(1)})` }));
     svg.replaceChildren(...(kids as unknown as Node[]));
     const grid = posToGrid({ x: f.x, y: f.y });
-    setText(posTxt, `${t("desk.helm.est")} ${grid ?? "—"} · ±${f.err.toFixed(1)} km`);
+    const toCoast = coastKm() - f.x;
+    setText(posTxt, `${t("desk.helm.est")} ${grid ?? "—"} · ±${f.err.toFixed(1)} km${toCoast < 200 ? ` · ${t("desk.helm.coast", { km: Math.max(0, toCoast).toFixed(0) })}` : ""}`);
     setText(zoomBtn, t("desk.helm.zoom", { km: String(ZOOM_KM[zoom]) }));
   };
   svg.addEventListener("click", (ev) => {

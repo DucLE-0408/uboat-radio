@@ -117,6 +117,9 @@ export function posToGrid(p: Vec, b: Balance = BALANCE): string | null {
   return String.fromCharCode(65 + col) + String.fromCharCode(65 + row) + dx + dy;
 }
 
+/** East edge of the land (world km): the first land column starts here. */
+export const coastKm = (b: Balance = BALANCE): number => Math.min(...b.world.landCols) * b.world.cellKm;
+
 /** A movement order from the boat's own position: an ocean sub-cell `minKm`-`maxKm` away and a deadline from the assumed cruising speed. Null when no ocean cell was found. */
 export function moveBrief(r: Rng, ownPos: Vec, b: Balance = BALANCE): MoveBrief | null {
   for (let i = 0; i < 24; i++) {
@@ -124,6 +127,7 @@ export function moveBrief(r: Rng, ownPos: Vec, b: Balance = BALANCE): MoveBrief 
     const grid = posToGrid({ x: ownPos.x + Math.sin(ang) * d, y: ownPos.y + Math.cos(ang) * d }, b);
     if (grid === null || isLandGrid(grid, b)) continue;
     const c = gridToPos(grid, b) as Vec, distKm = Math.hypot(c.x - ownPos.x, c.y - ownPos.y);
+    if (c.x > coastKm(b) - b.coast.moveMarginKm) continue; // never order the boat onto the coast
     return { grid, distKm, minutes: Math.max(5, Math.ceil((distKm / (b.move.assumedKn * 1.852)) * 60 * b.move.marginFactor)) };
   }
   return null;

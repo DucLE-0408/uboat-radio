@@ -64,6 +64,7 @@ export function reward(s: RationState, n: number): RationState {
 
 /** G5: reaching an ordered position pays, missing the deadline costs (the sim also takes a resupply point). */
 export const MOVE_REWARD = 30, MOVE_PENALTY = 25;
+export const GROUND_PENALTY = 20; // G5 coast: running aground costs rations (the sim takes hull and raises Intel)
 export function adjust(s: RationState, delta: number): RationState {
   if (delta === 0) return s;
   return { score: Math.max(-SCORE_LIM, Math.min(SCORE_LIM, s.score + delta)), scored: s.scored, bonus: s.bonus };

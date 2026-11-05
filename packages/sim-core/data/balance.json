@@ -348,5 +348,13 @@
   "nav": {
     "driftPerKm": 0.03,
     "baseErrKm": 0.3
+  },
+  "coast": {
+    "warnKm": 10,
+    "groundHull": 25,
+    "clearKm": 1,
+    "endlessStartKm": 40,
+    "moveMarginKm": 15,
+    "itemMarginKm": 5
   }
 }
