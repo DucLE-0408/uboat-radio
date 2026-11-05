@@ -11,6 +11,8 @@ export interface WeatherState {
   readonly force: number;
   /** Sea state 0..8, follows the wind. */
   readonly seaState: number;
+  /** The unrounded sea state (0..8) that drives speed. */
+  readonly sea: number;
 }
 
 export interface Weather { at(tSec: number): WeatherState }
@@ -23,7 +25,7 @@ export function makeWeather(seed: number | string, b: Balance): Weather {
   let d = r.next() * 360;
   for (let i = 0; i < n; i++) {
     vis.push(w.minVisKm + (w.maxVisKm - w.minVisKm) * Math.pow(r.next(), w.visSkew));
-    force.push(1 + (w.maxForce - 1) * Math.pow(r.next(), 1.3));
+    force.push(1 + (w.maxForce - 1) * Math.pow(r.next(), 2));
     d += (r.next() - 0.5) * w.windStepDeg; dir.push(d);
   }
   return {
@@ -35,11 +37,18 @@ export function makeWeather(seed: number | string, b: Balance): Weather {
         visKm: (vis[i] as number) + ((vis[j] as number) - (vis[i] as number)) * f,
         windDeg: (((dir[i] as number) + dd * f) % 360 + 360) % 360,
         force: fo,
+        sea: Math.min(8, fo * 0.9),
         seaState: Math.min(8, Math.round(fo * 0.9)),
       };
     },
   };
 }
+
+/** Share of the surfaced top speed the sea allows: 1 in a calm sea, `stormMinFactor` at sea state 8 (linear in between). */
+export const seaSpeedFactor = (b: Balance, seaState: number): number => {
+  const w = b.weather, x = Math.max(0, Math.min(1, (seaState - w.calmSeaState) / (8 - w.calmSeaState)));
+  return 1 - (1 - w.stormMinFactor) * x;
+};
 
 /** Escorts see a surfaced boat best in clear air: 0 in fog, 1 in the clearest weather. */
 export const clearness = (b: Balance, visKm: number): number => Math.max(0, Math.min(1, (visKm - b.weather.minVisKm) / (b.weather.maxVisKm - b.weather.minVisKm)));

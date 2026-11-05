@@ -369,6 +369,9 @@
     "reportNoise": 0.2,
     "sightHazardPerSecClear": 0.0002,
     "periscopeFactor": 0.25,
+    "calmSeaState": 3,
+    "stormMinFactor": 0.55,
+    "stormForce": 7,
     "reactSec": { "min": 60, "max": 180 },
     "etaSec": { "min": 240, "max": 600 }
   },

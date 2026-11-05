@@ -53,6 +53,8 @@ export class Boat {
   private targetSpeed = 0;
   private targetDepth = 0;
   private tSec = 0;
+  /** Set by the Watch from the sea state: 1 = calm; below 1 slows a surfaced boat fully and one at periscope depth by half (G6 storms). */
+  private seaFactor = 1;
   /** Set by the Watch when there is a seabed: where charges burst and how hard the bottom reflects them (the plain night watch leaves it null). */
   private chargeModel: ((depthM: number) => { dropM: number; mult: number; shallow: boolean }) | null = null;
 
@@ -75,6 +77,7 @@ export class Boat {
 
   // ---- commands (ignored once sunk) ----
   setHeading(deg: number): void { if (!this.sunk) this.targetHeading = wrap360(deg); }
+  setSeaFactor(f: number): void { this.seaFactor = Math.max(0, Math.min(1, f)); }
   setSpeed(kn: number): void { if (!this.sunk) this.targetSpeed = Math.max(0, kn); }
   setRadioSilence(on: boolean): void { if (!this.sunk) this.silence = on; }
 
@@ -132,7 +135,7 @@ export class Boat {
     }
 
     // speed is capped by mode (batteries when dived) and by acceleration
-    const cap = this.mode === "surface" ? d.maxSpeedSurfaceKn : d.maxSpeedDivedKn;
+    const cap = this.mode === "surface" ? d.maxSpeedSurfaceKn * this.seaFactor : this.mode === "periscope" ? d.maxSpeedDivedKn * (1 - (1 - this.seaFactor) / 2) : d.maxSpeedDivedKn;
     const goal = Math.min(this.targetSpeed, cap);
     const dv = d.accelKnPerSec * dtSec;
     this.speed = this.speed < goal ? Math.min(goal, this.speed + dv) : Math.max(goal, this.speed - dv);

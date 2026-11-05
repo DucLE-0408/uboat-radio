@@ -23,7 +23,7 @@ import { chargeEffect, makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
-import { clearness, makeWeather, type Weather } from "./weather";
+import { clearness, makeWeather, seaSpeedFactor, type Weather } from "./weather";
 import { SonarField, type Track } from "./sonar";
 import {
   assessTells, buildTransmission, checkLetterMatches, copyFromTokens, decipherCopy, messageIndicator,
@@ -298,6 +298,7 @@ export class Watch {
     this.timers = this.timers.filter((x) => x.atTick > this.tick);
     for (const x of due) x.fn();
 
+    if (this.weather !== null) this.boat.setSeaFactor(seaSpeedFactor(this.b, this.weather.at(t).sea)); // storms slow the boat
     this.boat.tick(DT);
     this.deadReckon();
     this.checkCoast(t);
