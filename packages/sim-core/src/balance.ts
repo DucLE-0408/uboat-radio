@@ -57,6 +57,8 @@ export interface Balance {
     readonly maxM: number; readonly slopeKm: number;
     readonly shoals: { readonly count: number; readonly spreadKm: number; readonly minRadiusKm: number; readonly maxRadiusKm: number; readonly minLiftM: number; readonly maxLiftM: number };
     readonly draftM: number; readonly clearanceM: number; readonly warnUnderKeelM: number; readonly rearmUnderKeelM: number; readonly bottomHull: number;
+    /** Depth charges over a shallow bottom: they burst `dropAboveFloorM` above it (never shallower than `minDropM`), and the bottom throws the blast back (`reflectMult`) when under `reflectUnderKeelM` is left under the keel. */
+    readonly reflectMult: number; readonly reflectUnderKeelM: number; readonly minDropM: number; readonly dropAboveFloorM: number;
   };
   /** G5: the coast (the land columns on the east edge): warning distance, hull damage on grounding, how far off it Endless starts, margins for ordered cells and Orders items. */
   readonly coast: { readonly warnKm: number; readonly groundHull: number; readonly clearKm: number; readonly endlessStartKm: number; readonly moveMarginKm: number; readonly itemMarginKm: number };

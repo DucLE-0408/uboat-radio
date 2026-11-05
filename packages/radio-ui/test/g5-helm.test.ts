@@ -62,4 +62,11 @@ describe("seabed events in the store and ration", () => {
     rebuildStore(s, [ev({ type: "SHOAL_WARNING", tSec: 3000, underKeelM: 18 }), ev({ type: "BOAT_BOTTOMED", tSec: 3100 })], [], 3200);
     expect(s.state.shoalWarnAt).toBe(3000); expect(s.state.bottomings).toBe(1);
   });
+  it("only a shallow hit marks the store; deep misses and deep hits do not", () => {
+    const s = new Store();
+    rebuildStore(s, [ev({ type: "CHARGE_EFFECT", tSec: 10, dropM: 100, shallow: false, reflected: false, hit: true }), ev({ type: "CHARGE_EFFECT", tSec: 20, dropM: 25, shallow: true, reflected: false, hit: false })], [], 30);
+    expect(s.state.shallowHitAt).toBe(-1e9);
+    rebuildStore(s, [ev({ type: "CHARGE_EFFECT", tSec: 40, dropM: 25, shallow: true, reflected: true, hit: true })], [], 50);
+    expect(s.state.shallowHitAt).toBe(40);
+  });
 });

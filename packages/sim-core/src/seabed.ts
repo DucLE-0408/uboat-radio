@@ -11,6 +11,13 @@ export interface Seabed {
   depthAt(xKm: number, yKm: number): number;
 }
 
+/** How a depth charge behaves over a floor `floorM` deep when the boat is at `depthM` (G5): where it bursts and how hard the bottom reflects it. */
+export function chargeEffect(b: Balance, floorM: number, depthM: number): { readonly dropM: number; readonly mult: number; readonly shallow: boolean } {
+  const base = b.boat.depthChargeDropDepthM, s = b.seabed;
+  const dropM = Math.min(base, Math.max(s.minDropM, floorM - s.dropAboveFloorM));
+  return { dropM, mult: floorM - depthM < s.reflectUnderKeelM ? s.reflectMult : 1, shallow: floorM < base };
+}
+
 export function makeSeabed(seed: number | string, b: Balance, origin: { readonly x: number; readonly y: number }): Seabed {
   const r = derive(seed, "seabed"), s = b.seabed, coast = coastKm(b);
   const shoals: Shoal[] = [];

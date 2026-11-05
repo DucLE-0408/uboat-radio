@@ -15,4 +15,4 @@ Trạng thái: **ĐÃ DUYỆT 2026-11-05** (người vận hành: "thêm luật 
 
 ## Ghi chú
 - Độ dốc bãi cạn nhỏ so với tốc độ tàu, nên chạm đáy xảy ra khi tàu lặn sâu mà đáy dâng lên dưới nó (hoặc lặn ở nơi nước nông), chứ không do đáy "dựng đứng".
-- Nước nông chưa thay đổi sát thương depth charge.
+- Ảnh hưởng của nước nông tới depth charge: xem `charge.md`.

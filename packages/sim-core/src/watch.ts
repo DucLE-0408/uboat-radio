@@ -19,7 +19,7 @@ import { applyNoise } from "./morse";
 import { deadlineSec, forgedProbability, gapSec } from "./endless";
 import type { WatchOptions } from "./options";
 import { pmAllowed, resolveSender, toneFor, type PmTopic } from "./pm";
-import { makeSeabed, type Seabed, type Shoal } from "./seabed";
+import { chargeEffect, makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
@@ -155,6 +155,8 @@ export class Watch {
     this.roster0 = makeRoster(seed, b);
     this.driftRng = derive(seed, "drift");
     this.boat = new Boat(this.bus, { x: 0, y: 0, headingDeg: 0 }, b);
+    const sea = this.seabed;
+    if (sea !== null) this.boat.setChargeModel((depth) => { const p = this.trueKm(); return chargeEffect(b, sea.depthAt(p.x, p.y), depth); }); // charges burst relative to the real floor
     this.det = new HfdfDetector(derive(seed, "hfdf"), b);
     this.intel = new Intel(b);
     this.intel.transmit(b.watch.startIntelScore / b.intel.perTxSecond); // earlier nights: start at Allied Intel level 2

@@ -372,6 +372,10 @@
     "warnUnderKeelM": 20,
     "rearmUnderKeelM": 35,
     "bottomHull": 15,
-    "draftM": 6
+    "draftM": 6,
+    "reflectMult": 1.5,
+    "reflectUnderKeelM": 20,
+    "minDropM": 10,
+    "dropAboveFloorM": 5
   }
 }

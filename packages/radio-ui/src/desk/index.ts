@@ -921,7 +921,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   helmBtn.addEventListener("click", () => { helm.toggle(); helmBtn.setAttribute("aria-expanded", String(helm.isOpen())); });
   const onHelmEsc = (ev: KeyboardEvent): void => { if (ev.code === "Escape" && helm.isOpen()) { helm.close(); helmBtn.setAttribute("aria-expanded", "false"); ev.preventDefault(); ev.stopPropagation(); } };
   window.addEventListener("keydown", onHelmEsc, true);
-  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt, seenShoal = store.state.shoalWarnAt, seenBottom = store.state.bottomings;
+  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt, seenShoal = store.state.shoalWarnAt, seenBottom = store.state.bottomings, seenShallow = store.state.shallowHitAt;
   let seenReached = store.state.ordersReached, seenFailed = store.state.ordersFailed, seenOrder = store.state.moveOrder?.rxId ?? -1;
   scope.on(["ui", "log"], () => {
     const s = store.state;
@@ -929,6 +929,7 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     if (s.ordersReached > seenReached) { addRation(adjust(ration, MOVE_REWARD * (s.ordersReached - seenReached))); seenReached = s.ordersReached; store.notify(t("desk.order.reached")); }
     if (s.shoalWarnAt > seenShoal) { seenShoal = s.shoalWarnAt; store.notify(t("desk.seabed.warn")); }
     if (s.bottomings > seenBottom) { addRation(adjust(ration, -BOTTOM_PENALTY * (s.bottomings - seenBottom))); seenBottom = s.bottomings; store.notify(t("desk.seabed.bottomed")); }
+    if (s.shallowHitAt > seenShallow) { seenShallow = s.shallowHitAt; store.notify(t("desk.charge.shallow")); }
     if (s.coastWarnAt > seenWarn) { seenWarn = s.coastWarnAt; store.notify(t("desk.coast.warn")); }
     if (s.groundings > seenGround) { addRation(adjust(ration, -GROUND_PENALTY * (s.groundings - seenGround))); seenGround = s.groundings; store.notify(t("desk.coast.aground")); }
     if (s.ordersFailed > seenFailed) { addRation(adjust(ration, -MOVE_PENALTY * (s.ordersFailed - seenFailed))); seenFailed = s.ordersFailed; store.notify(t("desk.order.failed")); }

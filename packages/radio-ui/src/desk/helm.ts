@@ -200,7 +200,9 @@ export function mountHelm(d: HelmDeps): Helm {
       x.b.title = (x.b as HTMLButtonElement).disabled ? t("desk.helm.tooShallow", { m: String(need) }) : "";
     }
     const seabedM = watch.chartDepth(f0.x, f0.y);
-    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}`);
+    const st = store.state, threat = st.tx.escortAtSec !== null || (st.tx.depthChargeAtSec !== null && st.tSec - st.tx.depthChargeAtSec < 300);
+    const chargeWarn = threat && seabedM !== null && seabedM < BALANCE.boat.depthChargeDropDepthM ? `\n${t("desk.helm.chargeWarn")}` : ""; // charges burst just above the floor in shallow water
+    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}${chargeWarn}`);
     const ord = store.state.moveOrder, f = fix();
     if (ord === null) setText(orderTxt, t("desk.helm.noOrder"));
     else { const c = parseGrid(ord.grid); const dist = c === null ? 0 : Math.hypot(c.x - f.x, c.y - f.y), brg = c === null ? 0 : bearingTo({ x: f.x, y: f.y }, c);

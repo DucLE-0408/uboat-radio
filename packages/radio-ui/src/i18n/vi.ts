@@ -161,6 +161,8 @@ export const vi: Readonly<Record<MsgKey, string>> = {
   "desk.helm.keel": "DƯỚI SỐNG",
   "desk.helm.tooShallow": "Hải đồ cho thấy nước quá cạn: cần {m} m",
   "desk.seabed.warn": "Bãi cạn: nước dưới sống tàu mỏng dần.",
+  "desk.helm.chargeWarn": "NƯỚC NÔNG: MÌN SÂU NGUY HIỂM",
+  "desk.charge.shallow": "Mìn sâu nổ ở nước nông: sóng nổ đánh mạnh vào tàu.",
   "desk.seabed.bottomed": "Sống tàu chạm đáy! Thân tàu hư hại; đang nổi lên độ sâu an toàn.",
   "desk.helm.btn": "LÁI",
   "desk.helm.title": "Buồng lái",
