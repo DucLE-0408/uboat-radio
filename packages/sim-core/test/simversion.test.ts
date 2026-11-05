@@ -20,7 +20,7 @@ function digest(seed: number, opts?: ReturnType<typeof defaultOptions>): string 
 
 describe("sim version guard", () => {
   // If these fail you changed what a saved game replays into. Bump SIM_VERSION (src/simversion.ts), then update the digests.
-  const GOLDEN = { sim: 2, night: "60dcf0c", endless: "1424200d" };
+  const GOLDEN = { sim: 3, night: "60dcf0c", endless: "3b2df408" };
   it("the replay digests match the declared SIM_VERSION", () => {
     expect({ sim: SIM_VERSION, night: digest(1), endless: digest(24, defaultOptions("endless")) }).toEqual(GOLDEN);
   });

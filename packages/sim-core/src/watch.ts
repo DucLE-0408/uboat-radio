@@ -239,10 +239,13 @@ export class Watch {
   /** The player's own day table, used to look up challenge cells. */
   dayTable(): AuthTable { return this.table; }
 
+  /** The sea state the hydrophone works in: the weather's when the module is on, else the fixed one (so old behaviour is untouched). */
+  private seaNow(): number { return this.weather === null ? this.b.watch.seaState : this.weather.at(this.tSec).sea; }
+
   /** What the operator hears right now (hydrophone). Stateless RNG: calling it never perturbs the sim. */
   listen(): ReturnType<SonarField["observe"]> {
     const s = this.boat.state();
-    return this.sonar.observe({ x: s.x, y: s.y, speedKn: s.speedKn }, this.b.watch.seaState, derive(this.seed, "listen", this.tick), this.b);
+    return this.sonar.observe({ x: s.x, y: s.y, speedKn: s.speedKn }, this.seaNow(), derive(this.seed, "listen", this.tick), this.b);
   }
 
   /** TEST/DEBUG ONLY. Ground truth must never reach the presentation layer. */
@@ -320,7 +323,7 @@ export class Watch {
 
     const s = this.boat.state();
     const listener = { x: s.x, y: s.y, speedKn: s.speedKn };
-    for (const e of this.sonar.tick(DT, t, listener, this.asdicRng, this.b)) this.bus.emit(e);
+    for (const e of this.sonar.tick(DT, t, listener, this.asdicRng, this.b, this.weather === null ? undefined : this.seaNow())) this.bus.emit(e);
     if (this.tick % this.b.watch.sonarPeriodSec === 0) this.scanSonar(t, listener);
 
     this.intel.tickMinutes(DT / 60);
@@ -357,7 +360,7 @@ export class Watch {
 
   private scanSonar(t: number, l: { x: number; y: number; speedKn: number }): void {
     const seen = new Set<number>();
-    for (const o of this.sonar.observe(l, this.b.watch.seaState, derive(this.seed, "sonar", this.tick), this.b)) {
+    for (const o of this.sonar.observe(l, this.seaNow(), derive(this.seed, "sonar", this.tick), this.b)) {
       seen.add(o.id);
       if (!this.audible.has(o.id)) {
         this.audible.add(o.id);

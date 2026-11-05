@@ -58,7 +58,7 @@ export interface Balance {
     readonly maxForce: number; readonly windStepDeg: number; readonly reportEverySec: number; readonly reportNoise: number;
     readonly sightHazardPerSecClear: number; readonly periscopeFactor: number;
     /** Sea state up to `calmSeaState` costs no speed; from there the surfaced top speed falls linearly to `stormMinFactor` at sea state 8. Wind force >= `stormForce` is called a storm. */
-    readonly calmSeaState: number; readonly stormMinFactor: number; readonly stormForce: number; readonly reactSec: Range; readonly etaSec: Range;
+    readonly calmSeaState: number; readonly asdicMinFactor: number; readonly stormMinFactor: number; readonly stormForce: number; readonly reactSec: Range; readonly etaSec: Range;
   };
   /** G5: seabed depth (a slope off the coast plus seeded shoals), warning margins and the hull cost of touching bottom. */
   readonly seabed: {

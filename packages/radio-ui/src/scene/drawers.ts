@@ -1,6 +1,9 @@
+import { BALANCE } from "@uboat/sim-core";
 import { setClass, setText } from "../dom";
+import { t } from "../i18n";
 import { formatClock, type Drawer } from "../store";
 import { place, sliceVars } from "./px";
+import { ASDIC_BANNER_SEC, conditions, HIST_SEC, strengthLevel } from "./sonarview";
 import type { SceneCtx } from "./scope";
 
 const mk = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string): HTMLElementTagNameMap[K] => { const e = document.createElement(tag); e.className = cls; return e; };
@@ -97,25 +100,51 @@ function buildAuth(ctx: SceneCtx): Shell {
   return sh;
 }
 
-/** Bearing dial + contact list + hydrophone. Shows noisy bearing, blade rate and class only; there is no range anywhere. */
+/** Bearing dial, bearing trace (last ten minutes), listening conditions, ASDIC banner and contact list + hydrophone. Shows noisy bearing, a coarse signal band, blade rate and class only; there is no range anywhere. */
 function buildSonar(ctx: SceneCtx): Shell {
   const { store, actions } = ctx;
-  const sh = shell(ctx, "sonar", "Sonar / hydrophone");
-  const dial = svg("svg", { class: "dial", viewBox: "-90 -90 180 180", role: "img", "aria-label": "Hydrophone bearing dial, north up" });
+  const sh = shell(ctx, "sonar", t("sonar.title"));
+  const dial = svg("svg", { class: "dial", viewBox: "-90 -90 180 180", role: "img", "aria-label": t("sonar.dialAria") });
   dial.append(svg("circle", { r: "78" }), svg("circle", { r: "40" }), svg("line", { x1: "0", y1: "-78", x2: "0", y2: "78" }), svg("line", { x1: "-78", y1: "0", x2: "78", y2: "0" }));
-  for (const [t, x, y] of [["N", 0, -80], ["E", 84, 3], ["S", 0, 88], ["W", -84, 3]] as const) { const tx = svg("text", { x: String(x), y: String(y) }); tx.textContent = t; dial.append(tx); }
+  for (const [tt, x, y] of [["N", 0, -80], ["E", 84, 3], ["S", 0, 88], ["W", -84, 3]] as const) { const tx = svg("text", { x: String(x), y: String(y) }); tx.textContent = tt; dial.append(tx); }
   const hdg = svg("line", { class: "hdg", x1: "0", y1: "0", x2: "0", y2: "-34" }); dial.append(hdg);
-  const dialBox = mk("div", "dialbox"); place(dialBox, 14, 10, 180, 180); dialBox.append(dial);
-  const note = mk("div", "typ snote"); place(note, 206, 10, 266, 40); note.textContent = "Bearings are noisy estimates. Distance is not measured. Fast screws (blade rate >= 9 Hz) suggest an escort; slow screws could be a merchant or a U-boat.";
-  const quiet = mk("div", "typ squiet"); place(quiet, 206, 60, 266, 14); quiet.textContent = "Hydrophone: quiet.";
-  const tbl = mk("table", "sonartbl"); place(tbl, 206, 60, 266, 120);
-  tbl.setAttribute("aria-label", "Hydrophone contacts");
-  const thead = mk("thead", ""); const hr = mk("tr", ""); for (const h of ["#", "Bearing", "Blade rate", "Class", ""]) { const th = mk("th", ""); th.textContent = h; hr.append(th); } thead.append(hr);
+  const dialBox = mk("div", "dialbox"); place(dialBox, 8, 4, 150, 150); dialBox.append(dial);
+
+  const condTitle = mk("div", "lbl scondt"); place(condTitle, 8, 158, 170, 10); condTitle.textContent = t("sonar.cond.title");
+  const cond = mk("div", "typ scond"); place(cond, 8, 169, 172, 62); cond.setAttribute("aria-live", "polite");
+  const asdic = mk("div", "typ sasdic"); place(asdic, 8, 234, 172, 24); asdic.hidden = true; asdic.setAttribute("role", "alert"); asdic.textContent = t("sonar.asdic");
+
+  const wfTitle = mk("div", "lbl swft"); place(wfTitle, 196, 4, 280, 10); wfTitle.textContent = t("sonar.wf.title");
+  const wf = mk("canvas", "swf"); wf.width = 360; wf.height = 100; place(wf, 196, 15, 280, 78); wf.setAttribute("role", "img"); wf.setAttribute("aria-label", t("sonar.wf.aria"));
+  const wfx = wf.getContext("2d");
+
+  const quiet = mk("div", "typ squiet"); place(quiet, 196, 100, 280, 14); quiet.textContent = t("sonar.quiet");
+  const tbl = mk("table", "sonartbl"); place(tbl, 196, 100, 280, 110);
+  tbl.setAttribute("aria-label", t("sonar.tbl.aria"));
+  const thead = mk("thead", ""); const hr = mk("tr", ""); for (const hd of [t("sonar.h.id"), t("sonar.h.bearing"), t("sonar.h.signal"), t("sonar.h.blade"), t("sonar.h.class"), ""]) { const th = mk("th", ""); th.textContent = hd; hr.append(th); } thead.append(hr);
   const body = mk("tbody", ""); tbl.append(thead, body);
-  const listening = mk("div", "typ slisten"); place(listening, 14, 200, 458, 14); listening.setAttribute("aria-live", "polite");
-  sh.content.append(dialBox, note, quiet, tbl, listening);
+  const note = mk("div", "typ snote"); place(note, 196, 218, 280, 36); note.textContent = t("sonar.note");
+  const listening = mk("div", "typ slisten"); place(listening, 196, 262, 280, 24); listening.setAttribute("aria-live", "polite");
+  sh.content.append(dialBox, condTitle, cond, asdic, wfTitle, wf, quiet, tbl, note, listening);
 
   const blips = new Map<number, SVGGElement>(), rows = new Map<number, { tr: HTMLElement; tds: HTMLElement[]; btn: HTMLButtonElement }>();
+  const COL = { escort: "#b13a56", slow: "#2e5c8a" } as const;
+  const drawTrace = (): void => {
+    if (wfx === null) return;
+    const s = store.state, W = wf.width, H = wf.height, now = s.tSec, pxPerSec = H / HIST_SEC;
+    wfx.clearRect(0, 0, W, H);
+    wfx.strokeStyle = "rgba(93,74,99,0.35)"; wfx.lineWidth = 1; wfx.fillStyle = "#3a2c3f"; wfx.font = "9px monospace";
+    for (const [deg, lbl] of [[0, "N"], [90, "E"], [180, "S"], [270, "W"]] as const) { wfx.beginPath(); wfx.moveTo(deg + 0.5, 0); wfx.lineTo(deg + 0.5, H); wfx.stroke(); wfx.fillText(lbl, deg + 3, H - 3); }
+    for (let m = 1; m < 10; m += 1) { const y = Math.round(m * 60 * pxPerSec) + 0.5; wfx.beginPath(); wfx.moveTo(0, y); wfx.lineTo(W, y); wfx.stroke(); }
+    for (const p of s.sonarHist) {
+      const y = (now - p.t) * pxPerSec; if (y < 0 || y > H) continue;
+      const lv = strengthLevel(p.snrDb);
+      wfx.globalAlpha = 0.35 + lv * 0.2; wfx.fillStyle = COL[p.guess];
+      wfx.fillRect(Math.round(p.bearingDeg % 360) - 1, y, 2 + (lv - 1), 2);
+    }
+    wfx.globalAlpha = 1; wfx.fillStyle = "#0c0a18"; const hx = Math.round(s.boat.headingDeg % 360); // heading tick at the top
+    wfx.beginPath(); wfx.moveTo(hx - 4, 0); wfx.lineTo(hx + 4, 0); wfx.lineTo(hx, 6); wfx.closePath(); wfx.fill();
+  };
   const refresh = (): void => {
     const s = store.state;
     hdg.setAttribute("transform", `rotate(${s.boat.headingDeg})`);
@@ -125,27 +154,36 @@ function buildSonar(ctx: SceneCtx): Shell {
       let g = blips.get(c.id);
       if (!g) { g = svg("g"); g.append(svg("circle", { r: "5", class: "blip" })); dial.append(g); blips.set(c.id, g); }
       g.style.display = c.audible ? "" : "none";
-      (g.firstChild as SVGCircleElement).setAttribute("class", `blip ${c.guess}`);
+      const lv = strengthLevel(c.snrDb), dot = g.firstChild as SVGCircleElement;
+      dot.setAttribute("class", `blip ${c.guess}`); dot.setAttribute("r", String(3 + lv * 1.5)); dot.setAttribute("opacity", String(0.45 + lv * 0.18)); // size and weight follow the signal band, never a distance
       const a = (c.bearingDeg * Math.PI) / 180;
       g.setAttribute("transform", `translate(${(Math.sin(a) * 60).toFixed(1)} ${(-Math.cos(a) * 60).toFixed(1)})`); // fixed radius: no range information
       let r = rows.get(c.id);
       if (!r) {
-        const tr = mk("tr", ""), tds = [mk("td", ""), mk("td", ""), mk("td", ""), mk("td", ""), mk("td", "")];
-        const btn = mk("button", "sbtn"); btn.type = "button"; btn.addEventListener("click", () => actions.toggleHydrophone(c.id)); sliceVars(btn, "btn"); (tds[4] as HTMLElement).append(btn);
+        const tr = mk("tr", ""), tds = [mk("td", ""), mk("td", ""), mk("td", ""), mk("td", ""), mk("td", ""), mk("td", "")];
+        const btn = mk("button", "sbtn"); btn.type = "button"; btn.addEventListener("click", () => actions.toggleHydrophone(c.id)); sliceVars(btn, "btn"); (tds[5] as HTMLElement).append(btn);
         tr.append(...tds); body.append(tr); r = { tr, tds, btn }; rows.set(c.id, r);
       }
       r.tr.hidden = !c.audible;
       setText(r.tds[0] as HTMLElement, String(c.id));
       setText(r.tds[1] as HTMLElement, `${String(Math.round(c.bearingDeg) % 360).padStart(3, "0")}° ±`);
-      setText(r.tds[2] as HTMLElement, `${c.bladeRateHz.toFixed(1)} Hz`);
-      setText(r.tds[3] as HTMLElement, c.guess === "escort" ? "ESCORT (fast)" : "slow");
-      setClass(r.tds[3] as HTMLElement, "alert", c.guess === "escort");
-      const on = s.hydrophone === c.id;
-      setText(r.btn, on ? "Stop" : "Listen"); r.btn.setAttribute("aria-pressed", String(on)); r.btn.setAttribute("aria-label", `${on ? "Stop listening to" : "Listen to"} contact ${c.id}`); setClass(r.btn, "on", on);
+      setText(r.tds[2] as HTMLElement, t(`sonar.str.${lv}`));
+      setText(r.tds[3] as HTMLElement, `${c.bladeRateHz.toFixed(1)} Hz`);
+      setText(r.tds[4] as HTMLElement, c.guess === "escort" ? t("sonar.class.escort") : t("sonar.class.slow"));
+      setClass(r.tds[4] as HTMLElement, "alert", c.guess === "escort");
+      const on = s.hydrophone === c.id, name = `${on ? t("sonar.stop") : t("sonar.listen")}`;
+      setText(r.btn, name); r.btn.setAttribute("aria-pressed", String(on)); r.btn.setAttribute("aria-label", t(on ? "sonar.stopAria" : "sonar.listenAria", { id: String(c.id) })); setClass(r.btn, "on", on);
     }
-    setText(listening, s.hydrophone === null ? "" : `Listening to contact ${s.hydrophone} (stereo pan follows the bearing, beat follows the blade rate).`);
+    setText(listening, s.hydrophone === null ? "" : t("sonar.listening", { id: String(s.hydrophone) }));
+    const wx = s.weather !== null && s.tSec - s.weather.tSec < 2400 ? s.weather.seaState : null; // the reported sea state only
+    const c = conditions(s.boat.speedKn, wx);
+    const adv = c.cavitating ? t("sonar.advice.cav", { kn: String(BALANCE.sonar.cavitationSpeedKn) }) : c.selfLimited && c.verdict !== "good" ? t("sonar.advice.slow") : "";
+    setText(cond, `${t("sonar.cond.noise", { own: String(c.selfDb), sea: String(c.seaDb), state: String(Math.round(c.seaState)) })}\n${t("sonar.cond.reach", { km: String(c.rangeKm), best: String(c.bestKm) })}\n${t(`sonar.verdict.${c.verdict}`)}${adv === "" ? "" : ` · ${adv}`}`);
+    setClass(cond, "bad", c.verdict === "poor");
+    asdic.hidden = s.tSec - s.asdicAt > ASDIC_BANNER_SEC;
+    drawTrace();
   };
-  ctx.scope.on(["sonar", "boat", "drawer"], refresh);
+  ctx.scope.on(["sonar", "boat", "drawer", "ui"], refresh);
   refresh();
   return sh;
 }

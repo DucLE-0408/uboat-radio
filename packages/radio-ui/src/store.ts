@@ -1,6 +1,7 @@
 // UI state derived ONLY from SimEvents plus the player's own input and the public observation helpers.
 // Vietnamese: không trường nào ở đây đến từ ground truth của sim; hazard/Intel không bao giờ được lưu hay hiển thị.
 import type { Fist, LoggedCommand, PaperObservable, SimEvent, Tell } from "@uboat/sim-core";
+import { HIST_MAX, HIST_SEC } from "./scene/sonarview";
 
 export type Topic = "drawer" | "view" | "rx" | "copy" | "analysis" | "challenge" | "sonar" | "tx" | "boat" | "alert" | "log" | "ended" | "ui" | "clock";
 
@@ -32,6 +33,8 @@ export interface RxView {
   resolved: { readonly decision: "accept" | "reject"; readonly correct: boolean } | null;
   unread: boolean;
 }
+/** One heard contact at one moment, for the bearing trace. */
+export interface SonarPoint { readonly t: number; readonly id: number; readonly bearingDeg: number; readonly snrDb: number; readonly guess: "escort" | "slow" }
 export interface SonarView { readonly id: number; bearingDeg: number; bladeRateHz: number; snrDb: number; guess: "escort" | "slow"; audible: boolean }
 export interface BoatView {
   mode: "surface" | "periscope" | "dive";
@@ -49,6 +52,10 @@ export interface UiState {
   activeRx: number | null;
   activeAttempt: number;
   sonar: Map<number, SonarView>;
+  /** The last ten minutes of what the hydrophone heard (UI only; rebuilt empty after a reload). */
+  sonarHist: SonarPoint[];
+  /** When the last ASDIC ping hit us (-1e9 = never). */
+  asdicAt: number;
   tx: { totalSec: number; keyedUntilSec: number; locatedAtSec: number | null; escortAtSec: number | null; depthChargeAtSec: number | null };
   /** Which text the SECRET paper shows: the player's own copy or the deciphered plain text. */
   view: "copy" | "plain";
@@ -105,7 +112,7 @@ const LOG_MAX = 300;
 
 export function emptyState(): UiState {
   return {
-    tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
+    tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(), sonarHist: [], asdicAt: -1e9,
     tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, groundings: 0, coastWarnAt: -1e9, shoalWarnAt: -1e9, bottomings: 0, shallowHitAt: -1e9, weather: null, sightedAt: -1e9, privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
@@ -185,6 +192,7 @@ export class Store {
         this.mark("alert", "tx");
         break;
       case "ASDIC_PING":
+        st.asdicAt = e.tSec;
         this.log(e.tSec, "alert", "!! ASDIC lock — we are being pinged"); // deliberately no range/bearing
         break;
       case "BRIDGE_ALERT":
@@ -365,7 +373,11 @@ export class Store {
     for (const o of obs) {
       heard.add(o.id);
       st.sonar.set(o.id, { id: o.id, bearingDeg: o.bearingDeg, bladeRateHz: o.bladeRateHz, snrDb: o.snrDb, guess: o.guess, audible: true });
+      st.sonarHist.push({ t: st.tSec, id: o.id, bearingDeg: o.bearingDeg, snrDb: o.snrDb, guess: o.guess });
     }
+    const cut = st.tSec - HIST_SEC; let drop = 0;
+    while (drop < st.sonarHist.length && ((st.sonarHist[drop] as SonarPoint).t < cut || st.sonarHist.length - drop > HIST_MAX)) drop++;
+    if (drop > 0) st.sonarHist.splice(0, drop);
     for (const c of st.sonar.values()) if (!heard.has(c.id)) c.audible = false;
     if (st.hydrophone !== null && !st.sonar.get(st.hydrophone)?.audible) st.hydrophone = null;
     this.mark("sonar");
