@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 id: task-2026-11-04-desktop-prerelease
-status: in-progress
+status: completed
 owner: claude
 goal_confirmed_at: 2026-11-04T07:40:00.0000000Z
 started_at: 2026-11-04T07:40:00.0000000Z
-updated_at: 2026-11-04T07:40:00.0000000Z
+updated_at: 2026-11-05T04:50:00.0000000Z
 base_commit: 183d6ac44b81afde77d590c57a88817d4ad6b748
 owned_paths:
   - .github/workflows/desktop-windows.yml
-  - memory/tasks/active/2026-11-04-desktop-prerelease.md
+  - memory/tasks/completed/2026-11-04-desktop-prerelease.md
 plan: null
 handoff: null
 ---
@@ -38,14 +38,14 @@ workflow_dispatch(main, release_tag) -> installer job (windows-latest) -> artifa
 - Command/check: python3 -I scripts/validate_repo.py; YAML parse of the workflow
 - Result: `passed`
 - Evidence/reason: validator passed; workflow parses with jobs installer and prerelease.
-- Command/check: dispatch on main with desktop-preview-20261104; release page and asset hashes
-- Result: `not verified`
-- Evidence/reason: pending merge and dispatch.
+- Command/check: dispatch on main with desktop-preview-20261104; release page and assets
+- Result: `passed`
+- Evidence/reason: pre-releases `desktop-preview-20261104` and `desktop-preview-20261105` exist (REST releases API, 2026-11-05) with the installer exe and SHA256SUMS.txt each, `prerelease: true`, targeting the commits recorded in their notes. Their asset hashes were not re-checked here; the later release `desktop-preview-20261105-2` was (see task-2026-11-05-desktop-preview-tag-suffix).
 
 ## Runtime and codebase-health verification
 
-- Runtime/user-flow exercise: pending the dispatch run.
-- Health/readiness/log/error inspection: pending.
+- Runtime/user-flow exercise: the dispatch runs created the two pre-releases from their own installers.
+- Health/readiness/log/error inspection: the releases carry the expected assets; the run logs were not re-read.
 - Integration/dependency/config/migration check: one new pinned action (download-artifact v5.0.0, MIT); no other dependency change.
 - Remaining issue or reason not verified: whether the exe launches on Windows; release visibility.
 
@@ -55,4 +55,4 @@ workflow_dispatch(main, release_tag) -> installer job (windows-latest) -> artifa
 - Observability impact: the run log lists the files and the hash check.
 - Residual risk: unsigned binary published as a pre-release.
 - Rollback: delete the pre-release and its tag (gh release delete --cleanup-tag) and revert the workflow change.
-- Next safe action: merge, dispatch, verify assets against the artifact digest.
+- Next safe action: none for this task; later previews use task-2026-11-05-desktop-preview-tag-suffix and task-2026-11-05-desktop-checksum-names.

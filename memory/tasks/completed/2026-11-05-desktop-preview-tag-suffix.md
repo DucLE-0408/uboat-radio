@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 id: task-2026-11-05-desktop-preview-tag-suffix
-status: in-progress
+status: completed
 owner: claude-cloud-session
 goal_confirmed_at: 2026-11-05T04:35:00.0000000Z
 started_at: 2026-11-05T04:35:00.0000000Z
-updated_at: 2026-11-05T04:35:00.0000000Z
+updated_at: 2026-11-05T04:50:00.0000000Z
 base_commit: 1ccab21583f0ee0ad6f000274d570b14608e7b67
 owned_paths:
   - .github/workflows/desktop-windows.yml
-  - memory/tasks/active/2026-11-05-desktop-preview-tag-suffix.md
+  - memory/tasks/completed/2026-11-05-desktop-preview-tag-suffix.md
 plan: null
 handoff: null
 ---
@@ -38,15 +38,15 @@ workflow_dispatch(main, release_tag) -> installer job (windows-latest) -> artifa
 - Result: passed before merge
 - Evidence/reason: validator passed; the workflow parses with jobs installer and prerelease.
 - Command/check: dispatch on main with desktop-preview-20261105-2; release assets and hashes
-- Result: `not verified`
-- Evidence/reason: pending merge and dispatch.
+- Result: `passed`
+- Evidence/reason: workflow run 41968589341 on commit 28905ec: jobs installer and prerelease succeeded; release desktop-preview-20261105-2 is a pre-release (not draft), tag ref 28905ec, assets installer exe (3,346,645 bytes) and SHA256SUMS.txt; the downloaded exe hashes to 1ecc8b70...c651, equal to the listed hash.
 
 ## Runtime and codebase-health verification
 
-- Runtime/user-flow exercise: pending the dispatch run.
-- Health/readiness/log/error inspection: pending.
+- Runtime/user-flow exercise: tagged dispatch on main, release created by the prerelease job, assets downloaded through the REST API and hashed.
+- Health/readiness/log/error inspection: job conclusions read through the Actions API; release notes name the commit and run.
 - Integration/dependency/config/migration check: no dependency change; no new action.
-- Remaining issue or reason not verified: whether the exe launches on Windows.
+- Remaining issue or reason not verified: whether the exe launches on Windows (unsigned, never run on a real machine); the checksum list names the file with spaces while GitHub serves dots (fixed for later releases by task-2026-11-05-desktop-checksum-names).
 
 ## Security, observability, risk, and rollback
 
@@ -54,4 +54,4 @@ workflow_dispatch(main, release_tag) -> installer job (windows-latest) -> artifa
 - Observability impact: the run log states why a tag is refused.
 - Residual risk: unsigned binary published as a pre-release.
 - Rollback: delete the pre-release and its tag (gh release delete --cleanup-tag) and revert the workflow change.
-- Next safe action: merge, dispatch, verify assets against the run's checksum, then complete this record.
+- Next safe action: none for this task.
