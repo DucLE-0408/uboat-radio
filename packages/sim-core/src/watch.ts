@@ -23,6 +23,7 @@ import { chargeEffect, makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
+import { clearness, makeWeather, type Weather } from "./weather";
 import { SonarField, type Track } from "./sonar";
 import {
   assessTells, buildTransmission, checkLetterMatches, copyFromTokens, decipherCopy, messageIndicator,
@@ -125,6 +126,10 @@ export class Watch {
   private readonly opts: WatchOptions | undefined;
   private readonly g4: boolean; // G4 features (sending, Private Messages, roster) exist only when options were given: no options = the night watch as before
   private readonly endless: boolean;
+  private readonly weather: Weather | null; // G6: only with options and the weather module
+  private readonly sightRng: Rng;
+  private readonly reportRng: Rng;
+  private nextReportSec = 0;
   private readonly roster0: readonly CrewMember[];
   private absent: Role | null = null;
   private readonly pmSent: number[] = [];
@@ -150,6 +155,9 @@ export class Watch {
     this.origin = opts !== undefined ? { x: coastKm(b) - b.coast.endlessStartKm, y: b.watch.originKm.y } : b.watch.originKm; // the plain night watch keeps its start
     this.seabed = opts !== undefined ? makeSeabed(seed, b, this.origin) : null; // the sea floor exists only for watches with options
     this.g4 = opts !== undefined;
+    this.weather = opts !== undefined && opts.modules.weather ? makeWeather(seed, b) : null;
+    this.sightRng = derive(seed, "sight");
+    this.reportRng = derive(seed, "wxreport");
     this.endless = opts?.mode === "endless";
     this.timerOn = this.endless && opts?.modules.timer === true;
     this.roster0 = makeRoster(seed, b);
@@ -294,6 +302,7 @@ export class Watch {
     this.deadReckon();
     this.checkCoast(t);
     this.checkSeabed(t);
+    this.checkWeather(t);
     this.checkOrder(t);
 
     const radio = this.boat.radio();
@@ -472,6 +481,23 @@ export class Watch {
   chartShoals(): readonly Shoal[] { return this.seabed?.shoals ?? []; }
 
   /** Seabed rule: a warning as the water under the keel thins, then bottoming (hull damage, way lost, forced up to a safe depth). */
+  /** G6: the bridge reports the weather as it looks from the deck (noisy), and escorts may sight a surfaced boat in good visibility. */
+  private checkWeather(t: number): void {
+    const wx = this.weather;
+    if (wx === null) return;
+    const w = this.b.weather, s = wx.at(t), depth = this.boat.state().depthM;
+    const seen = depth <= this.b.boat.periscopeDepthM + 1; // below that nobody on the bridge sees the sea
+    if (seen && t >= this.nextReportSec) {
+      this.nextReportSec = t + w.reportEverySec;
+      const k = 1 + (this.reportRng.next() * 2 - 1) * w.reportNoise;
+      this.bus.emit({ type: "WEATHER_REPORT", tSec: t, visKm: Math.max(1, Math.round(s.visKm * k)), windDeg: Math.round(s.windDeg / 10) * 10 % 360, force: Math.round(s.force), seaState: s.seaState });
+    }
+    const expo = depth < 0.5 ? 1 : seen ? w.periscopeFactor : 0;
+    if (expo <= 0) return;
+    const h = w.sightHazardPerSecClear * clearness(this.b, s.visKm) * expo * (1 + this.b.detection.intelHazardStep * this.intel.level);
+    if (this.sightRng.chance(1 - Math.exp(-h * DT)) && this.det.visualContact(w.reactSec, w.etaSec)) this.bus.emit({ type: "SIGHTED", tSec: t, visKm: Math.round(s.visKm) });
+  }
+
   private checkSeabed(t: number): void {
     if (this.seabed === null || this.ended) return;
     const p = this.trueKm(), s = this.b.seabed, surfaced = this.boat.state().depthM < 0.5;

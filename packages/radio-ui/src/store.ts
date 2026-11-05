@@ -74,6 +74,9 @@ export interface UiState {
   shoalWarnAt: number;
   bottomings: number;
   shallowHitAt: number;
+  /** G6: the last bridge weather report (an estimate) and the last time an escort sighted us. */
+  weather: { tSec: number; visKm: number; windDeg: number; force: number; seaState: number } | null;
+  sightedAt: number;
   /** Replies HQ could read, counted over the whole watch (a message may be answered more than once). */
   sendOk: number;
   privateNotes: { tSec: number; fromRole: string; tone: string; topic: string; rxId: number | null }[];
@@ -103,7 +106,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, groundings: 0, coastWarnAt: -1e9, shoalWarnAt: -1e9, bottomings: 0, shallowHitAt: -1e9, privateNotes: [], absentRole: null, lost: new Set<number>(),
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, groundings: 0, coastWarnAt: -1e9, shoalWarnAt: -1e9, bottomings: 0, shallowHitAt: -1e9, weather: null, sightedAt: -1e9, privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -271,6 +274,15 @@ export class Store {
       case "SHOAL_WARNING":
         st.shoalWarnAt = e.tSec;
         this.log(e.tSec, "alert", `Shoal: ${e.underKeelM} m under the keel`);
+        this.mark("ui", "log");
+        break;
+      case "WEATHER_REPORT":
+        st.weather = { tSec: e.tSec, visKm: e.visKm, windDeg: e.windDeg, force: e.force, seaState: e.seaState };
+        this.mark("ui");
+        break;
+      case "SIGHTED":
+        st.sightedAt = e.tSec;
+        this.log(e.tSec, "alert", `Sighted by an escort (visibility ${e.visKm} km)`);
         this.mark("ui", "log");
         break;
       case "CHARGE_EFFECT":

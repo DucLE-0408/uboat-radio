@@ -174,3 +174,8 @@ With options the sim has a seabed (`seabed.ts`: a 200 m slope over 30 km off the
 ### G5 addendum: depth charges in shallow water (`docs/specs/desk-ui-g5/charge.md`)
 
 With options, `Watch` hands the boat a charge model (`chargeEffect` in `seabed.ts`) that reads the TRUE floor: charges burst at `min(100, max(10, floor - 5))` m instead of a fixed 100 m, and a boat within 20 m of the floor takes 1.5x damage. `Boat.takeDepthCharge` emits `CHARGE_EFFECT { dropM, shallow, reflected, hit }`; the store keeps `shallowHitAt`, the desk toasts a shallow hit, and the Helm warns "SHALLOW: CHARGES BITE" while a charge threat is live and the charted depth is under 100 m. The plain night watch has no model and no event (bit-identical).
+
+### G5 addendum: weather and visibility (`docs/specs/desk-ui-g5/weather.md`)
+
+New module `weather` (on by default; saves without it read as on). `makeWeather(seed)` is a pure function of time (seeded knots, smooth interpolation, wrapped), so no RNG state advances with it. `Watch.checkWeather` emits a noisy `WEATHER_REPORT` every 10 minutes while the boat can see the sea, and applies a visual sighting hazard (surface 1, periscope 0.25, deep 0; scaled by how clear the air is and by Intel) that raises `SIGHTED` and queues the same escort and charge chain as HF/DF, without an HF/DF fix. The store keeps the last report and sighting; the desk toasts a sighting, the Helm lays fog over the chart from the REPORTED visibility and adds a weather line. The plain night watch and watches with the module off are bit-identical.
+

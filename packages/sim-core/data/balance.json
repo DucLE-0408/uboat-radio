@@ -357,6 +357,21 @@
     "moveMarginKm": 15,
     "itemMarginKm": 5
   },
+  "weather": {
+    "knotSec": 1800,
+    "knotCount": 48,
+    "minVisKm": 1,
+    "maxVisKm": 20,
+    "visSkew": 0.6,
+    "maxForce": 9,
+    "windStepDeg": 60,
+    "reportEverySec": 600,
+    "reportNoise": 0.2,
+    "sightHazardPerSecClear": 0.0002,
+    "periscopeFactor": 0.25,
+    "reactSec": { "min": 60, "max": 180 },
+    "etaSec": { "min": 240, "max": 600 }
+  },
   "seabed": {
     "maxM": 200,
     "slopeKm": 30,

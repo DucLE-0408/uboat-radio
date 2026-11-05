@@ -52,6 +52,12 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G6: weather as a function of time (visibility, wind), the bridge report cadence, and visual sighting by escorts (hazard scales with visibility and exposure). */
+  readonly weather: {
+    readonly knotSec: number; readonly knotCount: number; readonly minVisKm: number; readonly maxVisKm: number; readonly visSkew: number;
+    readonly maxForce: number; readonly windStepDeg: number; readonly reportEverySec: number; readonly reportNoise: number;
+    readonly sightHazardPerSecClear: number; readonly periscopeFactor: number; readonly reactSec: Range; readonly etaSec: Range;
+  };
   /** G5: seabed depth (a slope off the coast plus seeded shoals), warning margins and the hull cost of touching bottom. */
   readonly seabed: {
     readonly maxM: number; readonly slopeKm: number;

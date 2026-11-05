@@ -21,8 +21,8 @@ describe("Endless configuration storage", () => {
   });
   it("difficulty never switches a module (they are independent)", () => {
     for (const d of ["easy", "normal", "hard"] as const) expect(loadEndlessOptions(mem()).modules).toEqual(defaultOptions("endless").modules);
-    expect(scoreLabel(defaultOptions("endless"))).toBe("normal:1111111");
-    expect(scoreLabel({ ...defaultOptions("endless"), difficulty: "easy", modules: { ...defaultOptions().modules, timer: false } })).toBe("easy:0111111");
+    expect(scoreLabel(defaultOptions("endless"))).toBe("normal:11111111");
+    expect(scoreLabel({ ...defaultOptions("endless"), difficulty: "easy", modules: { ...defaultOptions().modules, timer: false } })).toBe("easy:01111111");
   });
 });
 
@@ -35,7 +35,7 @@ describe("Endless high scores", () => {
     expect(loadScores(st)[scoreLabel(o)]).toEqual({ correct: 5, streak: 6, ration: 40, survivedSec: 1200 });
     recordScore(st, easy, { correct: 1, streak: 1, ration: 1, survivedSec: 1 });
     expect(Object.keys(loadScores(st)).sort()).toEqual([scoreLabel(easy), scoreLabel(o)].sort());
-    st.map.set(SCORES_KEY, JSON.stringify({ "normal:1111111": { correct: -1, streak: 1, ration: 1, survivedSec: 1 }, "bad": { correct: 1, streak: 1, ration: 1, survivedSec: 1 }, "hard:000000": { correct: 2, streak: 2, ration: 2, survivedSec: 2 } }));
+    st.map.set(SCORES_KEY, JSON.stringify({ "normal:11111111": { correct: -1, streak: 1, ration: 1, survivedSec: 1 }, "bad": { correct: 1, streak: 1, ration: 1, survivedSec: 1 }, "hard:000000": { correct: 2, streak: 2, ration: 2, survivedSec: 2 } }));
     expect(loadScores(st)).toEqual({ "hard:000000": { correct: 2, streak: 2, ration: 2, survivedSec: 2 } });
     expect(recordScore(null, o, { correct: 1, streak: 1, ration: 1, survivedSec: 1 }).saved).toBe(false);
   });
