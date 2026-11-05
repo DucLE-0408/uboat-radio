@@ -19,6 +19,7 @@ import { applyNoise } from "./morse";
 import { deadlineSec, forgedProbability, gapSec } from "./endless";
 import type { WatchOptions } from "./options";
 import { pmAllowed, resolveSender, toneFor, type PmTopic } from "./pm";
+import { makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
@@ -131,6 +132,9 @@ export class Watch {
   private pendingSends = 0;
   private readonly origin: { readonly x: number; readonly y: number }; // world km of the boat's start (Endless starts near the coast)
   private aground = false;
+  private readonly seabed: Seabed | null;
+  private bottomed = false;
+  private shoalWarned = false;
   private coastWarned = false;
   // G5: the active movement order and dead-reckoning (the sim knows the true position; players only get `navFix()`)
   private order: { readonly rxId: number; readonly target: { readonly x: number; readonly y: number }; readonly deadlineAt: number } | null = null;
@@ -144,6 +148,7 @@ export class Watch {
   constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE, opts?: WatchOptions) {
     this.opts = opts;
     this.origin = opts !== undefined ? { x: coastKm(b) - b.coast.endlessStartKm, y: b.watch.originKm.y } : b.watch.originKm; // the plain night watch keeps its start
+    this.seabed = opts !== undefined ? makeSeabed(seed, b, this.origin) : null; // the sea floor exists only for watches with options
     this.g4 = opts !== undefined;
     this.endless = opts?.mode === "endless";
     this.timerOn = this.endless && opts?.modules.timer === true;
@@ -286,6 +291,7 @@ export class Watch {
     this.boat.tick(DT);
     this.deadReckon();
     this.checkCoast(t);
+    this.checkSeabed(t);
     this.checkOrder(t);
 
     const radio = this.boat.radio();
@@ -457,6 +463,35 @@ export class Watch {
 
   /** World km of the boat's start: the chart and the Orders items are offsets from here. */
   originKm(): { readonly x: number; readonly y: number } { return this.origin; }
+
+  /** Surveyed depth at a world position (km), as the chart shows it; null in the plain night watch. Observation only. */
+  chartDepth(xKm: number, yKm: number): number | null { return this.seabed === null ? null : Math.round(this.seabed.depthAt(xKm, yKm)); }
+  /** The shoals marked on the chart (empty in the night watch). */
+  chartShoals(): readonly Shoal[] { return this.seabed?.shoals ?? []; }
+
+  /** Seabed rule: a warning as the water under the keel thins, then bottoming (hull damage, way lost, forced up to a safe depth). */
+  private checkSeabed(t: number): void {
+    if (this.seabed === null || this.ended) return;
+    const p = this.trueKm(), s = this.b.seabed, surfaced = this.boat.state().depthM < 0.5;
+    // a surfaced boat still draws `draftM`; near the coast (the last 3 km) only the coast rule applies, so the two never charge twice
+    const keel = surfaced ? (coastKm(this.b) - p.x > 3 ? s.draftM : 0) : this.boat.state().depthM;
+    if (keel <= 0) { this.shoalWarned = false; this.bottomed = false; return; }
+    const floor = this.seabed.depthAt(p.x, p.y), under = floor - keel;
+    if (under <= 0) {
+      if (!this.bottomed) {
+        this.bottomed = true;
+        this.emit({ type: "BOAT_BOTTOMED", tSec: t });
+        this.boat.takeDamage(s.bottomHull, t);
+        this.pm("bottomed", null);
+      }
+      this.boat.hold(Number.POSITIVE_INFINITY); // lose way
+      this.boat.setTargetDepth(Math.max(0, floor - s.clearanceM));
+      return;
+    }
+    if (this.bottomed && under > s.clearanceM) this.bottomed = false;
+    if (under <= s.warnUnderKeelM) { if (!this.shoalWarned) { this.shoalWarned = true; this.emit({ type: "SHOAL_WARNING", tSec: t, underKeelM: Math.round(under) }); } }
+    else if (under > s.rearmUnderKeelM) this.shoalWarned = false;
+  }
 
   /** The coast rule (Endless only): a warning near the land, then running aground (held at the shore, hull damage, Intel up, a note from the chief). */
   private checkCoast(t: number): void {

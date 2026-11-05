@@ -2,7 +2,7 @@
 // tin nào đúng hay giả, chỉ nói về hành vi quan sát được của người chơi (D4).
 import type { Lang } from "../i18n";
 
-export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed" | "grounded";
+export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed" | "grounded" | "bottomed";
 export type PmTone = "remind" | "threat";
 
 const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, readonly string[]>>>>>> = {
@@ -22,6 +22,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Something changed out there. Stay sharp.", "I do not like the silence. Watch your instruments."],
       threat: ["They have us. If this is your doing, I will remember it.", "Whatever you sent, they heard. Brace."],
+    },
+    bottomed: {
+      remind: ["The keel kissed the sand. Read the soundings before you take us down again.", "Not enough water under us. Watch the chart when you dive."],
+      threat: ["You put us on the bottom, operator. Do that again and we do not come back up.", "A boat that cannot see its own depth is a coffin. Plot it."],
     },
     grounded: {
       remind: ["We touched bottom. The hull held, but check your chart before the next run at the coast.", "That scraping was the keel on rock. Keep us off the shore."],
@@ -52,6 +56,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Ngoài kia có gì đó khác rồi. Tỉnh táo vào.", "Tôi không thích sự im lặng này. Để mắt tới thiết bị."],
       threat: ["Chúng biết chỗ ta. Nếu là do cậu, tôi sẽ nhớ.", "Cậu phát cái gì thì chúng nghe cái đó. Bám chắc vào."],
+    },
+    bottomed: {
+      remind: ["Sống tàu vừa cạ xuống cát. Đọc số đo sâu trước khi lặn lần nữa.", "Dưới ta không đủ nước. Nhìn hải đồ khi lặn."],
+      threat: ["Cậu đặt ta xuống đáy rồi, điện báo viên. Làm lại lần nữa là ta không lên được đâu.", "Tàu không biết độ sâu của mình thì là quan tài. Vẽ ra đi."],
     },
     grounded: {
       remind: ["Ta vừa chạm đáy. Thân tàu còn chịu được, nhưng xem lại hải đồ trước khi sát bờ lần nữa.", "Tiếng cào đó là sống tàu trên đá. Giữ ta tránh xa bờ."],

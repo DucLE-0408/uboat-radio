@@ -26,7 +26,7 @@ import { MANUAL, ordersPages, pickNews, SIGNATURES, type DocPage, type PaperDocs
 import { EchoPress, type EchoDecision } from "./echo";
 import { DESK_KEY, PaperModel, parseExtra, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
 import { DeskMachine, replayCopy, type MachineView } from "./machine";
-import { adjust, awardSteps, copyMarks, GROUND_PENALTY, MISSION_STEPS, MOVE_PENALTY, MOVE_REWARD, penalize, RATION_EMPTY, reward, scoreCopy, type RationState } from "./ration";
+import { adjust, awardSteps, BOTTOM_PENALTY, copyMarks, GROUND_PENALTY, MISSION_STEPS, MOVE_PENALTY, MOVE_REWARD, penalize, RATION_EMPTY, reward, scoreCopy, type RationState } from "./ration";
 import { mountHelm, type HelmItem } from "./helm";
 import { canTrash, checkHandOver } from "./rules";
 import { Printer, tokenEnds } from "./printer";
@@ -921,12 +921,14 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   helmBtn.addEventListener("click", () => { helm.toggle(); helmBtn.setAttribute("aria-expanded", String(helm.isOpen())); });
   const onHelmEsc = (ev: KeyboardEvent): void => { if (ev.code === "Escape" && helm.isOpen()) { helm.close(); helmBtn.setAttribute("aria-expanded", "false"); ev.preventDefault(); ev.stopPropagation(); } };
   window.addEventListener("keydown", onHelmEsc, true);
-  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt;
+  let seenGround = store.state.groundings, seenWarn = store.state.coastWarnAt, seenShoal = store.state.shoalWarnAt, seenBottom = store.state.bottomings;
   let seenReached = store.state.ordersReached, seenFailed = store.state.ordersFailed, seenOrder = store.state.moveOrder?.rxId ?? -1;
   scope.on(["ui", "log"], () => {
     const s = store.state;
     if (s.moveOrder !== null && s.moveOrder.rxId !== seenOrder) { seenOrder = s.moveOrder.rxId; store.notify(t("desk.order.accepted", { grid: s.moveOrder.grid })); }
     if (s.ordersReached > seenReached) { addRation(adjust(ration, MOVE_REWARD * (s.ordersReached - seenReached))); seenReached = s.ordersReached; store.notify(t("desk.order.reached")); }
+    if (s.shoalWarnAt > seenShoal) { seenShoal = s.shoalWarnAt; store.notify(t("desk.seabed.warn")); }
+    if (s.bottomings > seenBottom) { addRation(adjust(ration, -BOTTOM_PENALTY * (s.bottomings - seenBottom))); seenBottom = s.bottomings; store.notify(t("desk.seabed.bottomed")); }
     if (s.coastWarnAt > seenWarn) { seenWarn = s.coastWarnAt; store.notify(t("desk.coast.warn")); }
     if (s.groundings > seenGround) { addRation(adjust(ration, -GROUND_PENALTY * (s.groundings - seenGround))); seenGround = s.groundings; store.notify(t("desk.coast.aground")); }
     if (s.ordersFailed > seenFailed) { addRation(adjust(ration, -MOVE_PENALTY * (s.ordersFailed - seenFailed))); seenFailed = s.ordersFailed; store.notify(t("desk.order.failed")); }

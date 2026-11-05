@@ -54,3 +54,12 @@ describe("coast events in the store and ration", () => {
     expect(adjust(RATION_EMPTY, -GROUND_PENALTY).score).toBe(-GROUND_PENALTY);
   });
 });
+
+describe("seabed events in the store and ration", () => {
+  const ev = (e: Partial<SimEvent> & { type: SimEvent["type"] }): SimEvent => e as SimEvent;
+  it("rebuilds the last shoal warning and the number of times the keel touched bottom", () => {
+    const s = new Store();
+    rebuildStore(s, [ev({ type: "SHOAL_WARNING", tSec: 3000, underKeelM: 18 }), ev({ type: "BOAT_BOTTOMED", tSec: 3100 })], [], 3200);
+    expect(s.state.shoalWarnAt).toBe(3000); expect(s.state.bottomings).toBe(1);
+  });
+});

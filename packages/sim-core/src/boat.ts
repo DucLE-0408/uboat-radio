@@ -76,6 +76,9 @@ export class Boat {
   setSpeed(kn: number): void { if (!this.sunk) this.targetSpeed = Math.max(0, kn); }
   setRadioSilence(on: boolean): void { if (!this.sunk) this.silence = on; }
 
+  /** Ordered depth in metres (G5 bottoming: forced up to a safe depth). */
+  setTargetDepth(m: number): void { if (!this.sunk) this.targetDepth = Math.min(this.b.boat.maxDepthM, Math.max(0, m)); }
+
   command(mode: BoatMode): void {
     if (this.sunk) return;
     const d = this.b.boat;

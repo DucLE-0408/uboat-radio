@@ -21,6 +21,8 @@ const CW = 348, CH = 296, WORLD = BALANCE.world.cols * BALANCE.world.cellKm, CEL
 const TRAIL_MAX = 200, TRAIL_EVERY_SEC = 5;
 
 /** Smallest signed difference b - a in degrees, in (-180, 180]. */
+/** Half the chart height in km at a given width. */
+const halfH0 = (w: number): number => (CH / CW) * w / 2;
 export const angDelta = (a: number, b: number): number => { const d = (((b - a) % 360) + 540) % 360 - 180; return d === -180 ? 180 : d; };
 /** Compass bearing (0 = north, clockwise) from one point to another in km. */
 export const bearingTo = (from: { x: number; y: number }, to: { x: number; y: number }): number => ((Math.atan2(to.x - from.x, to.y - from.y) * 180) / Math.PI + 360) % 360;
@@ -60,9 +62,21 @@ export function mountHelm(d: HelmDeps): Helm {
     const kids: SVGElement[] = [sv("rect", { x: 0, y: 0, width: CW, height: CH, fill: "#0e2a3a" })];
     const landX0 = (BALANCE.world.cols - BALANCE.world.landCols.length) * CELL; // land cells are the last columns
     kids.push(sv("rect", { x: X(landX0), y: Y(WORLD), width: Math.max(0, (WORLD - landX0) * k), height: WORLD * k, fill: "#3b4a35", opacity: 0.9 }));
+    if (zoom < 2 && watch.chartDepth(0, 0) !== null) { // surveyed depth: shallower water is paler; shoals are ringed and labelled with their least depth
+      const n = 18, cell = w / n, rows = Math.ceil((CH / CW) * n) + 1;
+      for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) {
+        const mx = cx - w / 2 + (i + 0.5) * cell, my = cy - halfH0(w) + (j + 0.5) * cell, dep = watch.chartDepth(mx, my);
+        if (dep !== null && dep < 150 && mx < coastKm()) kids.push(sv("rect", { x: X(mx - cell / 2), y: Y(my + cell / 2), width: cell * k + 0.5, height: cell * k + 0.5, fill: "#9fd3e6", opacity: ((150 - dep) / 150) * 0.32 }));
+      }
+      for (const sh of watch.chartShoals()) {
+        const sx = X(sh.xKm), sy = Y(sh.yKm), least = watch.chartDepth(sh.xKm, sh.yKm);
+        if (sx < -20 || sx > CW + 20 || sy < -20 || sy > CH + 20) continue;
+        kids.push(sv("circle", { cx: sx, cy: sy, r: Math.max(2, sh.radiusKm * k), fill: "none", stroke: "#d9b878", "stroke-width": 0.6, "stroke-dasharray": "3 2" }), sv("text", { x: sx, y: sy + 2, "text-anchor": "middle", "font-size": 7, fill: "#d9b878" }, `${least ?? "?"}m`));
+      }
+    }
     const nearCoast = coastKm() - f.x <= BALANCE.coast.warnKm || store.state.tSec - store.state.coastWarnAt < 120; // the estimate says so, or the sim warned just now
     kids.push(sv("line", { x1: X(landX0), y1: Y(WORLD), x2: X(landX0), y2: Y(0), stroke: nearCoast ? "#e06a72" : "#7d8f6a", "stroke-width": nearCoast ? 1.6 : 1 }));
-    const step = zoom === 0 ? CELL / 9 : CELL, halfH = (CH / CW) * w / 2;
+    const step = zoom === 0 ? CELL / 9 : CELL, halfH = halfH0(w);
     const gx0 = Math.max(0, Math.floor((cx - w / 2) / step)), gx1 = Math.min(WORLD / step, Math.ceil((cx + w / 2) / step));
     const gy0 = Math.max(0, Math.floor((cy - halfH) / step)), gy1 = Math.min(WORLD / step, Math.ceil((cy + halfH) / step));
     for (let i = gx0; i <= gx1; i++) kids.push(sv("line", { x1: X(i * step), y1: Y(gy0 * step), x2: X(i * step), y2: Y(gy1 * step), stroke: "#2c5568", "stroke-width": 0.5 }));
@@ -170,6 +184,7 @@ export function mountHelm(d: HelmDeps): Helm {
   chartBox.hidden = !d.mapOn; zoomBtn.hidden = !d.mapOn; posTxt.hidden = !d.mapOn;
 
   const update = (): void => {
+    const f0 = fix();
     const b = store.state.boat, diff = angDelta(b.headingDeg, ordered);
     if (!dragging && Math.abs(diff) < 0.6) ordered = b.headingDeg; // back on course: rudder amidships
     const wa = Math.max(-90, Math.min(90, angDelta(b.headingDeg, ordered)));
@@ -177,8 +192,15 @@ export function mountHelm(d: HelmDeps): Helm {
     card.setAttribute("transform", `rotate(${(-b.headingDeg).toFixed(1)})`);
     ordMark.setAttribute("transform", `rotate(${ordered.toFixed(1)})`);
     setText(spd, t("desk.ctl.kn", { n: b.speedKn.toFixed(1) }));
-    for (const x of modes) { x.b.setAttribute("aria-pressed", String(b.mode === x.m)); setClass(x.b, "on", b.mode === x.m); }
-    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m`);
+    const est = watch.chartDepth(f0.x, f0.y);
+    for (const x of modes) {
+      x.b.setAttribute("aria-pressed", String(b.mode === x.m)); setClass(x.b, "on", b.mode === x.m);
+      const need = x.m === "surface" || est === null ? 0 : (x.m === "periscope" ? BALANCE.boat.periscopeDepthM : BALANCE.boat.diveDepthM) + BALANCE.seabed.clearanceM;
+      (x.b as HTMLButtonElement).disabled = est !== null && est < need; // the chart says the water is too shallow to go there
+      x.b.title = (x.b as HTMLButtonElement).disabled ? t("desk.helm.tooShallow", { m: String(need) }) : "";
+    }
+    const seabedM = watch.chartDepth(f0.x, f0.y);
+    setText(readout, `${t("desk.helm.hdg")} ${String(Math.round(b.headingDeg)).padStart(3, "0")}°\n${t("desk.helm.ord")} ${String(Math.round(ordered)).padStart(3, "0")}°\n${t("desk.helm.depth")} ${Math.round(b.depthM)} m${seabedM === null ? "" : `\n${t("desk.helm.seabed")} ~${seabedM} m\n${t("desk.helm.keel")} ~${Math.max(0, seabedM - Math.round(b.depthM))} m`}`);
     const ord = store.state.moveOrder, f = fix();
     if (ord === null) setText(orderTxt, t("desk.helm.noOrder"));
     else { const c = parseGrid(ord.grid); const dist = c === null ? 0 : Math.hypot(c.x - f.x, c.y - f.y), brg = c === null ? 0 : bearingTo({ x: f.x, y: f.y }, c);

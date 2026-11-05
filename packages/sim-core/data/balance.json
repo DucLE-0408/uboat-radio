@@ -356,5 +356,22 @@
     "endlessStartKm": 40,
     "moveMarginKm": 15,
     "itemMarginKm": 5
+  },
+  "seabed": {
+    "maxM": 200,
+    "slopeKm": 30,
+    "shoals": {
+      "count": 6,
+      "spreadKm": 70,
+      "minRadiusKm": 3,
+      "maxRadiusKm": 8,
+      "minLiftM": 120,
+      "maxLiftM": 190
+    },
+    "clearanceM": 10,
+    "warnUnderKeelM": 20,
+    "rearmUnderKeelM": 35,
+    "bottomHull": 15,
+    "draftM": 6
   }
 }
