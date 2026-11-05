@@ -1,6 +1,6 @@
 # Desk UI G4 (Endless, mã hóa và gửi tin, Private Message, Roster) — Requirements
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Không được sửa `packages/sim-core` cho tới khi người vận hành duyệt spec này (xem `tasks.md`, cổng S0). Spec cha: `docs/specs/desk-ui/` (G1–G3 đã xong và đã merge; G3 ở `docs/specs/desk-ui-g3/`).
+Trạng thái: **ĐÃ DUYỆT 2026-11-05** (xem `tasks.md`, cổng S0). Spec cha: `docs/specs/desk-ui/` (G1–G3 đã xong và đã merge; G3 ở `docs/specs/desk-ui-g3/`).
 
 ## Giới thiệu
 
@@ -28,9 +28,9 @@ G4 cần sửa `packages/sim-core` (tùy chọn ca trực, bộ phát tin vô h�
 
 ### R1. Endless và mô-đun
 1. THE SYSTEM SHALL cho `Watch` nhận tùy chọn `WatchOptions { mode: "night" | "endless"; modules: ModuleSet; difficulty: Difficulty }`; thiếu tùy chọn = ca trực hiện tại (D10).
-2. WHILE mode là `endless` THE SYSTEM SHALL không kết thúc theo thời gian; ca chỉ kết thúc bằng `sunk`, `executed` (G3) hoặc người chơi rời ca (R1.8).
+2. WHILE mode là `endless` THE SYSTEM SHALL không kết thúc theo thời gian; ca chỉ kết thúc bằng `sunk` hoặc người chơi rời ca (R1.8). *(Người vận hành chốt 2026-11-05: "chỉ khi chìm hoặc chủ động dừng thôi".)* Hệ quả: ở Endless cảnh cáo thứ 5 **không** xử tử; từ cảnh cáo thứ 5 trở đi mỗi cảnh cáo mới giữ mức `severe` (địch tiếp tục tấn công). Ca trực thường vẫn xử tử như G3.
 3. THE SYSTEM SHALL phát bức điện kế tiếp bằng bộ phát riêng (`derive(seed, "endless", n)`): khoảng cách giữa hai tin, tỷ lệ tin giả, mức nhiễu và hạn giờ lấy từ bảng độ khó (R1.5), tăng dần theo số tin đã nhận.
-4. THE SYSTEM SHALL có sáu mô-đun bật/tắt được: `timer` (hạn giờ), `rotors` (phải đặt rotor; tắt = máy tự đặt theo indicator), `stamps` (luật đóng dấu và lỗi `wrongStamp`/`badHandover`), `signatures` (tell chữ ký, dấu in, Sender ID), `cables` (phải cắm plugboard; tắt = dùng khóa ngày), `teletyper` (tắt = tờ Input hiện đủ ngay thay vì in dần).
+4. THE SYSTEM SHALL có sáu mô-đun bật/tắt được, **độc lập với độ khó** (chọn độ khó không đổi mô-đun nào; mặc định bật cả sáu): `timer` (hạn giờ), `rotors` (phải đặt rotor; tắt = máy tự đặt theo indicator), `stamps` (luật đóng dấu và lỗi `wrongStamp`/`badHandover`), `signatures` (tell chữ ký, dấu in, Sender ID), `cables` (phải cắm plugboard; tắt = dùng khóa ngày), `teletyper` (tắt = tờ Input hiện đủ ngay thay vì in dần).
 5. THE SYSTEM SHALL đọc bảng độ khó từ `balance.json` (`endless.difficulties`): ít nhất `easy`, `normal`, `hard`; mỗi mức có khoảng cách tin, tỷ lệ giả, Intel khởi đầu, nhiễu, hạn giờ và mức tăng theo thời gian.
 6. WHEN một mô-đun tắt THE SYSTEM SHALL tắt cả phần phán xử liên quan trong sim (không cảnh cáo vì thứ không còn trên bàn) **và** bảo đảm tin giả vẫn còn ít nhất một tell trong các mô-đun còn bật hoặc trong tell cổ điển (fist/bearing/timestamp/grid) (D8).
 7. THE SYSTEM SHALL tính điểm Endless (số tin xử đúng liên tiếp, tổng Ration, thời gian sống sót) ở desk; sim chỉ phát sự kiện, không giữ điểm (như R8 của G3).
@@ -46,7 +46,7 @@ G4 cần sửa `packages/sim-core` (tùy chọn ca trực, bộ phát tin vô h�
 2. WHEN người chơi bật máy, đã đặt rotor theo indicator gửi đi và cắm plugboard THE SYSTEM SHALL cho gõ bản rõ lên máy; đèn sáng chữ mã, và chữ mã được ghi lên tờ Outgoing theo nhóm 4 (cùng quy tắc đồng bộ nhóm với G2).
 3. THE SYSTEM SHALL cho chọn indicator gửi đi (4 chữ do người chơi chọn); dùng lại một indicator đã dùng là lỗi mật mã (tăng Intel như `Intel.indicator` hiện có).
 4. WHEN người chơi bấm *Phát* THE SYSTEM SHALL gửi lệnh `send { rxId | null, indicator, groups }` vào sim; sim tính thời gian phát từ độ dài chuỗi Morse (`encode`) và tốc độ phát, cộng vào `transmit` hiện có (tích lũy HF/DF, Intel, bị khóa khi lặn).
-5. THE SYSTEM SHALL để sim kiểm tra bản mã bằng khóa ngày: giải `groups` với `indicator` và so với bản rõ yêu cầu; đúng → `SEND_RESULT { ok: true }` và phần thưởng ở desk; sai → `SEND_RESULT { ok: false, reason }` với lý do **quan sát được** (ví dụ "HQ không đọc được"), không lộ bản rõ đúng.
+5. THE SYSTEM SHALL để sim kiểm tra bản mã bằng khóa ngày: giải `groups` với `indicator` và so với bản rõ yêu cầu; đúng → `SEND_RESULT { ok: true }` và phần thưởng ở desk; sai → `SEND_RESULT { ok: false, reason }` với lý do **quan sát được** (ví dụ "HQ không đọc được"), không lộ bản rõ đúng, **và là lỗi giấy tờ G3** (`badSend`, một cảnh cáo cho mỗi bức điện cần trả lời, idempotent). *(Chốt 2026-11-05: gửi sai bị cảnh cáo.)*
 6. WHILE antenna không dùng được (lặn hoặc radio silence) THE SYSTEM SHALL từ chối lệnh `send` như `transmit` hiện nay.
 7. THE SYSTEM SHALL tính độ dài tối đa của một tin gửi và số tin gửi chờ (bounded) để chặn nhập vô hạn; vượt thì từ chối ở biên.
 8. WHERE mô-đun `rotors` hoặc `cables` tắt THE SYSTEM SHALL dùng cấu hình khóa ngày thay cho cấu hình người chơi (R1.4), nhưng vẫn bắt gõ và phát.

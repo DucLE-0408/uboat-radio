@@ -1,6 +1,6 @@
 # Desk UI G4 — Design
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Đi kèm `requirements.md`.
+Trạng thái: **ĐÃ DUYỆT 2026-11-05**. Đi kèm `requirements.md`.
 
 ## 1. Kiến trúc
 
@@ -74,15 +74,15 @@ D8: khi `signatures` tắt, tell cổ điển vẫn đủ (bất biến sẵn c�
 - Menu: mục *Endless* mở màn cấu hình bằng thành phần radio/checkbox có sẵn (`menu/menu.ts`); cấu hình lần gần nhất lưu khóa riêng.
 - Điểm cao: khóa localStorage riêng, validate từng trường, nhãn theo (độ khó, bộ mô-đun).
 
-## 8. Câu hỏi mở (cần người vận hành quyết trước khi làm)
+## 8. Quyết định của người vận hành (2026-11-05)
 
-1. **Độ khó**: ba mức `easy` / `normal` / `hard`; đề xuất thông số: gap đầu 150 / 100 / 60 s, tỷ lệ giả đầu 0.2 / 0.35 / 0.5, hạn giờ 180 / 120 / 90 s. Chấp nhận?
-2. **Mô-đun mặc định**: đề xuất tất cả bật ở `normal`; `easy` tắt `timer` và `cables`. Chấp nhận?
-3. **Kết thúc Endless**: chỉ `sunk`/`executed`/`leave` (đề xuất), hay thêm giới hạn thời gian tùy chọn?
-4. **Tin cần trả lời**: đề xuất 2 loại: báo nhận lệnh (nhắc lại mã lệnh) và báo vị trí (lưới 4 ký tự). Thêm loại nào?
-5. **Phạt gửi sai**: đề xuất không cảnh cáo (chỉ mất cơ hội thưởng và tốn thời gian phát/HF-DF); hay gửi sai cũng là lỗi giấy tờ G3?
-6. **Roster vắng mặt**: đề xuất tối đa một người vắng mặt mỗi ca khi `BOAT_DAMAGED` nặng; hay không làm ở G4?
-7. **Tần suất PM**: đề xuất giãn cách ≥ 240 s sim-time, trần 6 tin mỗi 30 phút. Chấp nhận?
-8. **Tên thủy thủ**: đề xuất bảng 40 tên bịa kiểu Đức hóa chung (không trùng tên game tham chiếu). Chấp nhận, hay bạn cung cấp danh sách?
-9. **Save v3** theo đề xuất ở mục 7 (nạp được v2). Chấp nhận?
-10. **UI mới**: màn cấu hình Endless và ba loại giấy mới (Outgoing, Private, Roster) mở rộng hệ thiết kế hiện có bằng DOM và sprite `TEMPORARY`; theo AGENTS §2.7 cần bạn xác nhận không phải "hướng UI mới" cần thiết kế riêng.
+1. **Độ khó**: chấp nhận ba mức, gap đầu 150 / 100 / 60 s, tỷ lệ giả đầu 0.2 / 0.35 / 0.5, hạn giờ 180 / 120 / 90 s.
+2. **Mô-đun tách rời độ khó**: không có preset độ khó nào tự tắt mô-đun; mặc định bật cả sáu ở mọi độ khó.
+3. **Kết thúc Endless**: chỉ khi chìm hoặc người chơi chủ động dừng. Hệ quả đã ghi ở R1.2: không xử tử ở Endless (từ cảnh cáo thứ 5 giữ mức `severe`, mỗi cảnh cáo mới có thêm một đợt tấn công); ca trực thường giữ nguyên xử tử ở lần 5.
+4. **Loại tin cần trả lời**: chỉ hai loại (báo nhận lệnh, báo vị trí); chưa thêm.
+5. **Gửi sai**: bị cảnh cáo kiểu G3 (lỗi `badSend`).
+6. **Roster vắng mặt**: giao cho tôi quyết: làm. Khi `BOAT_DAMAGED` làm hull ≤ 50 lần đầu, một thành viên (không phải Liên lạc viên, là người chơi) vắng mặt cho tới hết ca; người kế nhiệm theo thứ tự chức vụ.
+7. **Tần suất PM**: giãn cách ≥ 240 s sim-time, trần 6 tin mỗi 30 phút.
+8. **Tên thủy thủ**: bảng 40 tên bịa do tôi soạn.
+9. **Save v3**: nạp được v2.
+10. **UI**: người vận hành cho phép tôi tự xử lý phần UI mới trong hệ thiết kế hiện có (màn cấu hình Endless, giấy Outgoing/Private/Roster bằng DOM và sprite `TEMPORARY`).

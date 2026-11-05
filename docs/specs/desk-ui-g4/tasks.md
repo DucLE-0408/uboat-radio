@@ -1,10 +1,10 @@
 # Desk UI G4 — Tasks
 
-Trạng thái: **DRAFT — CHƯA DUYỆT**. Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
+Trạng thái: **ĐÃ DUYỆT 2026-11-05**. Mỗi nhiệm vụ kiểm chứng được. `R#` là yêu cầu trong `requirements.md`.
 
 ## Cổng S0 — Duyệt spec (bắt buộc, chưa xong)
-- [ ] **S0.1** Người vận hành duyệt `requirements.md`, `design.md` và trả lời các câu hỏi mở (design mục 8).
-- **Không sửa `packages/sim-core` trước cổng này.**
+- [x] **S0.1** Người vận hành trả lời toàn bộ câu hỏi mở 2026-11-05 (design mục 8); spec được duyệt.
+- Cổng đã mở; được sửa `packages/sim-core` trong phạm vi bảng ở `design.md` mục 2.
 
 ## Stage 1 — Sim-core: tùy chọn ca, Endless, mô-đun (sau S0)
 - [ ] **T1.1** `WatchOptions`/`ModuleSet`/`Difficulty`, `balance.json` mục `endless`, loader có validate; mặc định giữ nguyên ca trực. (R1.1, R1.5, D10)
