@@ -46,6 +46,6 @@ export function checkHandOver(bundle: readonly Paper[], echoStamped: (rxId: numb
 /** Papers the crew handed to the radio room are records and may not be thrown away (only private notes may, G4). */
 export function canTrash(kind: PaperKind): boolean {
   switch (kind) {
-    case "input": case "output": case "mission": case "orders": case "manual": return false;
+    case "input": case "output": case "slip": case "encode": case "mission": case "orders": case "manual": return false;
   }
 }

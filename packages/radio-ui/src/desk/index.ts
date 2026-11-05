@@ -505,6 +505,27 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     };
   };
 
+  // Verification message slip: the Sender ID of one Input attempt, read through the player's own machine setting and plugboard.
+  // It states no verdict: the player compares it with the Daily Orders and the Input's seal and signature.
+  const slip = (p: Paper): Live => {
+    const rxId = p.rxId as number, attempt = p.attempt as number;
+    const title = t("desk.paper.slipN", { rx: rxId, n: attempt + 1 });
+    const view = mountSheet(host, p, "paper-slip", title, "dslip");
+    const idV = label("ink typ center", "", 8, 20, 64, 12);
+    view.front.append(label("strip", title, 4, 4, 58, 7), idV, flipButton(host, p, view, 64, 2));
+    view.back.append(label("ink", t("desk.paper.back"), 4, 3, 56, 7), label("ink", t("desk.paper.checked"), 52, 28, 22, 7), flipButton(host, p, view, 64, 2));
+    const mk = marks(p, view, null, [[8, 14]], [22, 30], { echo: null, stamps: [] });
+    return {
+      view,
+      refresh: () => {
+        const rx = store.state.rx.get(rxId), a = rx?.attempts.find((x) => x.attempt === attempt);
+        if (!rx || !a) return;
+        mk();
+        setText(idV, a.paper === undefined ? "" : dm.keysLive ? decipherSenderId(ctx.seed, DAY, mod("rotors") ? dm.positions : a.indicator, a.paper.senderIdCipher, plugsNow()) : t("desk.paper.senderOff"));
+      },
+    };
+  };
+
   // ---- optional per-message deadline (G3): measured in SIM time from the message's first arrival, so replays agree with the sim.
   // The sim cites 'timeout' itself (command `timer`); this is only the indicator.
   const timerOnNow = (): boolean => (isEndless ? opts?.modules.timer === true : ctx.flags.timer === true); // Endless: the Timer module decides
@@ -546,6 +567,9 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
         const outId = `out:${key}`;
         // an Output exists once typing started, after a decode, or when the saved layout had one (stamped, clipped, handed)
         if (!views.has(outId) && (store.copyText(rx.rxId, a.attempt).length > 0 || rx.analysis.has(a.attempt) || model.hasPending(outId))) add(model.ensure("output", rx.rxId, a.attempt), output);
+        // the slip appears once the Input is fully printed (or when the saved layout had one) and only where the sender id exists (G3 signatures)
+        const slipId = `slip:${key}`;
+        if (!views.has(slipId) && mod("signatures") && a.paper !== undefined && (printer.done(inId, now) || model.hasPending(slipId))) add(model.ensure("slip", rx.rxId, a.attempt), slip);
       }
     }
     // G4: a message the sim dropped off the pile leaves the desk too, so a long Endless watch cannot bury the table in sheets
@@ -613,7 +637,12 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   };
   const putBack = (p: Paper, from: { x: number; y: number } | null): void => { if (from) { model.moveWith(p.id, from.x, from.y); host.changed(); } };
   const trash = (p: Paper, from: { x: number; y: number } | null): void => {
-    if (!canTrash(p.kind)) { store.notify(t("desk.bin.refuse")); actions.paperwork(p.rxId, { act: "bin", sheet: p.kind }); putBack(p, from); } // G3: records may not be binned: the sim cites it
+    if (!canTrash(p.kind)) {
+      store.notify(t("desk.bin.refuse"));
+      // G3: records may not be binned: the sim cites it. The slip and the encode sheet are desk-only papers the sim does not track (no sim-core change), so they are refused without a citation.
+      if (p.kind !== "slip" && p.kind !== "encode") actions.paperwork(p.rxId, { act: "bin", sheet: p.kind });
+      putBack(p, from);
+    }
   };
   const handOver = (p: Paper, from: { x: number; y: number } | null): void => {
     const bundle = model.group(p.id);
@@ -835,8 +864,42 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     ob.append(obReq, obIn, obMach, obCipher, obSend, obRes);
     const cleanPlain = (): string => { const p = obIn.value.toUpperCase().replace(/[^A-Z]/g, ""); if (p !== obIn.value) obIn.value = p; return p; };
     const cipherNow = (plain: string): string => (dm.keysLive && plain.length > 0 ? encipherGroups(ctx.seed, DAY, startPos(), plain, plugsNow()) : "");
+    // Encode output sheet: what the machine enciphers for the reply to one message. The Outbox field above is the keyboard; this is the paper it prints.
+    const encode = (p: Paper): Live => {
+      const rxId = p.rxId as number;
+      const title = t("desk.paper.encodeN", { rx: rxId });
+      const view = mountSheet(host, p, "paper-encode", title, "denc");
+      const fv = { req: label("ink typ", "", 50, 21, 54, 9), start: label("ink typ", "", 50, 33, 54, 9) };
+      const grid = groupGrid(7, 49, 98, 38, 8);
+      const status = label("ink typ small", "", 8, 91, 96, 9);
+      view.front.append(label("strip", title, 4, 5, 88, 9), label("ink fld", t("desk.paper.request"), 6, 22, 42, 7), label("ink fld", t("desk.paper.start"), 6, 34, 42, 7),
+        fv.req, fv.start, grid.el, status, flipButton(host, p, view, 94, 4));
+      view.back.append(label("ink", t("desk.paper.back"), 4, 4, 88, 7), label("ink", t("desk.paper.sign"), 10, 92, 60, 7), flipButton(host, p, view, 94, 2));
+      const mk = marks(p, view, null, [[10, 22], [62, 22]], [12, 78], { echo: null, stamps: [] });
+      return {
+        view,
+        refresh: () => {
+          mk();
+          const req = watch.replyRequest(rxId), mine = missionMsg() === rxId;
+          const plain = mine ? obIn.value.toUpperCase().replace(/[^A-Z]/g, "") : "", cipher = cipherNow(plain);
+          setText(fv.req, req === null ? "—" : t(req.kind === "ack" ? "desk.paper.reqAck" : "desk.paper.reqPos"));
+          setText(fv.start, dm.keysLive ? startPos() : "—");
+          grid.set(groupsOf(cipher).map((g) => ({ text: g })), t("desk.paper.cipherLabel"));
+          const r = store.state.sendResults.get(rxId);
+          setText(status, r !== undefined ? t(r ? "desk.ob.resOk" : "desk.ob.resBad") : dm.keysLive ? "" : t("desk.paper.encOff"));
+        },
+      };
+    };
+    const ensureEncode = (id: number): void => {
+      const encId = `enc:${id}:0`;
+      if (views.has(encId)) return;
+      if (watch.replyRequest(id) !== null || model.hasPending(encId)) add(model.ensure("encode", id, 0), encode);
+    };
     const renderOutbox = (): void => {
       const id = missionMsg(), req = id === null ? null : watch.replyRequest(id), plain = cleanPlain(), cipher = cipherNow(plain);
+      if (id !== null) ensureEncode(id);
+      for (const rid of store.state.order) if (model.hasPending(`enc:${rid}:0`)) ensureEncode(rid); // a saved layout may hold sheets of other messages
+      if (id !== null) views.get(`enc:${id}:0`)?.refresh(performance.now());
       setText(obReq, req === null ? t("desk.ob.none") : t("desk.ob.request", { rx: id as number, kind: t(req.kind === "ack" ? "desk.ob.kindAck" : "desk.ob.kindPos"), plain: req.plain }));
       setText(obMach, dm.keysLive ? t("desk.ob.machineOk", { start: startPos() }) : t("desk.ob.machineOff"));
       setText(obCipher, cipher === "" ? "—" : cipher);

@@ -19,6 +19,8 @@ export const DESK = {
   machine: { x: 428, y: 304, w: 204, h: 48 },
   paper: { w: 112, h: 148 },
   mission: { w: 128, h: 104 },
+  slip: { w: 80, h: 44 },
+  encode: { w: 112, h: 104 },
   drawer: { x: 146, y: 196, w: 104, h: 120 },
   bin: { x: 148, y: 318, w: 28, h: 32 },
 } as const;
@@ -244,6 +246,36 @@ function paperOutput(): Sprite {
   return { id: "paper-output", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Output sheet, front (header, fields, group area, status) and back (red stamp box, signature)" };
 }
 
+/** Verification message slip: a small strip carrying the deciphered Sender ID; the back has one stamp box and a check line. */
+function paperSlip(): Sprite {
+  const { w: W, h: H } = DESK.slip, i = new Img(W * 2, H);
+  sheet(i, 0, W, H);
+  i.rect(2, 3, W - 4, 9, c(T.hb, 1)); i.hline(2, 12, W - 4, c(T.hb, 0));          // header strip
+  i.frame(6, 18, W - 12, 18, c(T.pa, 2)); i.hline(8, 34, W - 16, c(T.pa, 3));      // Sender ID well with a pen-line under it
+  const ox = W;
+  sheet(i, ox, W, H);
+  i.rect(ox + 2, 3, W - 4, 7, c(T.pa, 3));
+  i.frame(ox + 8, 14, 40, 26, c(T.pa, 2));                                         // regular stamp box
+  i.hline(ox + 52, 36, 20, c(T.pa, 1));                                            // check line
+  return { id: "paper-slip", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Verification message slip, front (deciphered Sender ID) and back (stamp box, check line)" };
+}
+
+/** Encode output sheet: what the machine enciphers for a reply (request, start positions, cipher groups, result). */
+function paperEncode(): Sprite {
+  const { w: W, h: H } = DESK.encode, i = new Img(W * 2, H);
+  sheet(i, 0, W, H);
+  i.rect(2, 3, W - 4, 13, c(T.e, 3)); i.hline(2, 16, W - 4, c(T.e, 1));           // machine-green header, like the decode Output
+  for (const y of [22, 34]) i.hline(48, y + 8, W - 56, c(T.pa, 2));                // REQUEST / START fields
+  i.frame(6, 48, W - 12, 40, c(T.pa, 2));                                          // cipher group area
+  i.hline(8, 94, W - 22, c(T.pa, 3));                                              // result line
+  const ox = W;
+  sheet(i, ox, W, H);
+  i.rect(ox + 2, 3, W - 4, 9, c(T.pa, 3));
+  i.frame(ox + 8, 20, 44, 30, c(T.pa, 2)); i.frame(ox + W - 52, 20, 44, 30, c(T.pa, 2)); // two regular stamps
+  i.hline(ox + 10, 90, W - 20, c(T.pa, 1));                                        // signature line
+  return { id: "paper-encode", img: i, frames: { w: W, h: H, count: 2 }, note: "desk: Encode output sheet, front (request, start, cipher groups, result) and back (two stamp boxes, signature)" };
+}
+
 function mission(): Sprite {
   const { w: W, h: H } = DESK.mission, i = new Img(W, H);
   i.rect(1, 3, W - 2, H - 4, c(T.pa, 4)); i.vline(0, 4, H - 6, c(T.pa, 2)); i.vline(W - 1, 4, H - 6, c(T.pa, 1)); i.hline(1, H - 1, W - 2, c(T.pa, 1));
@@ -371,5 +403,5 @@ function paperDoc(): Sprite {
 }
 
 export function deskSprites(): Sprite[] {
-  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), mission(), drawerTray(), tools(), bin(), ...marks(), crew(), paperDoc()];
+  return [deskBg(), door(), controls(), tty(), ttyLamp(), stamper(), ...stamperParts(), machineTab(), paperInput(), paperOutput(), paperSlip(), paperEncode(), mission(), drawerTray(), tools(), bin(), ...marks(), crew(), paperDoc()];
 }
