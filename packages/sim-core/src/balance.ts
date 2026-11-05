@@ -52,6 +52,9 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G5: movement orders (distance to the ordered cell, deadline arithmetic, arrival radius) and dead-reckoning drift. */
+  readonly move: { readonly chance: number; readonly minKm: number; readonly maxKm: number; readonly assumedKn: number; readonly marginFactor: number; readonly arriveKm: number };
+  readonly nav: { readonly driftPerKm: number; readonly baseErrKm: number };
   /** G4: Endless pacing per difficulty, replies the player sends, Private Message pacing, crew roster. */
   readonly endless: { readonly maxPending: number; readonly difficulties: Readonly<Record<"easy" | "normal" | "hard", {
     readonly gap0: number; readonly gapDecay: number; readonly gapMin: number;

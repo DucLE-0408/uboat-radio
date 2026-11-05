@@ -3,12 +3,12 @@
 import type { Balance } from "./balance";
 import { successorOf, type Role } from "./roster";
 
-export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend";
+export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed";
 export type PmTone = "remind" | "threat";
 
 /** Rank of the sender for a topic and tone (before succession). */
 export function senderFor(topic: PmTopic, tone: PmTone): Role {
-  if (topic === "located") return "captain";
+  if (topic === "located" || topic === "orderFailed") return "captain";
   if (topic === "citation") return tone === "threat" ? "captain" : "xo";
   if (topic === "badSend") return "chief";
   return "liaison"; // late and longTx

@@ -26,7 +26,8 @@ import { MANUAL, ordersPages, pickNews, SIGNATURES, type DocPage, type PaperDocs
 import { EchoPress, type EchoDecision } from "./echo";
 import { DESK_KEY, PaperModel, parseExtra, parseLayout, type MarkResult, type Paper, type StampColor } from "./papers";
 import { DeskMachine, replayCopy, type MachineView } from "./machine";
-import { awardSteps, copyMarks, MISSION_STEPS, penalize, RATION_EMPTY, reward, scoreCopy, type RationState } from "./ration";
+import { adjust, awardSteps, copyMarks, MISSION_STEPS, MOVE_PENALTY, MOVE_REWARD, penalize, RATION_EMPTY, reward, scoreCopy, type RationState } from "./ration";
+import { mountHelm, type HelmItem } from "./helm";
 import { canTrash, checkHandOver } from "./rules";
 import { Printer, tokenEnds } from "./printer";
 import { flipButton, groupGrid, mountSheet, type SheetHost, type SheetView } from "./sheets";
@@ -117,6 +118,10 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   repBtn.addEventListener("click", () => actions.report(REPORT_SEC));
   ctl.append(label("strip", t("desk.controls"), 4, 3, 124, 8), label("dim center", t("desk.ctl.dive"), 2, 14, 30, 6), label("dim center", t("desk.ctl.speed"), 36, 14, 48, 6),
     label("dim center", t("desk.ctl.silence"), 88, 43, 42, 6), label("dim center", t("desk.ctl.report"), 88, 73, 42, 6), leverHandle, ...levers, slower, faster, spdTxt, silBtn, repBtn, txClock, antenna);
+  // G5: steering moved to the Helm screen; the radio desk keeps only the readouts, silence, report and the transmit clock
+  for (const e of [leverHandle, ...levers, slower, faster]) e.hidden = true;
+  const helmBtn = h("button", { class: "dkey dhelmbtn", attrs: { type: "button", "aria-expanded": "false" }, text: t("desk.helm.btn") }); place(helmBtn, 4, 24, 30, 50);
+  ctl.append(helmBtn);
   scene.append(ctl);
   // drawers of the P5 room (auth table, sonar, log) open from the top panel; the emergency panel is the P5 one
   const drawerKeys: readonly (readonly ["auth" | "sonar" | "log", number])[] = [["auth", 440], ["sonar", 500], ["log", 560]];
@@ -907,6 +912,23 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
     renderOutbox();
   }
 
+  // ---------------------------------------------------------------- G5: Helm screen (chart, compass, wheel) and movement orders
+  const helmItems = (): readonly HelmItem[] => {
+    let safe = 0, supply = 0;
+    return watch.orderItems().map((i) => ({ kind: i.kind, n: i.kind === "safeCoords" ? ++safe : ++supply, xKm: i.xKm, yKm: i.yKm, lost: store.state.lostItems.has(i.id) })).filter((i) => !i.lost);
+  };
+  const helm = mountHelm({ ctx, root: scene, mapOn: mod("map"), items: helmItems });
+  helmBtn.addEventListener("click", () => { helm.toggle(); helmBtn.setAttribute("aria-expanded", String(helm.isOpen())); });
+  const onHelmEsc = (ev: KeyboardEvent): void => { if (ev.code === "Escape" && helm.isOpen()) { helm.close(); helmBtn.setAttribute("aria-expanded", "false"); ev.preventDefault(); ev.stopPropagation(); } };
+  window.addEventListener("keydown", onHelmEsc, true);
+  let seenReached = store.state.ordersReached, seenFailed = store.state.ordersFailed, seenOrder = store.state.moveOrder?.rxId ?? -1;
+  scope.on(["ui", "log"], () => {
+    const s = store.state;
+    if (s.moveOrder !== null && s.moveOrder.rxId !== seenOrder) { seenOrder = s.moveOrder.rxId; store.notify(t("desk.order.accepted", { grid: s.moveOrder.grid })); }
+    if (s.ordersReached > seenReached) { addRation(adjust(ration, MOVE_REWARD * (s.ordersReached - seenReached))); seenReached = s.ordersReached; store.notify(t("desk.order.reached")); }
+    if (s.ordersFailed > seenFailed) { addRation(adjust(ration, -MOVE_PENALTY * (s.ordersFailed - seenFailed))); seenFailed = s.ordersFailed; store.notify(t("desk.order.failed")); }
+  });
+
   // Endless debrief rows (computed once; the best of each field is kept per difficulty and module set)
   let endlessMemo: [string, string][] | null = null;
   const endlessRows = (): readonly [string, string][] => {
@@ -975,13 +997,13 @@ export function mountDesk(base: Ctx, app: HTMLElement): { frame(): void; dispose
   return {
     frame: () => {
       const now = performance.now();
-      boat.frame(now); toast.frame(); machine.frame(now); timerTick(now);
+      boat.frame(now); toast.frame(); machine.frame(now); timerTick(now); helm.frame(now);
       if (printer.busy()) { for (const v of views.values()) v.refresh(now); stations(now); }
       else if (blink) { blink = false; stations(now); }
     },
     dispose: () => {
       window.removeEventListener("resize", fit); window.removeEventListener("pagehide", onHide); window.removeEventListener("keydown", onEsc, true);
-      window.removeEventListener("keydown", onTalkKey, true); window.removeEventListener("keyup", onTalkUp, true);
+      window.removeEventListener("keydown", onTalkKey, true); window.removeEventListener("keyup", onTalkUp, true); window.removeEventListener("keydown", onHelmEsc, true); helm.dispose();
       if (leaveTimer) clearTimeout(leaveTimer); if (spaceTimer) clearTimeout(spaceTimer);
       machine.dispose();
       if (ctx.hooks) { ctx.hooks.typingGate = null; ctx.hooks.decodeSetting = null; ctx.hooks.decodePlugs = null; ctx.hooks.denied = null; }

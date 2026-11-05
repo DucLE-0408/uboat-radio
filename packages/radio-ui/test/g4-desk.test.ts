@@ -3,7 +3,7 @@ import { pmText, type PmTone, type PmTopic } from "../src/desk/pmtext";
 import { crewName, remapCrew, ROLE_TO_CREW, setCrewNames } from "../src/desk/dialogue";
 import { reward, SEND_REWARD, RATION_EMPTY } from "../src/desk/ration";
 
-const TOPICS: PmTopic[] = ["citation", "late", "longTx", "located", "badSend"], TONES: PmTone[] = ["remind", "threat"];
+const TOPICS: PmTopic[] = ["citation", "late", "longTx", "located", "badSend", "orderFailed"], TONES: PmTone[] = ["remind", "threat"];
 
 describe("private message texts", () => {
   it("every topic and tone has text in both languages, picked stably, and none speaks about right or wrong decisions", () => {

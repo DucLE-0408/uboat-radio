@@ -63,6 +63,10 @@ export interface UiState {
   ended: "time" | "sunk" | "executed" | "left" | null;
   /** G4 observations rebuilt from the event log: replies read by HQ, private notes, crew absence, messages dropped. */
   sendResults: Map<number, boolean>;
+  /** G5: the movement order in force (the cell the player accepted and its deadline in sim seconds) and how many were reached or missed. */
+  moveOrder: { rxId: number; grid: string; deadlineAt: number } | null;
+  ordersReached: number;
+  ordersFailed: number;
   /** Replies HQ could read, counted over the whole watch (a message may be answered more than once). */
   sendOk: number;
   privateNotes: { tSec: number; fromRole: string; tone: string; topic: string; rxId: number | null }[];
@@ -92,7 +96,7 @@ const LOG_MAX = 300;
 export function emptyState(): UiState {
   return {
     tSec: 0, rx: new Map(), order: [], activeRx: null, activeAttempt: 0, sonar: new Map(),
-    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, privateNotes: [], absentRole: null, lost: new Set<number>(),
+    tx: { totalSec: 0, keyedUntilSec: 0, locatedAtSec: null, escortAtSec: null, depthChargeAtSec: null }, view: "copy", drawer: null, decodeSeq: 0, alertSeq: 0, citations: 0, lostItems: new Set<string>(), lastCitation: null, lastConsequence: null, sendResults: new Map<number, boolean>(), sendOk: 0, moveOrder: null, ordersReached: 0, ordersFailed: 0, privateNotes: [], absentRole: null, lost: new Set<number>(),
     boat: { mode: "surface", speedKn: 0, headingDeg: 0, depthM: 0, hull: 100, silence: false, antennaUp: true, canTransmit: true },
     emergency: { untilSec: 0, reason: null }, log: [], decisions: [], ended: null, notice: null, pendingCheck: null, replaying: false,
     lookup: { row: null, col: null, active: false }, hydrophone: null, paused: false,
@@ -234,6 +238,22 @@ export class Store {
         break;
       case "ROSTER_CHANGE":
         st.absentRole = e.present ? null : e.role;
+        this.mark("ui", "log");
+        break;
+      case "ORDER_ACCEPTED":
+        st.moveOrder = { rxId: e.rxId, grid: e.grid, deadlineAt: e.tSec + e.deadlineSec };
+        this.log(e.tSec, "info", `Order accepted: go to ${e.grid}`);
+        this.mark("ui", "log");
+        break;
+      case "ORDER_REACHED":
+        st.moveOrder = null; st.ordersReached++;
+        this.log(e.tSec, "info", "Order reached");
+        this.mark("ui", "log");
+        break;
+      case "ORDER_FAILED":
+        st.moveOrder = null; st.ordersFailed++;
+        if (e.lostItem !== null) st.lostItems.add(e.lostItem);
+        this.log(e.tSec, "alert", "Order missed: supply point lost");
         this.mark("ui", "log");
         break;
       case "MSG_LOST":

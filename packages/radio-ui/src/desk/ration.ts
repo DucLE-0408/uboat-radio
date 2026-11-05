@@ -62,6 +62,13 @@ export function reward(s: RationState, n: number): RationState {
   return { score: Math.min(SCORE_LIM, s.score + SEND_REWARD * n), scored: s.scored, bonus: s.bonus };
 }
 
+/** G5: reaching an ordered position pays, missing the deadline costs (the sim also takes a resupply point). */
+export const MOVE_REWARD = 30, MOVE_PENALTY = 25;
+export function adjust(s: RationState, delta: number): RationState {
+  if (delta === 0) return s;
+  return { score: Math.max(-SCORE_LIM, Math.min(SCORE_LIM, s.score + delta)), scored: s.scored, bonus: s.bonus };
+}
+
 const int = (x: unknown, lo: number, hi: number): number | null => (typeof x === "number" && Number.isInteger(x) && x >= lo && x <= hi ? x : null);
 
 /** Validates a stored ration (untrusted). Anything malformed yields the empty state; single bad entries are dropped. */
