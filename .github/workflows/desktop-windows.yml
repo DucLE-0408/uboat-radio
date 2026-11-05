@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Create a GitHub pre-release with this tag from main (desktop-preview-YYYYMMDD). Leave empty to only build."
+        description: "Create a GitHub pre-release with this tag from main (desktop-preview-YYYYMMDD, or desktop-preview-YYYYMMDD-N for a second one the same day; a tag is never reused). Leave empty to only build."
         required: false
         default: ""
         type: string
@@ -88,8 +88,11 @@ jobs:
       ARTIFACT: uboat-radio-windows-installer-${{ github.sha }}
     steps:
       - name: Validate the tag name
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          [[ "$RELEASE_TAG" =~ ^desktop-preview-[0-9]{8}$ ]] || { echo "tag must match desktop-preview-YYYYMMDD" >&2; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^desktop-preview-[0-9]{8}(-[0-9]{1,2})?$ ]] || { echo "tag must match desktop-preview-YYYYMMDD or desktop-preview-YYYYMMDD-N" >&2; exit 1; }
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then echo "tag $RELEASE_TAG already exists: a published tag is never reused" >&2; exit 1; fi
       - name: Download the installer built by this run
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
