@@ -13,7 +13,7 @@ import {
   type DayOrder, type DisposeHow, type OrderItem, type PaperAction, type PaperFault, type PaperObservable, type PaperOrders, type PaperTell, type PaperTruth,
 } from "./paper";
 import {
-  generateForgery, generateGenuine, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
+  generateForgery, generateGenuine, gridToPos, makeCallsigns, makeKnownFists, type Generated, type Truth, type WorldCtx,
 } from "./messages";
 import { applyNoise } from "./morse";
 import { deadlineSec, forgedProbability, gapSec } from "./endless";
@@ -77,6 +77,7 @@ export interface WatchSummary {
 interface RxState {
   readonly gen: Generated;
   readonly paper: PaperTruth;
+  readonly move: { readonly grid: string; readonly minutes: number } | null; // G5: set for a movement order
   readonly checkLetter: string; // what goes on the air (true letter, or a forger's guess)
   attempts: number;
   deadlineAt: number | null; // sim-time second by which the Input must be handed over (G3 timer)
@@ -128,6 +129,14 @@ export class Watch {
   private readonly pmSent: number[] = [];
   private longTxSeen = 0;
   private pendingSends = 0;
+  // G5: the active movement order and dead-reckoning (the sim knows the true position; players only get `navFix()`)
+  private order: { readonly rxId: number; readonly target: { readonly x: number; readonly y: number }; readonly deadlineAt: number } | null = null;
+  private readonly driftRng: Rng;
+  private driftXm = 0;
+  private driftYm = 0;
+  private travelM = 0;
+  private lastBx = 0;
+  private lastBy = 0;
 
   constructor(private readonly seed: number | string, private readonly b: Balance = BALANCE, opts?: WatchOptions) {
     this.opts = opts;
@@ -135,6 +144,7 @@ export class Watch {
     this.endless = opts?.mode === "endless";
     this.timerOn = this.endless && opts?.modules.timer === true;
     this.roster0 = makeRoster(seed, b);
+    this.driftRng = derive(seed, "drift");
     this.boat = new Boat(this.bus, { x: 0, y: 0, headingDeg: 0 }, b);
     this.det = new HfdfDetector(derive(seed, "hfdf"), b);
     this.intel = new Intel(b);
@@ -270,6 +280,8 @@ export class Watch {
     for (const x of due) x.fn();
 
     this.boat.tick(DT);
+    this.deadReckon();
+    this.checkOrder(t);
 
     const radio = this.boat.radio();
     if (!radio.canTransmit) this.txRemaining = 0; // diving or sunk cuts the key
@@ -342,15 +354,15 @@ export class Watch {
     this.emit({ type: "WATCH_END", tSec: t, reason: "sunk" });
   }
 
-  private inject(id: number, forged: boolean): void {
+  private inject(id: number, forged: boolean, kind: "ORDER" | "MOVE" = "ORDER"): void {
     const ctx = this.worldCtx();
     const gen0 = forged
-      ? generateForgery(this.seed, id, "ORDER", this.intel.level, ctx, this.b)
-      : generateGenuine(this.seed, id, "ORDER", ctx, this.b);
+      ? generateForgery(this.seed, id, kind, this.intel.level, ctx, this.b)
+      : generateGenuine(this.seed, id, kind, ctx, this.b);
     const paperOn = !this.g4 || this.opts?.modules.signatures === true; // module off: no paper tells, nothing printed (classic tells still guarantee one)
     const paper = paperOn ? makeProfile(this.seed, id, gen0.msg.from, forged, forged ? this.intel.level : 0, this.orders)
       : { authMark: "stamped" as const, markForged: false, signatureVariant: 0, senderId: this.orders.approvedSenders[0] as string, tells: [] as PaperTell[] };
-    const gen: Generated = { msg: gen0.msg, truth: { ...gen0.truth, paperTells: paper.tells } };
+    const gen: Generated = { msg: gen0.msg, truth: { ...gen0.truth, paperTells: paper.tells }, ...(gen0.move ? { move: gen0.move } : {}) };
     const real = trueCheckLetter(this.table, gen.msg.from, gen.msg.plain);
     let letter = real;
     if (forged) {
@@ -358,7 +370,7 @@ export class Watch {
       const r = derive(this.seed, "forgeauth", id);
       if (!r.chance(this.intel.forgeryPassProbability())) letter = L((idx(real) + 1 + r.int(25)) % 26);
     }
-    this.rx.set(id, { gen, paper, checkLetter: letter, attempts: 0, deadlineAt: null, handed: false, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
+    this.rx.set(id, { gen, paper, move: gen0.move ? { grid: gen0.move.grid, minutes: gen0.move.minutes } : null, checkLetter: letter, attempts: 0, deadlineAt: null, handed: false, challenge: undefined, reply: undefined, replyChecked: false, resolved: false });
     this.deliver(id);
   }
 
@@ -416,6 +428,52 @@ export class Watch {
 
   // ---------------------------------------------------------------- G4: endless stream, sending, leaving, private messages
 
+  // ---------------------------------------------------------------- G5: movement orders and dead-reckoning
+
+  /** Where the boat is (world km) and where the player's navigation estimates it to be; the true position stays here. */
+  private trueKm(): { x: number; y: number } { const s = this.boat.state(); return { x: this.b.watch.originKm.x + s.x / 1000, y: this.b.watch.originKm.y + s.y / 1000 }; }
+
+  /** Drift grows with distance sailed: a small seeded random walk added to the true position (no stream is touched while the boat stands still). */
+  private deadReckon(): void {
+    const s = this.boat.state(), d = Math.hypot(s.x - this.lastBx, s.y - this.lastBy);
+    this.lastBx = s.x; this.lastBy = s.y;
+    if (d <= 0) return;
+    this.travelM += d;
+    const sigma = this.b.nav.driftPerKm * d;
+    this.driftXm += (this.driftRng.next() * 2 - 1) * sigma;
+    this.driftYm += (this.driftRng.next() * 2 - 1) * sigma;
+  }
+
+  /** The navigator's fix: estimated position in world km, its error radius, and the heading the compass shows. Observation only. */
+  navFix(): { readonly xKm: number; readonly yKm: number; readonly errKm: number; readonly headingDeg: number } {
+    const t = this.trueKm(), s = this.boat.state();
+    return { xKm: t.x + this.driftXm / 1000, yKm: t.y + this.driftYm / 1000, errKm: this.b.nav.baseErrKm + this.b.nav.driftPerKm * (this.travelM / 1000), headingDeg: s.headingDeg };
+  }
+
+  private takeOrder(rxId: number, mv: { readonly grid: string; readonly minutes: number }): void {
+    const c = gridToPos(mv.grid, this.b);
+    if (c === null) return;
+    this.order = { rxId, target: c, deadlineAt: this.tSec + mv.minutes * 60 };
+    this.emit({ type: "ORDER_ACCEPTED", tSec: this.tSec, rxId, grid: mv.grid, deadlineSec: mv.minutes * 60 });
+  }
+
+  private checkOrder(t: number): void {
+    const o = this.order;
+    if (o === null || this.ended) return;
+    const p = this.trueKm();
+    if (Math.hypot(p.x - o.target.x, p.y - o.target.y) <= this.b.move.arriveKm) {
+      this.order = null;
+      this.emit({ type: "ORDER_REACHED", tSec: t, rxId: o.rxId });
+    } else if (t >= o.deadlineAt) {
+      this.order = null;
+      // a missed order costs a resupply point (any item once those are gone); the desk takes the rations
+      const i = this.lossQueue.findIndex((id) => id.startsWith("supply")), lost = (i >= 0 ? this.lossQueue.splice(i, 1)[0] : this.lossQueue.shift()) ?? null;
+      if (lost !== null) this.lost.add(lost);
+      this.emit({ type: "ORDER_FAILED", tSec: t, rxId: o.rxId, lostItem: lost });
+      this.pm("orderFailed", o.rxId);
+    }
+  }
+
   private endlessNext(n: number): void {
     if (this.ended || !this.opts) return;
     const d = this.opts.difficulty, r = derive(this.seed, "endless", n);
@@ -426,7 +484,8 @@ export class Watch {
       (this.rx.get(id) as RxState).resolved = true;
       this.emit({ type: "MSG_LOST", tSec: this.tSec, rxId: id });
     }
-    this.inject(n + 1, forged);
+    const move = this.opts.modules.map && r.chance(this.b.move.chance); // movement orders need the map module
+    this.inject(n + 1, forged, move ? "MOVE" : "ORDER");
     this.at(this.tSec + gapSec(this.b, d, n) * (0.8 + 0.4 * r.next()), () => this.endlessNext(n + 1));
   }
 
@@ -567,6 +626,7 @@ export class Watch {
     if (decision === "accept") {
       this.startTx(this.b.watch.ackTxSec, "ack"); // acknowledging an order keys the transmitter
       if (forged) this.spawnAmbush();
+      if (rx.move !== null) this.takeOrder(rxId, rx.move);
     }
     return true;
   }

@@ -173,7 +173,7 @@ export interface RxHeader {
 export function assessTells(h: RxHeader, plain: string, ctx: WorldCtx): Tell[] {
   const grid = extractGrid(plain);
   const msg: Message = {
-    id: 0, kind: "ORDER", net: "HQ", from: h.from, to: "ALL", sentAtMin: h.sentAtMin,
+    id: 0, kind: plain.startsWith("NAVIGATIONSBEFEHL") ? "MOVE" : "ORDER", net: "HQ", from: h.from, to: "ALL", sentAtMin: h.sentAtMin,
     claimedGrid: grid ?? "AA11", plain, txFist: h.txFist, dfBearingDeg: h.dfBearingDeg,
   };
   // Without a readable position the grid/bearing checks are meaningless; fist and DTG still stand.

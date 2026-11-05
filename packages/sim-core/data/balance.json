@@ -336,5 +336,17 @@
       "Obermann",
       "Pohl"
     ]
+  },
+  "move": {
+    "chance": 0.3,
+    "minKm": 10,
+    "maxKm": 25,
+    "assumedKn": 8,
+    "marginFactor": 1.5,
+    "arriveKm": 5
+  },
+  "nav": {
+    "driftPerKm": 0.03,
+    "baseErrKm": 0.3
   }
 }

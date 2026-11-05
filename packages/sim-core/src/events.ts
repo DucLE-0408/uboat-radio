@@ -29,7 +29,11 @@ export type SimEvent =
   /** G4: HQ read (or could not read) a reply the player sent. */
   | { readonly type: "SEND_RESULT"; readonly tSec: number; readonly rxId: number; readonly ok: boolean }
   /** G4: a crew member's private note. Who, tone and topic only; the words are the desk's. */
-  | { readonly type: "PRIVATE_MSG"; readonly tSec: number; readonly fromRole: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly tone: "remind" | "threat"; readonly topic: "citation" | "late" | "longTx" | "located" | "badSend"; readonly rxId: number | null }
+  | { readonly type: "PRIVATE_MSG"; readonly tSec: number; readonly fromRole: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly tone: "remind" | "threat"; readonly topic: "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed"; readonly rxId: number | null }
+  /** G5: the player accepted a movement order: the ordered cell and the deadline (sim seconds from now). */
+  | { readonly type: "ORDER_ACCEPTED"; readonly tSec: number; readonly rxId: number; readonly grid: string; readonly deadlineSec: number }
+  | { readonly type: "ORDER_REACHED"; readonly tSec: number; readonly rxId: number }
+  | { readonly type: "ORDER_FAILED"; readonly tSec: number; readonly rxId: number; readonly lostItem: string | null }
   | { readonly type: "ROSTER_CHANGE"; readonly tSec: number; readonly role: "captain" | "xo" | "chief" | "sound" | "liaison"; readonly present: boolean }
   | { readonly type: "WATCH_END"; readonly tSec: number; readonly reason: "time" | "sunk" | "executed" | "left" };
 

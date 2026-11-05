@@ -154,3 +154,12 @@ The spec is `docs/specs/desk-ui-g4/` (approved 2026-11-05). All G4 behaviour exi
 - **Private notes and roster.** `pm.ts` emits only who, tone and topic (spaced at least 240 s, at most 6 per 30 minutes); the texts live in `desk/pmtext.ts`. The roster (`roster.ts`, 40 invented names) replaces the fixed crew names; a badly hit hull makes one member absent and their scenes and notes go to the next one.
 - **Presentation.** Outbox, Notes and Roster are TEMPORARY DOM panels on the existing desk style, not new paper sheets. Thrown-away notes are remembered in `desk.v1` (`gone`).
 
+### G5: movement orders, dead-reckoning chart and the Helm screen (`packages/sim-core`, `desk/helm.ts`)
+
+The spec is `docs/specs/desk-ui-g5/` (approved 2026-11-05).
+
+- **Orders.** With options and the `map` module, Endless sometimes issues `NAVIGATIONSBEFEHL ZIEL <cell> FRIST <minutes> MINUTEN` (kind `MOVE`, net HQ). The cell is an ocean sub-cell 10-25 km away and the deadline follows from the distance at an assumed 8 kn with a 1.5 margin (`balance.json` `move`). Accepting emits `ORDER_ACCEPTED` (cell, deadline; the player sees only what they accepted); the sim compares the TRUE position with the target every step: within 5 km before the deadline = `ORDER_REACHED`, otherwise `ORDER_FAILED` (a resupply point is lost, a captain's note is sent, the desk takes rations; it is not a citation). Forged movement orders have only fist and timestamp tells because the grid is a destination, so assessment skips grid and bearing for them (D8 kept).
+- **Dead-reckoning.** `Watch.navFix()` returns the estimated position (true + a seeded drift that grows 3% with distance sailed), an error radius and the heading; it is observation only, draws from its own stream while the boat moves, and does not change any event of the plain night watch.
+- **Helm.** A full-frame overlay (button HELM on the ship panel, Esc closes) holds the chart (three zoom levels, `AB12` references, estimate with error circle, trail, ordered cell with arrival ring and deadline, safe and resupply points still on the Orders, click to order a course), a compass, a draggable wheel and heading nudges, speed and surface/periscope/dive controls. It reuses `steerHeading`, `steerSpeed` and `setMode`; no new sim command. The dive lever and speed buttons are hidden on the radio desk.
+- **Save.** Unchanged (v3); `parseOptions` treats a missing `map` as on. Score labels carry 7 module bits; older 6-bit labels still load.
+

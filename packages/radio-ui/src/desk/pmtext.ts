@@ -2,7 +2,7 @@
 // tin nào đúng hay giả, chỉ nói về hành vi quan sát được của người chơi (D4).
 import type { Lang } from "../i18n";
 
-export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend";
+export type PmTopic = "citation" | "late" | "longTx" | "located" | "badSend" | "orderFailed";
 export type PmTone = "remind" | "threat";
 
 const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, readonly string[]>>>>>> = {
@@ -22,6 +22,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Something changed out there. Stay sharp.", "I do not like the silence. Watch your instruments."],
       threat: ["They have us. If this is your doing, I will remember it.", "Whatever you sent, they heard. Brace."],
+    },
+    orderFailed: {
+      remind: ["We missed the position HQ ordered. The supply point is gone with it.", "The deadline passed with us still at sea. Plan the next leg better."],
+      threat: ["Orders are not suggestions, operator. You cost us a resupply point.", "We were told where to be and were not there. Do not make me write it down."],
     },
     badSend: {
       remind: ["HQ could not read your reply. Check the machine before you key.", "A reply nobody can read is just noise on the air."],
@@ -44,6 +48,10 @@ const T: Readonly<Record<Lang, Readonly<Record<PmTopic, Readonly<Record<PmTone, 
     located: {
       remind: ["Ngoài kia có gì đó khác rồi. Tỉnh táo vào.", "Tôi không thích sự im lặng này. Để mắt tới thiết bị."],
       threat: ["Chúng biết chỗ ta. Nếu là do cậu, tôi sẽ nhớ.", "Cậu phát cái gì thì chúng nghe cái đó. Bám chắc vào."],
+    },
+    orderFailed: {
+      remind: ["Ta trễ vị trí HQ ra lệnh. Điểm tiếp tế mất theo luôn.", "Quá hạn mà tàu vẫn ngoài khơi. Lần sau tính đường cho kỹ."],
+      threat: ["Lệnh không phải lời gợi ý, điện báo viên. Cậu làm ta mất một điểm tiếp tế.", "Người ta bảo ta ở đâu mà ta không ở đó. Đừng để tôi phải ghi sổ."],
     },
     badSend: {
       remind: ["Đài chỉ huy không đọc được bức trả lời. Kiểm tra máy trước khi bấm phím.", "Bức trả lời không ai đọc được chỉ là tạp âm trên sóng."],

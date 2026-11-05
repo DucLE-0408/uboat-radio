@@ -4,7 +4,7 @@ import { fistDistance, randomFist, type Fist } from "./morse";
 import { derive, type Rng } from "./rng";
 
 export type Net = "HQ" | "PACK" | "WX";
-export type Kind = "ORDER" | "REPORT" | "WEATHER";
+export type Kind = "ORDER" | "REPORT" | "WEATHER" | "MOVE";
 export type Tell = "fist" | "bearing" | "timestamp" | "grid";
 
 export interface Vec { readonly x: number; readonly y: number } // km
@@ -60,7 +60,9 @@ export interface Truth {
   /** G3: tells carried by the paper (printed stamp, signature, sender id). Set by the Watch; absent in bare generator output. */
   readonly paperTells?: readonly string[];
 }
-export interface Generated { readonly msg: Message; readonly truth: Truth }
+/** G5: what a movement order asks for (the ordered cell and the deadline in minutes). */
+export interface MoveBrief { readonly grid: string; readonly minutes: number; readonly distKm: number }
+export interface Generated { readonly msg: Message; readonly truth: Truth; readonly move?: MoveBrief }
 
 export interface WorldCtx {
   readonly ownPos: Vec;
@@ -91,8 +93,10 @@ export function makeKnownFists(seed: number | string, callsigns: readonly string
   return out;
 }
 
-function body(kind: Kind, r: Rng, grid: string): string {
+function body(kind: Kind, r: Rng, grid: string, move?: MoveBrief): string {
   switch (kind) {
+    case "MOVE":
+      return ["NAVIGATIONSBEFEHL", "ZIEL", spellGrid((move as MoveBrief).grid), "FRIST", spell((move as MoveBrief).minutes), "MINUTEN"].join("X");
     case "ORDER":
       return ["ANGRIFFSBEFEHL", "KONVOI", spellGrid(grid), "KURS", spell(r.int(360)), "FAHRT", spell(8 + r.int(8)), "KNOTEN"].join("X");
     case "REPORT":
@@ -102,7 +106,28 @@ function body(kind: Kind, r: Rng, grid: string): string {
   }
 }
 
-const NET_OF: Readonly<Record<Kind, Net>> = { ORDER: "HQ", REPORT: "PACK", WEATHER: "WX" };
+const NET_OF: Readonly<Record<Kind, Net>> = { ORDER: "HQ", REPORT: "PACK", WEATHER: "WX", MOVE: "HQ" };
+
+/** Cell reference of a world position in km (inverse of gridToPos at sub-cell resolution); null outside the map. */
+export function posToGrid(p: Vec, b: Balance = BALANCE): string | null {
+  const col = Math.floor(p.x / b.world.cellKm), row = Math.floor(p.y / b.world.cellKm);
+  if (col < 0 || row < 0 || col >= b.world.cols || row >= b.world.rows) return null;
+  const sub = b.world.cellKm / 9;
+  const dx = Math.min(8, Math.floor((p.x - col * b.world.cellKm) / sub)) + 1, dy = Math.min(8, Math.floor((p.y - row * b.world.cellKm) / sub)) + 1;
+  return String.fromCharCode(65 + col) + String.fromCharCode(65 + row) + dx + dy;
+}
+
+/** A movement order from the boat's own position: an ocean sub-cell `minKm`-`maxKm` away and a deadline from the assumed cruising speed. Null when no ocean cell was found. */
+export function moveBrief(r: Rng, ownPos: Vec, b: Balance = BALANCE): MoveBrief | null {
+  for (let i = 0; i < 24; i++) {
+    const ang = r.next() * 2 * Math.PI, d = b.move.minKm + r.next() * (b.move.maxKm - b.move.minKm);
+    const grid = posToGrid({ x: ownPos.x + Math.sin(ang) * d, y: ownPos.y + Math.cos(ang) * d }, b);
+    if (grid === null || isLandGrid(grid, b)) continue;
+    const c = gridToPos(grid, b) as Vec, distKm = Math.hypot(c.x - ownPos.x, c.y - ownPos.y);
+    return { grid, distKm, minutes: Math.max(5, Math.ceil((distKm / (b.move.assumedKn * 1.852)) * 60 * b.move.marginFactor)) };
+  }
+  return null;
+}
 
 function randomGrid(r: Rng, b: Balance, ocean: boolean): string {
   for (;;) {
@@ -116,20 +141,22 @@ function perturbFist(f: Fist, r: Rng, rel: number): Fist {
   return { wpm: f.wpm * k(), dahRatio: f.dahRatio * k(), gapStretch: f.gapStretch * k(), jitter: f.jitter };
 }
 
-export function generateGenuine(seed: number | string, id: number, kind: Kind, ctx: WorldCtx, b: Balance = BALANCE): Generated {
+export function generateGenuine(seed: number | string, id: number, kind0: Kind, ctx: WorldCtx, b: Balance = BALANCE): Generated {
   const r = derive(seed, "msg", id);
-  const from = kind === "ORDER" ? (ctx.callsigns[0] as string) : (ctx.callsigns[1 + r.int(ctx.callsigns.length - 1)] as string);
+  const move = kind0 === "MOVE" ? moveBrief(derive(seed, "move", id), ctx.ownPos, b) : null;
+  const kind: Kind = kind0 === "MOVE" && move === null ? "ORDER" : kind0; // no ocean cell in reach: an ordinary order instead
+  const from = kind === "ORDER" || kind === "MOVE" ? (ctx.callsigns[0] as string) : (ctx.callsigns[1 + r.int(ctx.callsigns.length - 1)] as string);
   const grid = randomGrid(r, b, true);
   const origin = gridToPos(grid, b) as Vec;
   const msg: Message = {
     id, kind, net: NET_OF[kind], from, to: "ALL",
     sentAtMin: ctx.nowMin - r.int(10),
     claimedGrid: grid,
-    plain: body(kind, r, grid),
+    plain: body(kind, r, grid, move ?? undefined),
     txFist: perturbFist(ctx.knownFists[from] as Fist, r, b.fist.measureNoise),
     dfBearingDeg: (bearingDeg(ctx.ownPos, origin) + (r.next() * 2 - 1) * b.df.measureNoiseDeg + 360) % 360,
   };
-  return { msg, truth: { forged: false, intelLevel: null, tells: [], surfaceFlaws: [] } };
+  return { msg, truth: { forged: false, intelLevel: null, tells: [], surfaceFlaws: [] }, ...(move !== null ? { move } : {}) };
 }
 
 /**
@@ -139,7 +166,8 @@ export function generateGenuine(seed: number | string, id: number, kind: Kind, c
  */
 export function generateForgery(seed: number | string, id: number, kind: Kind, intelLevel: number, ctx: WorldCtx, b: Balance = BALANCE): Generated {
   const r = derive(seed, "forge", id);
-  const base = generateGenuine(seed, id, kind, ctx, b).msg;
+  const baseGen = generateGenuine(seed, id, kind, ctx, b);
+  const base = baseGen.msg;
   const flaws: ("format" | "callsign")[] = [];
   let from = base.from;
   let plain = base.plain;
@@ -165,7 +193,8 @@ export function generateForgery(seed: number | string, id: number, kind: Kind, i
   // Bearing is only verifiable beyond minRange; otherwise it is not an eligible tell.
   const basePos = gridToPos(base.claimedGrid, b) as Vec;
   const farEnough = Math.hypot(basePos.x - ctx.ownPos.x, basePos.y - ctx.ownPos.y) >= b.df.minRangeKm;
-  const pool = r.shuffle<Tell>(farEnough ? ["fist", "bearing", "timestamp", "grid"] : ["fist", "timestamp", "grid"]);
+  // A movement order's grid is its destination, not the sender's position, so grid and bearing cannot be checked: only fist and timestamp tells.
+  const pool = r.shuffle<Tell>(base.kind === "MOVE" ? ["fist", "timestamp"] : farEnough ? ["fist", "bearing", "timestamp", "grid"] : ["fist", "timestamp", "grid"]);
   const count = intelLevel <= 1 ? 3 : intelLevel === 2 ? 2 : 1;
   const tells = pool.slice(0, count);
 
@@ -196,7 +225,7 @@ export function generateForgery(seed: number | string, id: number, kind: Kind, i
     }
   }
   const msg: Message = { ...base, from, plain, txFist, dfBearingDeg, sentAtMin, claimedGrid };
-  return { msg, truth: { forged: true, intelLevel, tells, surfaceFlaws: flaws } };
+  return { msg, truth: { forged: true, intelLevel, tells, surfaceFlaws: flaws }, ...(baseGen.move ? { move: baseGen.move } : {}) };
 }
 
 /**
@@ -206,9 +235,11 @@ export function generateForgery(seed: number | string, id: number, kind: Kind, i
 export function verifyTells(msg: Message, ctx: WorldCtx, b: Balance = BALANCE): Tell[] {
   const found: Tell[] = [];
   const known = ctx.knownFists[msg.from];
+  const isMove = msg.kind === "MOVE";
   if (known && fistDistance(msg.txFist, known) > b.fist.mismatchThreshold) found.push("fist");
   const pos = gridToPos(msg.claimedGrid, b);
-  if (pos === null || isLandGrid(msg.claimedGrid, b)) {
+  if (isMove) { /* the grid in a movement order is the destination: no position or bearing check */ }
+  else if (pos === null || isLandGrid(msg.claimedGrid, b)) {
     found.push("grid");
   } else {
     const range = Math.hypot(pos.x - ctx.ownPos.x, pos.y - ctx.ownPos.y);

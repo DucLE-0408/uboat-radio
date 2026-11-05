@@ -143,3 +143,17 @@
 .deskui .dnotew { color: #d9b878; }
 .deskui .dgone { color: #69636f; text-decoration: line-through; }
 .deskui .dxtra { z-index: 5; }
+
+/* ---- G5: Helm screen */
+.deskui .dhelm { z-index: 7; background: #101417; border: calc(1px * var(--px)) solid #4a5251; box-sizing: border-box; color: #e6d8d4; }
+.deskui .dchart { background: #0e2a3a; border: calc(1px * var(--px)) solid #4a5251; box-sizing: border-box; overflow: hidden; cursor: crosshair; }
+.deskui .dchart text, .deskui .dcompass text { font-family: var(--f-type); user-select: none; }
+.deskui .dchart svg:focus-visible, .deskui .dwheel svg:focus-visible { outline: calc(1px * var(--px)) solid #c6f2d6; }
+.deskui .dwheel svg { cursor: grab; touch-action: none; }
+.deskui .dhbtn { position: absolute; border: calc(1px * var(--px)) solid #4a5251; background: #1f2423; color: #d9b878; box-sizing: border-box; padding: 0; }
+.deskui .dhbtn.on { color: #c6f2d6; border-color: #6fbf8a; }
+.deskui .dhtxt { position: absolute; font-size: calc(9px * var(--px)); color: #c9bfc4; line-height: 1.25; white-space: pre-line; }
+.deskui .dhlab { color: #d9b878; }
+.deskui .dhorder { color: #f0b85a; }
+.deskui .dhelmbtn { border: calc(1px * var(--px)) solid #4a5251; background: #1f2423; color: #f0b85a; writing-mode: vertical-rl; letter-spacing: .15em; }
+.deskui .dhelmbtn[aria-expanded="true"] { color: #c6f2d6; border-color: #6fbf8a; }
