@@ -52,6 +52,13 @@ export interface Balance {
     readonly depthChargeDropDepthM: number; readonly torpedoes: number;
     readonly radioSelfNoisePerKnotDb: number;
   };
+  /** G6: water temperature (a smooth field plus seeded eddies, cooler near the coast and to the north) and the thermocline that follows it. A boat below the layer is muffled to surface ships (`hydroLossDb`) and hard for ASDIC to hold (`asdicBelowLayerFactor`). */
+  readonly water: {
+    readonly baseC: number; readonly southGradCPer100Km: number; readonly coastCoolC: number; readonly coastScaleKm: number;
+    readonly eddies: { readonly count: number; readonly spreadKm: number; readonly minRadiusKm: number; readonly maxRadiusKm: number; readonly maxAmpC: number };
+    readonly coldC: number; readonly warmC: number; readonly layerMinM: number; readonly layerMaxM: number;
+    readonly hydroLossDb: number; readonly asdicBelowLayerFactor: number; readonly sampleEverySec: number; readonly sampleNoiseC: number; readonly sampleNoiseM: number;
+  };
   /** G6: enemy radar. Patrol windows (a pure function of the seed) during which a surfaced boat may be picked up; sea clutter hides us, the enemy improves with the hours; the Metox receiver warns before a window with probability `metoxReliability`. */
   readonly radar: {
     readonly windowCount: number; readonly firstGapSec: number; readonly windowSec: Range; readonly gapSec: Range; readonly warnLeadSec: Range;

@@ -23,6 +23,7 @@ import { chargeEffect, makeSeabed, type Seabed, type Shoal } from "./seabed";
 import { absentRole, makeRoster, type CrewMember, type Role } from "./roster";
 import { airtimeSec, expectedReply, replyKind, validSend, type ReplyKind } from "./send";
 import { derive, type Rng } from "./rng";
+import { makeWater, type Water } from "./water";
 import { makeRadar, radarEra, radarSeaFactor, type Radar } from "./radar";
 import { clearness, makeWeather, seaSpeedFactor, type Weather } from "./weather";
 import { SonarField, type Track } from "./sonar";
@@ -128,6 +129,9 @@ export class Watch {
   private readonly g4: boolean; // G4 features (sending, Private Messages, roster) exist only when options were given: no options = the night watch as before
   private readonly endless: boolean;
   private readonly weather: Weather | null; // G6: only with options and the weather module
+  private readonly water: Water | null; // G6: only with options and the water module
+  private readonly btRng: Rng;
+  private nextSampleSec = 0;
   private readonly radar: Radar | null; // G6: only with options and the radar module
   private readonly radarRng: Rng;
   private radarWarned: number | null = null; // cycle * 1000 + window index of the window the Metox has announced and not yet cleared
@@ -160,6 +164,8 @@ export class Watch {
     this.seabed = opts !== undefined ? makeSeabed(seed, b, this.origin) : null; // the sea floor exists only for watches with options
     this.g4 = opts !== undefined;
     this.weather = opts !== undefined && opts.modules.weather ? makeWeather(seed, b) : null;
+    this.water = opts !== undefined && opts.modules.water ? makeWater(seed, b, this.origin) : null;
+    this.btRng = derive(seed, "bt");
     this.radar = opts !== undefined && opts.modules.radar ? makeRadar(seed, b) : null;
     this.radarRng = derive(seed, "radarhit");
     this.sightRng = derive(seed, "sight");
@@ -251,7 +257,7 @@ export class Watch {
   /** What the operator hears right now (hydrophone). Stateless RNG: calling it never perturbs the sim. */
   listen(): ReturnType<SonarField["observe"]> {
     const s = this.boat.state();
-    return this.sonar.observe({ x: s.x, y: s.y, speedKn: s.speedKn }, this.seaNow(), derive(this.seed, "listen", this.tick), this.b);
+    return this.sonar.observe({ x: s.x, y: s.y, speedKn: s.speedKn }, this.seaNow(), derive(this.seed, "listen", this.tick), this.b, this.belowLayer() ? this.b.water.hydroLossDb : 0);
   }
 
   /** TEST/DEBUG ONLY. Ground truth must never reach the presentation layer. */
@@ -314,6 +320,7 @@ export class Watch {
     this.checkSeabed(t);
     this.checkWeather(t);
     this.checkRadar(t);
+    this.checkWater(t);
     this.checkOrder(t);
 
     const radio = this.boat.radio();
@@ -330,7 +337,7 @@ export class Watch {
 
     const s = this.boat.state();
     const listener = { x: s.x, y: s.y, speedKn: s.speedKn };
-    for (const e of this.sonar.tick(DT, t, listener, this.asdicRng, this.b, this.weather === null ? undefined : this.seaNow())) this.bus.emit(e);
+    for (const e of this.sonar.tick(DT, t, listener, this.asdicRng, this.b, this.weather === null ? undefined : this.seaNow(), this.belowLayer() ? this.b.water.asdicBelowLayerFactor : 1)) this.bus.emit(e);
     if (this.tick % this.b.watch.sonarPeriodSec === 0) this.scanSonar(t, listener);
 
     this.intel.tickMinutes(DT / 60);
@@ -367,7 +374,7 @@ export class Watch {
 
   private scanSonar(t: number, l: { x: number; y: number; speedKn: number }): void {
     const seen = new Set<number>();
-    for (const o of this.sonar.observe(l, this.seaNow(), derive(this.seed, "sonar", this.tick), this.b)) {
+    for (const o of this.sonar.observe(l, this.seaNow(), derive(this.seed, "sonar", this.tick), this.b, this.belowLayer() ? this.b.water.hydroLossDb : 0)) {
       seen.add(o.id);
       if (!this.audible.has(o.id)) {
         this.audible.add(o.id);
@@ -523,6 +530,30 @@ export class Watch {
     if (expo <= 0) return;
     const h = w.hazardPerSecSurface * expo * radarSeaFactor(this.b, this.seaNow()) * radarEra(this.b, t);
     if (this.radarRng.chance(1 - Math.exp(-h * DT)) && this.det.visualContact(w.reactSec, w.etaSec)) this.bus.emit({ type: "RADAR_DETECTED", tSec: t });
+  }
+
+  /** G6: the boat's own thermometer reads the real water at the true position every minute and reports it at the ESTIMATED position. */
+  private checkWater(t: number): void {
+    const wt = this.water;
+    if (wt === null || t < this.nextSampleSec) return;
+    const w = this.b.water, p = this.trueKm(), s = wt.at(p.x, p.y), f = this.navFix();
+    this.nextSampleSec = t + w.sampleEverySec;
+    const nT = (this.btRng.next() * 2 - 1) * w.sampleNoiseC, nL = (this.btRng.next() * 2 - 1) * w.sampleNoiseM; // two fixed draws per sample
+    this.bus.emit({ type: "WATER_SAMPLE", tSec: t, tempC: Math.round((s.tempC + nT) * 10) / 10, layerM: Math.max(0, Math.round((s.layerM + nL) / 5) * 5), xKm: f.xKm, yKm: f.yKm });
+  }
+
+  /** True when the water module is on and the boat lies below the thermocline at its true position. */
+  private belowLayer(): boolean {
+    if (this.water === null) return false;
+    const p = this.trueKm();
+    return this.boat.state().depthM > this.water.at(p.x, p.y).layerM;
+  }
+
+  /** The thermocline as the chart shows it (climatology only); null without the water module. Observation only. */
+  chartWater(xKm: number, yKm: number): { readonly tempC: number; readonly layerM: number } | null {
+    if (this.water === null) return null;
+    const c = this.water.chart(xKm, yKm);
+    return { tempC: Math.round(c.tempC * 2) / 2, layerM: Math.round(c.layerM / 5) * 5 };
   }
 
   private checkSeabed(t: number): void {

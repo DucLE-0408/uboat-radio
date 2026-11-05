@@ -33,7 +33,7 @@ export function loadScores(storage: StorageLike | null): Record<string, EndlessS
     const j = JSON.parse(raw) as unknown;
     if (typeof j !== "object" || j === null || Array.isArray(j)) return out;
     for (const [k, v] of Object.entries(j).slice(0, MAX_SCORES)) {
-      if (!/^(easy|normal|hard):[01]{6,9}$/.test(k) || typeof v !== "object" || v === null) continue;
+      if (!/^(easy|normal|hard):[01]{6,10}$/.test(k) || typeof v !== "object" || v === null) continue;
       const r = v as Record<string, unknown>, c = int(r["correct"], 0, 100000), s = int(r["streak"], 0, 100000), ra = int(r["ration"], -100000, 100000), t = int(r["survivedSec"], 0, 10_000_000);
       if (c !== null && s !== null && ra !== null && t !== null) out[k] = { correct: c, streak: s, ration: ra, survivedSec: t };
     }
